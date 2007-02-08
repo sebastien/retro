@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 18-Sep-2006
+# Last mod  : 08-Feb-2006
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -17,7 +17,7 @@ from core import asJSON
 from web  import on, ajax, display, predicate, when, Component, Application, \
 Dispatcher, Configuration, ValidationError, KID, CHEETAH
 
-__version__ = "0.3.6"
+__version__ = "0.3.7"
 __doc__     = """\
 This is the main Railways module. You can generally do the following:
 
