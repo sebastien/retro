@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 30-Oct-2006
+# Last mod  : 27-Feb-2007
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, types, BaseHTTPServer, Cookie
@@ -122,6 +122,7 @@ class Request:
 		return self._environ.get(self.CONTENT_LENGTH)
 
 	def get( self, name ):
+		"""Gets the parameter with the given name. It is an alias for param"""
 		if not self._loaded: self.load()
 		for key, value in self._params.items():
 			if name == key:
@@ -143,10 +144,16 @@ class Request:
 		return name in self._params.keys()
 
 	def params( self ):
+		"""Returns a dictionary with the request parameters"""
 		if not self._loaded: self.load()
 		return self._params
 
+	def param( self, name ):
+		"""Gets the parameter with the given name. It is an alias for get"""
+		return self.get(name)
+
 	def environ( self, name=NOTHING, value=NOTHING ):
+		"""Gets or sets the environment attached to this request"""
 		if name == NOTHING:
 			return self._environ
 		elif value == NOTHING:

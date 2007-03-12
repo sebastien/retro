@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 09-Nov-2006
+# Last mod  : 02-Mar-2007
 # -----------------------------------------------------------------------------
 
 import os, re, sys
@@ -306,8 +306,9 @@ class Dispatcher:
 		if prefix and prefix[-1] == "/": prefix = prefix[:-1]
 		if not type(expression) in (tuple, list): expression = [expression]
 		for ex in expression:
+			ex = prefix + ex
 			if not ex or ex[0] != "/": ex = "/" + ex
-			regexp, converters, params = self._parseExpression(prefix + ex)
+			regexp, converters, params = self._parseExpression(ex)
 			regexp = re.compile(regexp)
 			self._handlers.insert(0, (priority, regexp, params, converters, handlers))
 
@@ -444,8 +445,8 @@ class Component:
 	def registerHandler(self, handler, urls, priority=0):
 		"""This method takes a function, a list of (HTTPMethod,
 		DispatcherExpression) and a priority, describing a handler for a
-		specific URL within this component. The parameters are acutally the same
-		as the ones given to the `@on` decorator."""
+		specific URL within this component. The parameters are actually
+		the same as the ones given to the `@on` decorator."""
 		for http_methods, path in urls:
 			handlers = {}
 			for method in http_methods.split("_"):
@@ -596,6 +597,8 @@ class Application(Component):
 
 		def __call__( self, request, **kwargs ):
 			# We try to invoke the function with the optional arguments
+			for key, value in request.params().items(): 
+				if key: kwargs.setdefault(key, value)
 			r = self.function(**kwargs)
 			# And now we return the response as JS
 			return request.returns(r)

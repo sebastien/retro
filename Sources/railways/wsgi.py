@@ -9,7 +9,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 15-Aug-2006
+# Last mod  : 12-Mar-2006
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -38,33 +38,46 @@ SERVER_ERROR = """\
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <title>Railways Error</title>
 <style><!-- 
-body {
-	margin-left: 10%%;
-	margin-right: 10%%;
-	padding: 20pt;
-	padding-top: 10pt;
-	background: rgb(255,255,255);
-	font:  9pt/13pt "Lucida Grande",Lucida,sans-serif;
-	font:  9.5pt/12pt sans-serif;
-	color: rgb(80,80,80);
+html, body {
+		padding: 0;
+		margin: 0;
+		font: 10pt/12pt Helvetica, Arial, sans-serif;
+		color: #555555;
 }
-h1, h2, h3, h4 {
-	font-family: "Trebuchet MS",sans-serif;
-	color: rgb(22, 130, 178);
-	font-weight: normal;
-	padding-top: 0.5em;
+body {
+	padding: 30px;
+	padding-top: 80px;
+}
+body b {
+	color: #222222;
+}
+body a:link, body a:visited, body a:hover, body a:active, body a b {
+	color: #c65252;
+	text-decoration: none;
+}
+body a:hover {
+	text-decoration: none;
+}
+body a img {
+	border: 0px;
+}
+body code, body pre {
+	font-size: 0.8em;
+	background: #F5E5E5;
+}
+body pre {
+	padding: 5px;
 }
 .traceback {
 	font-size: 8pt;
-	border-left: 2px solid #f11111;
+	border-left: 1px solid #f11111;
 	padding: 10px;
 }
  --></style>
 </head>
 <body>
-  <h1>Sorry !</h1>
-   A server error has occurred and is being reported to the server
-   administrator.
+  <h1>Railways Application Error</h1>
+   The following error has occurred in the current Railways Application
    <pre class='traceback'>%s</pre>
 </body>
 </html>
@@ -72,10 +85,9 @@ h1, h2, h3, h4 {
 
 # ------------------------------------------------------------------------------
 #
-# WSGI REQUEST HANDLER
+# WSGI REACTOR
 #
 # ------------------------------------------------------------------------------
-
 
 class WSGIReactorGuard:
 	"""This class is a utility that allows to protect Railways reactor from
@@ -83,6 +95,12 @@ class WSGIReactorGuard:
 	lightweight threads to sleep without blocking the whole application."""
 
 class WSGIReactor:
+	"""The Reactor is a thread of execution that has a queue of actions
+	that need to be executed. The actions are dispatched by the WSGI handlers
+	which can be bound to a single threaded or multi-threaded web server.
+
+	The reactor does not need to be created, and is only useful when dealing
+	with a multi-threaded environment."""
 
 	def __init__( self ):
 		self._handlers      = []
@@ -114,7 +132,9 @@ class WSGIReactor:
 		while self._isRunning:
 			if not self._handlers:
 				continue
+			self._handlersLock.acquire()
 			handler, application = self._handlers[i]
+			self._handlersLock.release()
 			if not handler.next(application):
 				self._handlersLock.acquire()
 				del self._handlers[i]
@@ -123,7 +143,7 @@ class WSGIReactor:
 			else:
 				i = (i + 1) % self._handlersCount
 
-REACTOR = None# WSGIReactor().start()
+REACTOR = None
 #atexit.register(REACTOR.stop)
 # TODO: For some reason, the execution of some handlers completely freeze the
 # reactor
