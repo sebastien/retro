@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 02-Mar-2007
+# Last mod  : 12-Mar-2007
 # -----------------------------------------------------------------------------
 
 import os, re, sys
@@ -27,6 +27,16 @@ try:
 	CHEETAH = "CHEETAH"
 except ImportError:
 	CHEETAH = None
+
+LOG_ENABLED       = True
+LOG_DISPATCHER_ON = True
+
+def log(*args):
+	"""A log function that outputs information on stdout. It's a good
+	idea to replace this function by another if you want to have a custom
+	logger."""
+	if LOG_ENABLED is True:
+		sys.stdout.write(" ".join(map(str, args)) + "\n")
 
 # ------------------------------------------------------------------------------
 #
@@ -303,11 +313,13 @@ class Dispatcher:
 		associated handlers for the given expression. For instance, you can use
 		`on("/{path}", GET=myGetHandler, POST=myPostHandler)
 		"""
-		if prefix and prefix[-1] == "/": prefix = prefix[:-1]
+		if not prefix or prefix[-1] == "/": prefix = prefix[:-1]
 		if not type(expression) in (tuple, list): expression = [expression]
 		for ex in expression:
-			ex = prefix + ex
 			if not ex or ex[0] != "/": ex = "/" + ex
+			ex = prefix + ex
+			if LOG_DISPATCHER_ON:
+				log("Dispatcher: @on", ex)
 			regexp, converters, params = self._parseExpression(ex)
 			regexp = re.compile(regexp)
 			self._handlers.insert(0, (priority, regexp, params, converters, handlers))
@@ -371,7 +383,14 @@ class Dispatcher:
 			request = Request(environ, self.app().config().charset())
 		for _, handler, variables, params_name in handlers:
 			can_handle = True
-			component  = handler.im_self
+			# NOTE: If there is a failure here (like AttributeError:
+			# 'function' object has no attribute 'im_self'), it is
+			# probably because the given handler is not a method
+			# from a component
+			if hasattr(handler, "_component"):
+				component = handler._component
+			else:
+				component = handler.im_self
 			request._component = component
 			# If there was a required parameter variables, we set the request
 			# parameters to it

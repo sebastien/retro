@@ -9,7 +9,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 12-Mar-2006
+# Last mod  : 13-Mar-2006
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -144,9 +144,20 @@ class WSGIReactor:
 				i = (i + 1) % self._handlersCount
 
 REACTOR = None
-#atexit.register(REACTOR.stop)
-# TODO: For some reason, the execution of some handlers completely freeze the
-# reactor
+def hasReactor():
+	"""Tells wether the reactor is enabled or not."""
+	return REACTOR is None
+
+def getReactor():
+	"""Returns the shared reactor instance for this module, creating a new
+	reactor if necessary."""
+	global REACTOR
+	if REACTOR is None:
+		#atexit.register(REACTOR.stop)
+		# TODO: For some reason, the execution of some handlers completely freeze the
+		# reactor
+		REACTOR = WSGIReactor()
+	return REACTOR
 
 # ------------------------------------------------------------------------------
 #
@@ -155,6 +166,8 @@ REACTOR = None
 # ------------------------------------------------------------------------------
 
 class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+	"""A simple handler class that takes makes a WSGI interface to the
+	default Python HTTP server."""
 
 	class ResponseExpected(Exception):
 		"""This exception occurs when a handler does not returns a Response,
@@ -193,8 +206,11 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		"""This is the main function that runs a Railways application and
 		produces the response."""
 		self._state = self.STARTED
-		if REACTOR != None:
-			REACTOR.register(self, application)
+		# When using the reactor, we simply submit the application for
+		# execution
+		if hasReactor():
+			getReactor().register(self, application)
+		# Otherwise we iterate on the application (one shot execution)
 		else:
 			while self.next(application): continue
 
