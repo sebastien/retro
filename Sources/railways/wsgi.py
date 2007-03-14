@@ -146,13 +146,13 @@ class WSGIReactor:
 REACTOR = None
 def hasReactor():
 	"""Tells wether the reactor is enabled or not."""
-	return REACTOR is None
+	return not (REACTOR is None)
 
-def getReactor():
+def getReactor(autocreate=True):
 	"""Returns the shared reactor instance for this module, creating a new
 	reactor if necessary."""
 	global REACTOR
-	if REACTOR is None:
+	if REACTOR is None and autocreate:
 		#atexit.register(REACTOR.stop)
 		# TODO: For some reason, the execution of some handlers completely freeze the
 		# reactor
@@ -173,7 +173,6 @@ class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 		"""This exception occurs when a handler does not returns a Response,
 		which can happen quite often in the beginning."""
 		def __init__( self, handler ):
-			print handler
 			Exception.__init__(self,"""\
 Handler must return a response object: %s
 Use request methods to create a response (request.respond, request.returns, ...)

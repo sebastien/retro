@@ -122,7 +122,7 @@ def ajax( priority=0, **methods ):
 		v = function.__dict__.setdefault(_RAILW_AJAX, True)
 		# This is copy and paste of the @on body
 		v = function.__dict__.setdefault(_RAILW_ON,   [])
-		function.__dict__.setdefault(_RAILW_ON_PRIORITY, priority)
+		function.__dict__.setdefault(_RAILW_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
 			v.append((http_method, url))
 		return function
