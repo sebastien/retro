@@ -181,7 +181,7 @@ class Dispatcher:
 		'alpha'  : (r'[a-zA-Z]+' , str   ),
 		'string' : (r'[^/]+'     , str   ),
 		'digits' : (r'\d+'       , int   ),
-		'number' : (r'\d*.?\d+'  , lambda x:x.find(".") != -1 and float(x) or int(x)),
+		'number' : (r'\d*\.?\d+' , lambda x:x.find(".") != -1 and float(x) or int(x)),
 		'int'    : (r'\d+'       , int   ),
 		'integer': (r'\d+'       , int   ),
 		'float'  : (r'\d*.?\d+'  , float ),
