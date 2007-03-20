@@ -125,7 +125,7 @@ resetlog=False, address="", port=8000, prefix='', async=False, sessions=True ):
 			raise ImportError("Flup is required to run FCGI")
 		if sessions:
 			stack  = SessionMiddleware(session_store,stack)
-		server = FLUP_FCGIServer(stack)
+		server = FLUP_FCGIServer(stack, bindAddress=(config.address(), config.port()))
 		server.run()
 	#
 	# == SCGI (Flup-provided)
@@ -135,7 +135,7 @@ resetlog=False, address="", port=8000, prefix='', async=False, sessions=True ):
 			raise ImportError("Flup is required to run SCGI")
 		if sessions:
 			stack  = SessionMiddleware(session_store,stack)
-		server = FLUP_SCGIServer(stack)
+		server = FLUP_SCGIServer(stack, bindAddress=(config.address(), config.port()))
 		server.run()
 	#
 	# == CGI
