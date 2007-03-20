@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 27-Feb-2007
+# Last mod  : 20-Mar-2007
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -17,7 +17,7 @@ from core import asJSON
 from web  import on, ajax, display, predicate, when, Component, Application, \
 Dispatcher, Configuration, ValidationError, KID, CHEETAH
 
-__version__ = "0.3.8"
+__version__ = "0.3.9"
 __doc__     = """\
 This is the main Railways module. You can generally do the following:
 
@@ -40,15 +40,17 @@ module, so you should not have to bother with anything else."""
 #
 # ------------------------------------------------------------------------------
 
-FLUP = FCGI = WSGIREF = STANDALONE = SESSIONS = None
+FLUP = FCGI = WSGIREF = SCGI = STANDALONE = SESSIONS = None
 CGI  = True
 STANDALONE = "STANDALONE"
 
 try:
 	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
-	from flup.server.fcgi import WSGIServer as FLUPServer
+	from flup.server.fcgi import WSGIServer as FLUP_FCGIServer
+	from flup.server.scgi import WSGIServer as FLUP_SCGIServer
 	FLUP = "FLUP"
-	FCGI = "FCGI"
+	FCGI = "FLUP_FCGI"
+	SCGI = "FLUP_SCGI"
 	SESSIONS = True
 except ImportError:
 	FLUP = None
@@ -84,7 +86,10 @@ def run( app=None, components=(), method=STANDALONE, name="railways", root = "."
 resetlog=False, address="", port=8000, prefix='', async=False, sessions=True ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
-	will be resolved)."""
+	will be resolved).
+
+	This function is the 'main' for your web application, so this is basically
+	the last call you should have in your web application main."""
 	if async:
 		async = False
 		return thread.start_new_thread(run,(),locals())
@@ -120,7 +125,17 @@ resetlog=False, address="", port=8000, prefix='', async=False, sessions=True ):
 			raise ImportError("Flup is required to run FCGI")
 		if sessions:
 			stack  = SessionMiddleware(session_store,stack)
-		server = FLUPServer(stack)
+		server = FLUP_FCGIServer(stack)
+		server.run()
+	#
+	# == SCGI (Flup-provided)
+	#
+	elif method == SCGI:
+		if not has(FLUP):
+			raise ImportError("Flup is required to run SCGI")
+		if sessions:
+			stack  = SessionMiddleware(session_store,stack)
+		server = FLUP_SCGIServer(stack)
 		server.run()
 	#
 	# == CGI
