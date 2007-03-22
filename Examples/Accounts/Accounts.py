@@ -11,7 +11,6 @@
 # Last mod  : 30-Oct-2006
 # -----------------------------------------------------------------------------
 
-from railways import *
 import re
 try:
 	from prevail     import *
@@ -20,6 +19,7 @@ except ImportError, e:
 	print "Prevail is required by this example."
 	print "Download Prevail from <http://www.ivy.fr/prevail>"
 	raise e
+from railways import *
 
 # ------------------------------------------------------------------------------
 #

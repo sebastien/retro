@@ -361,7 +361,7 @@ class Dispatcher:
 			if not ex or ex[0] != "/": ex = "/" + ex
 			ex = prefix + ex
 			if LOG_DISPATCHER_ON:
-				log("Dispatcher: @on", ex)
+				log("Dispatcher: @on", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
 			regexp, converters, params = self._parseExpression(ex)
 			regexp = re.compile(regexp)
 			self._handlers.insert(0, (priority, regexp, params, converters, handlers))
