@@ -165,9 +165,6 @@ else
 	@echo "Sdoc is required to generate $(PROJECT) documentation."
 	@echo "Please see <http://www.ivy.fr/sdoc>"
 endif
-	@jskiwi.py Library/prevail.js | kiwi - > $(DOCUMENTATION)/prevail-js-api.html
-	@jskiwi.py Library/railways/railways.js | kiwi - > $(DOCUMENTATION)/railways-core-js-api.html
-	@jskiwi.py Library/railways/ui.js | kiwi - > $(DOCUMENTATION)/railways-ui-js-api.html
 
 tags:
 	@echo "Generating $(PROJECT) tags"
