@@ -69,18 +69,26 @@ class LocalFiles(Component):
 
 	LIST_DIR = True
 
-	def init( self, root=None ):
-		if not root or not os.path.exists(root):
-			root = self.app().config("root")
-		else:
-			root = os.path.abspath(root)
+	def __init__( self, root=None, name = None ):
+		Component.__init__(self, name="LocalFiles")
 		self._localRoot = root
+
+	def init( self, root=None ):
+		if not (root is None) :
+			root = os.path.abspath(root)
+			self.setRoot(root)
+		elif self._localRoot is None:
+			root = self.app().config("root")
 
 	def setRoot( self, root ):
 		"""Sets the root used by this component. This is where the
 		local files will be resolved."""
 		assert os.path.exists(root), "Given root doest not exist: %s" % (root)
 		self._localRoot = root
+
+	def getRoot( self, root ):
+		"""Returns the root for this component"""
+		return self._localRoot
 
 	def resolvePath( self, path ):
 		"""Resolves the given path and returns an absolute file system
@@ -128,7 +136,6 @@ class LocalFiles(Component):
 		for file_name in os.listdir(localPath):
 			file_path = localPath + "/" + file_name
 			ext       = os.path.splitext(file_path)[1].replace(".", "_")
-			print file_name, file_name.startswith(".")
 			if file_name.startswith("."): ext +=" hidden"
 			if os.path.isdir(file_path):
 				dirs.append("<li class='directory %s'><span class='bullet'>&fnof;</span><a href='%s/%s'>%s</a></li>" % (
