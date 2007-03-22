@@ -17,7 +17,7 @@ from core import asJSON
 from web  import on, ajax, display, predicate, when, Component, Application, \
 Dispatcher, Configuration, ValidationError, KID, CHEETAH, DJANGO
 
-__version__ = "0.3.11"
+__version__ = "0.4.0"
 __doc__     = """\
 This is the main Railways module. You can generally do the following:
 

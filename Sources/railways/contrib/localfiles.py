@@ -23,8 +23,22 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 .directoryListing {
 	list-style-type: none;
 }
+.directoryListing li:hover{
+	background: #FFFFE0;
+}
+.directoryListing .bullet {
+	color: #AAAAAA;
+	padding-right: 20px;
+}
 .directoryListing .directory {
 	background: #EEEEEE;
+}
+.directoryListing .hidden, .directoryListing .hidden a {
+	color: #FFAAAA;
+	font-style: italic;
+}
+.directoryListing .parent {
+	color: #AAAAAA;
 }
 """
 
@@ -109,17 +123,19 @@ class LocalFiles(Component):
 		dirs  = []
 		files = []
 		parent = os.path.dirname(path)
-		if parent:
-			dirs.append("<li class='previous dir'><a href='%s/%s'>..</a></li>" % (self.PREFIX, parent))
+		if path and path not in ("/", "."):
+			dirs.append("<li class='previous dir'><span class='bullet'>&hellip;</span><a class='parent' href='%s/%s'>(parent)</a></li>" % (self.PREFIX, parent))
 		for file_name in os.listdir(localPath):
 			file_path = localPath + "/" + file_name
-			ext       = os.path.splitext(file_path)[1]
+			ext       = os.path.splitext(file_path)[1].replace(".", "_")
+			print file_name, file_name.startswith(".")
+			if file_name.startswith("."): ext +=" hidden"
 			if os.path.isdir(file_path):
-				dirs.append("<li class='directory %s'><a href='%s/%s'>%s</a></li>" % (
+				dirs.append("<li class='directory %s'><span class='bullet'>&fnof;</span><a href='%s/%s'>%s</a></li>" % (
 					ext, os.path.basename(path), file_name, file_name
 				))
 			else:
-				files.append("<li class='file %s'><a href='%s/%s'>%s</a></li>" % (
+				files.append("<li class='file %s'><span class='bullet'>&mdash;</span><a href='%s/%s'>%s</a></li>" % (
 					ext, os.path.basename(path), file_name, file_name
 				))
 		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files))
