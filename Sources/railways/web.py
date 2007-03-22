@@ -90,7 +90,11 @@ class ValidationError(Exception):
 		return asJSON(str(self))
 
 class ApplicationError(Exception):
-	pass
+
+	def __init__( self, message, explanation=None, exception=None ):
+		if explanation: message += " (%s)" % (explanation)
+		if exception: message += "\n--> %s" % (exception)
+		Exception.__init__(self, message)
 
 # ------------------------------------------------------------------------------
 #
@@ -646,6 +650,9 @@ class Application(Component):
 			# body = self.component.app().applyTemplate(self.template, **context)
 			# return Response(body, [], 200)
 
+		def __str__( self ):
+			return "railways.web.TemplateWrapper:%s[%s]:%s" % (self.template, self.engine, self.function)
+
 	class AJAXWrapper:
 		"""This class allows to wrap a function so that its result will be
 		returned as a JavaScript (JSON) object. As with the @TemplateWrapper.
@@ -662,7 +669,14 @@ class Application(Component):
 			# We try to invoke the function with the optional arguments
 			for key, value in request.params().items(): 
 				if key: kwargs.setdefault(key, value)
-			r = self.function(**kwargs)
+			try:
+				r = self.function(**kwargs)
+			except TypeError, e:
+				raise ApplicationError(
+					"Error when invoking %s" % (self.function),
+					"This is probably because there are not enough arguments",
+					e
+				)
 			# And now we return the response as JS
 			return request.returns(r)
 
@@ -754,7 +768,8 @@ class Application(Component):
 			# We iterate on the component slots
 			for slot, method, handlerinfo in self.introspect(component):
 				# We wrape around a template wrapper if necessary
-				if handlerinfo.get("template"):
+				template = handlerinfo.get("template")
+				if template and template != (None, None):
 					template, engine = handlerinfo.get("template")
 					if not self.ensureTemplate(template, engine):
 						raise ApplicationError("No corresponding template for: " + template)
