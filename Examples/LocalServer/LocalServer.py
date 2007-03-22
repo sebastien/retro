@@ -17,54 +17,27 @@ current filesystem or given directory ."""
 
 import os, sys, StringIO
 from railways import *
-from sugar import sugar
+from railways.contrib.localfiles import LocalFiles
 
 PORT               = 8080
 
 # ------------------------------------------------------------------------------
 #
-# PROXY CLASS
+# LOCALFILES SUBCLASS
 #
 # ------------------------------------------------------------------------------
 
-class Main(Component):
+class Main(LocalFiles):
+	pass
 
-	def start( self, root=None ):
-		if not root: root = os.path.abspath(".")
-		else: root = os.path.abspath(root)
-		self._localroot = root
-		
-	@on(GET_POST="/{path:any}")
-	def local( self, request, path ):
-		"""Serves the files located in the `Library` grand parent directory."""
-		lpath = self.app().localPath(os.path.join(self._localroot, path))
-		#try:
-		if True:
-			if os.path.isdir(path):
-				return request.respond(self.listdir(lpath,path))
-			elif path.endswith(".scjs") or path.endswith(".sjs"):
-				output = StringIO.StringIO()
-				sugar.run(["-m", lpath], output)
-				res = "" + output.getvalue()
-				return request.respond(content=res)
-			else:
-				try:
-					return request.localfile(lpath)
-				except:
-					return request.respond(status=404)
-		#except:
-		#	return request.respond(status=404)
-
-	def listdir( self, lpath, path ):
-		res = "<html><body><h1>Listing of %s</h1><ul>" % (path)
-		for file in os.listdir(lpath):
-			res += "<li><a href='%s/%s'>%s</a></li>" % (os.path.basename(path), file, file)
-		res += "</ul></body></html>"
-		return res
+# ------------------------------------------------------------------------------
+#
+# Main
+#
+# ------------------------------------------------------------------------------
 
 if __name__ == "__main__":
 	main = Main()
-	main.start(*sys.argv[1:])
 	run(
 		app        = Application(main),
 		name       = os.path.splitext(os.path.basename(__file__))[1],

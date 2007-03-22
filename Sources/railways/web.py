@@ -847,6 +847,7 @@ class Configuration:
 	- `logfile`   is the path to the log file
 	- `templates` is the path to the templates directory
 	- `charset`   is the default charset for handling request/response data
+	- `root`      is the location of the server root (default '.')
 
 	It should be noted that unless absolute, paths are all relative to the
 	configured application root, which is set by default to the current working

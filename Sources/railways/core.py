@@ -306,12 +306,13 @@ class Request:
 		that was loaded."""
 		return self._percentageLoaded
 
-	def respond( self, content="", headers=None, status=200):
+	def respond( self, content="", contentType=None, headers=None, status=200):
 		"""Responds to this request."""
 		if headers == None: headers = []
+		if contentType: headers.append(["Content-Type",str(contentType)])
 		return Response(content, headers, status)
 
-	def respondMultiple( self, bodies='', contenttype="text/html", headers=None, status=200):
+	def respondMultiple( self, bodies='', contentType="text/html", headers=None, status=200):
 		"""Response with multiple bodies returned by the given sequence or
 		iterator. This allows to implement 'server push' very easily."""
 		BOUNDARY  = "RAILWAYS-Multiple-content-response"
@@ -323,7 +324,7 @@ class Request:
 			for body in bodies:
 				if body:
 					res  = "\r\n" + "--" + BOUNDARY + "\r\n"
-					res += "Content-Type: " + contenttype + "\r\n"
+					res += "Content-Type: " + contentType + "\r\n"
 					res += "\r\n"
 					res += body
 					res += "\r\n"
@@ -348,9 +349,9 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200)
 
-	def returns( self, value=None, js=None ):
+	def returns( self, value=None, js=None, contentType="text/javascript" ):
 		if js == None: js = asJSON(value)
-		return Response(js, [("Content-Type", "text/javascript")], 200)
+		return Response(js, [("Content-Type", contentType)], 200)
 
 	def display( self, template, engine, **kwargs ):
 		"""Returns a response built from the given template, applied with the
@@ -377,15 +378,15 @@ class Request:
 		else:
 			raise Exception("Apply template not available for this Request subclass.")
 
-	def localfile( self, path, mime=None ):
+	def localfile( self, path, contentType=None ):
 		path = os.path.abspath(path)
-		if not mime:
-			if   path.endswith(".js"):  mime = "text/javascript"
-			elif path.endswith(".css"): mime = "text/css"
-			elif path.endswith(".html"): mime = "text/html"
+		if not contentType:
+			if   path.endswith(".js"):  contentType = "text/javascript"
+			elif path.endswith(".css"): contentType = "text/css"
+			elif path.endswith(".html"): contentType = "text/html"
 			else: mime = "text/plain"
 		f = file(path, 'r') ; r = f.read() ; f.close()
-		return Response(r, [("Content-Type", mime)], 200)
+		return Response(r, [("Content-Type", contentType)], 200)
 
 # ------------------------------------------------------------------------------
 #
