@@ -9,7 +9,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 13-Mar-2006
+# Last mod  : 22-Mar-2006
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -30,14 +30,7 @@ import core
 #
 # ------------------------------------------------------------------------------
 
-SERVER_ERROR = """\
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<title>Railways Error</title>
-<style><!-- 
+SERVER_ERROR_CSS = """\
 html, body {
 		padding: 0;
 		margin: 0;
@@ -73,6 +66,17 @@ body pre {
 	border-left: 1px solid #f11111;
 	padding: 10px;
 }
+"""
+
+SERVER_ERROR = """\
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Railways Error</title>
+<style><!-- 
+%s
  --></style>
 </head>
 <body>
@@ -330,7 +334,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
-		self._writeData(SERVER_ERROR % (error_msg))
+		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
 		self._processEnd()
 
 # ------------------------------------------------------------------------------

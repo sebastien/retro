@@ -1,0 +1,4 @@
+{% extends "base.dtmpl" %}
+{% block content %}
+This shows that Railways can use the Django template module if it is installed.
+{% endblock %}

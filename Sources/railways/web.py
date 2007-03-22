@@ -8,28 +8,58 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 12-Mar-2007
+# Last mod  : 22-Mar-2007
 # -----------------------------------------------------------------------------
 
-import os, re, sys
+import os, re, sys, time
 from core import Request, Response, Session, asJSON
 
+TEMPLATE_ENGINES = []
 try:
 	import kid
 	kid_serializer = kid.HTMLSerializer()
 	kid.enable_import()
 	KID = "KID"
+	TEMPLATE_ENGINES.append(KID)
 except ImportError:
 	KID = None
 
 try:
+	import genshi
+	GENSHI = "GENSHI"
+	TEMPLATE_ENGINES.append(GENSHI)
+except ImportError:
+	GENSHI = None
+
+try:
+	# Django suppor is inspired from the following code
+	# http://cavedoni.com/2007/02/venus/planet/shell/dj.py
+	try:
+		import django.conf, django.template, django.template.loader
+	except EnvironmentError:
+		# This is really a dirty hack, but I must say that Django
+		# really exaggerates when it requires a specific module to
+		# hold the configuration.
+		os.environ["DJANGO_SETTINGS_MODULE"] = "railways"
+		import django.conf, django.template, django.template.loader
+	DJANGO = "DJANGO"
+	TEMPLATE_ENGINES.append(DJANGO)
+except ImportError:
+	DJANGO = None
+
+except ImportError:
+	DJANGO = Noned
+
+try:
 	import Cheetah, Cheetah.Template
 	CHEETAH = "CHEETAH"
+	TEMPLATE_ENGINES.append(CHEETAH)
 except ImportError:
 	CHEETAH = None
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = True
+LOG_TEMPLATE_ON   = True
 
 def log(*args):
 	"""A log function that outputs information on stdout. It's a good
@@ -68,12 +98,13 @@ class ApplicationError(Exception):
 #
 # ------------------------------------------------------------------------------
 
-_RAILW_ON           = "_railways_on"
-_RAILW_ON_PRIORITY  = "_railways_on_priority"
-_RAILW_AJAX         = "_railways_ajax"
-_RAILW_WHEN         = "_railways_when"
-_RAILW_TEMPLATE     = "_railways_template"
-_RAILW_IS_PREDICATE = "_railways_isPredicate"
+_RAILW_ON              = "_railways_on"
+_RAILW_ON_PRIORITY     = "_railways_on_priority"
+_RAILW_AJAX            = "_railways_ajax"
+_RAILW_WHEN            = "_railways_when"
+_RAILW_TEMPLATE        = "_railways_template"
+_RAILW_TEMPLATE_ENGINE = "_railways_template_engine"
+_RAILW_IS_PREDICATE    = "_railways_isPredicate"
 
 def on( priority=0, **methods ):
 	"""The @on decorator is one of the main important things you will use within
@@ -128,12 +159,23 @@ def ajax( priority=0, **methods ):
 		return function
 	return decorator
 
-def display( template ):
+def display( template, engine=sys ):
 	"""The @display(template) decorator can be used to indicate that the
 	decorated  handler will display the given page (only when it returns
-	None."""
+	None).
+	
+	The first argument is the template name with or without the extension (
+	it can be guessed at runtime). The second argument is the engine (by
+	default, it will be guessed from the extension)"""
+	if engine is None:
+		raise Exception("Template engine not available")
+	elif engine is sys:
+		engine = None
+	elif not (engine in TEMPLATE_ENGINES):
+		raise Exception("Unknown template engine: %s" % (engine))
 	def decorator( function ):
 		setattr(function, _RAILW_TEMPLATE, template)
+		setattr(function, _RAILW_TEMPLATE_ENGINE, engine)
 		return function
 	return decorator
 
@@ -435,8 +477,9 @@ class Component:
 				priority = getattr(value, _RAILW_ON_PRIORITY) or 0
 				if hasattr(value, _RAILW_TEMPLATE):
 					template = getattr(value, _RAILW_TEMPLATE)
+					engine   = getattr(value, _RAILW_TEMPLATE_ENGINE)
 				else:
-					template = None
+					template = engine = None
 				if hasattr(value, _RAILW_AJAX):
 					ajax_value = getattr(value, _RAILW_AJAX)
 				else:
@@ -444,7 +487,7 @@ class Component:
 				res.append((slot, value,{
 					"on":methods,
 					"priority":priority,
-					"template":template,
+					"template":(template, engine),
 					"ajax": ajax_value
 				}))
 		return res
@@ -580,11 +623,12 @@ class Application(Component):
 		may be good to know that is is created by the Application during the
 		@register phase."""
 
-		def __init__(self, component, function, template):
+		def __init__(self, component, function, template, engine):
 			self.component   = component
 			self.im_self     = component
 			self.function    = function
 			self.template    = template
+			self.engine      = engine
 
 		def __call__( self, request, **kwargs ):
 			# We try to invoke the function with the request and optional
@@ -593,7 +637,7 @@ class Application(Component):
 			# If it returns a response, then we skip the template processing and
 			# display the response
 			if r or isinstance(r, Response): return r
-			return request.display(self.template, **self.component._context)
+			return request.display(self.template, self.engine, **self.component._context)
 			# Otherwise we invoke the template
 			#context = {'comp':self.component, 'app':self.component._app}
 			# Optimize this (context should be inherited, not copied)
@@ -711,10 +755,10 @@ class Application(Component):
 			for slot, method, handlerinfo in self.introspect(component):
 				# We wrape around a template wrapper if necessary
 				if handlerinfo.get("template"):
-					template = handlerinfo.get("template")
-					if not self.ensureTemplate(template):
+					template, engine = handlerinfo.get("template")
+					if not self.ensureTemplate(template, engine):
 						raise ApplicationError("No corresponding template for: " + template)
-					method = Application.TemplateWrapper(component, method, template)
+					method = Application.TemplateWrapper(component, method, template, engine)
 				# Or aroud an ajax wrapper
 				if handlerinfo.get("ajax"):
 					method = Application.AJAXWrapper(component, method)
@@ -723,31 +767,71 @@ class Application(Component):
 			# We initialize the component (if it is one)
 			component.init()
 
-	def ensureTemplate( self, name):
+	def ensureTemplate( self, name, engine=None):
 		"""Ensures that the a template with the given name exists and returns
-		the corresponding path, or None if not found."""
+		the corresponding path, or None if not found.
+
+		This method supports KID ('.kid'), Cheetah ('.tmpl') or 
+		Django('.djtml')."""
 		templates = self._config.templates()
 		if not type(templates) in (list,tuple): templates = [templates]
 		for template in templates:
-			kid_path  = "%s/%s.kid"  % (template, name)
-			tmpl_path = "%s/%s.tmpl" % (template, name)
+			path        = "%s/%s" % (template, name)
+			if os.path.isfile(path):
+				if engine:
+					return (engine, path)
+				elif path.endswith(".kid"):
+					return (KID, path)
+				elif path.endswith(".tmpl"):
+					return (CHEETAH, path)
+				elif path.endswith(".djtmpl"):
+					return (DJANGO, path)
+				else:
+					raise Exception("Extension unknown and no engine given: %s" % (path))
+			kid_path    = "%s/%s.kid"    % (template, name)
 			if os.path.isfile(kid_path): return  (KID, kid_path)
+			tmpl_path   = "%s/%s.tmpl"   % (template, name)
 			if os.path.isfile(tmpl_path): return (CHEETAH, tmpl_path)
+			djtmpl_path = "%s/%s.djtmpl" % (template, name)
+			if os.path.isfile(tmpl_path): return (DJANGO, tmpl_path)
 		return (-1, None)
 
-	def applyTemplate( self, name, **kwargs ):
-		"""Applies the template with the given arguments to the template with
-		the given name. This returns a string with the expanded template."""
-		templ_type, templ_path = self.ensureTemplate(name)
+	def applyTemplate( self, name, engine, **kwargs ):
+		"""Applies the the given arguments to the template with
+		the given name. This returns a string with the expanded template. This
+		automatically uses the proper template engine, depending on the
+		extension:
+		
+		 - '.kid' for KID templates
+		 - '.tmpl' for Cheetah templates
+		 - '.dtmpl' for Django templates"""
+		start = time.time()
+		res   = None
+		templ_type, templ_path = self.ensureTemplate(name, engine)
 		if templ_type is -1: return "Template not found:" + name
-		if templ_type is None: raise Exception("Kid or Cheetah engines not found")
+		if templ_type is None: raise Exception("No matching template engine for template: " + name)
 		if templ_type == KID:
 			t =  kid.Template(file=templ_path, **kwargs)
-			return t.serialize(output=kid_serializer)
-		if templ_type == CHEETAH:
+			res = t.serialize(output=kid_serializer)
+		elif templ_type == CHEETAH:
 			# And now we render the template
 			template = Cheetah.Template.Template(file=templ_path, searchList=[kwargs])
-			return str(template)
+			res = str(template)
+		elif templ_type == DJANGO:
+			# FIXME: There is some overhead here, that I think
+			# we could try to get rid of.
+			django.conf.settings = django.conf.LazySettings()
+			django.conf.settings.configure(
+				DEBUG=True, TEMPLATE_DEBUG=True, 
+				TEMPLATE_DIRS=(os.path.dirname(templ_path),)
+			)
+			context = django.template.Context()
+			context.update(kwargs)
+			template = django.template.loader.get_template(templ_path)
+			res = template.render(context)
+		if LOG_TEMPLATE_ON:
+			print "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start)
+		return res
 
 # ------------------------------------------------------------------------------
 #

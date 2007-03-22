@@ -352,12 +352,13 @@ class Request:
 		if js == None: js = asJSON(value)
 		return Response(js, [("Content-Type", "text/javascript")], 200)
 
-	def display( self, template, **kwargs ):
+	def display( self, template, engine, **kwargs ):
 		"""Returns a response built from the given template, applied with the
-		given arguments."""
-		return Response(self._applyTemplate(template, **kwargs), [], 200)
+		given arguments. The engine parameters (KID, CHEETAH, DJANGO, etc) tells
+		which engine should be used to apply the template."""
+		return Response(self._applyTemplate(template, engine, **kwargs), [], 200)
 
-	def _applyTemplate(self, template, **kwargs):
+	def _applyTemplate(self, template, engine, **kwargs):
 		"""Applies the given template with the given arguments, and returns a
 		string with the serialized template. This hook is called by the
 		`display` method, so you should redefine it to suit your needs."""
@@ -372,9 +373,9 @@ class Request:
 			context.setdefault('application', self._component.app())
 			context.setdefault('req', self)
 			context.setdefault('request', self)
-			return self._component.app().applyTemplate(template, **context)
+			return self._component.app().applyTemplate(template, engine, **context)
 		else:
-			raise Exception("Function not implemented")
+			raise Exception("Apply template not available for this Request subclass.")
 
 	def localfile( self, path, mime=None ):
 		path = os.path.abspath(path)
