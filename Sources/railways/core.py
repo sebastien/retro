@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 14-Mar-2007
+# Last mod  : 03-Apr-2007
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, types, BaseHTTPServer, Cookie
@@ -53,11 +53,12 @@ def asJSON( value, **options ):
 		res = asJSON(str(value), **options)
 	elif value.__class__.__name__ == "struct_time":
 		res = asJSON("%04d-%02d-%02d %02d:%02d:%02d" % (value[:6]), **options)
-	elif hasattr(value, "asJSON"):
+	elif hasattr(value, "asJSON")  and callable(value.asJSON):
 		res = value.asJSON(asJSON, **options)
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
 	# that there is a library implemented on the client side
 	elif hasattr(value, "asJS") and callable(value.asJS):
+		# print "AS JSON ON", value, value.asJS
 		res = value.asJS(asJSON, **options)
 	# There may be a "serializer" function that knows better about the different
 	# types of object. We use it if it is provided.
@@ -102,6 +103,7 @@ class Request:
 		self._data             = None
 		self._component        = None
 		self._cookies          = None
+		self._files            = None
 
 	def method( self ):
 		"""Returns the method (GET, POST, etc) for this request."""
@@ -240,8 +242,11 @@ class Request:
 						part_content_type = part['Content-Type']
 					else:
 						part_content_type = None
-					s = cgi.FieldStorage(names['name'], filename, part_content_type, part.get_payload())
-					self._files.append((names['name'], s))
+					param_name = names['name']
+					file_name  = names['filename']
+					s = cgi.FieldStorage(param_name, filename, part_content_type, part.get_payload())
+					self._files.append((file_name, s))
+					self._params.setdefault(param_name, part.get_payload())
 				else:
 					value = part.get_payload()
 					# TODO: decode if charset
@@ -259,7 +264,21 @@ class Request:
 
 	def load( self, chunksize=None ):
 		"""Loads the (POST) data of this request. The optional @chunksize
-		argument tells the number of bytes the should be read"""
+		argument tells the number of bytes the should be read. This function
+		is used internally, and only useful in an external use if you
+		want to split the loading of the data into multiple chunks (using
+		an iterator).
+		
+		This allows you not to block the processing and requests and do
+		things like a progress indicator.
+		
+		This function will return you the percentage of the data loaded
+		(an int from 0 to 100). 
+		
+		Here is an example of how to split the loading into 
+		>	while request.load(1024) < 100:
+		>		# Do something
+		"""
 		# If this is the first time we load the request
 		if self._percentageLoaded == 0 and self._loaderIterator == None:
 			data   = ''
@@ -353,13 +372,13 @@ class Request:
 		if js == None: js = asJSON(value)
 		return Response(js, [("Content-Type", contentType)], 200)
 
-	def display( self, template, engine, **kwargs ):
+	def display( self, template, engine=None, **kwargs ):
 		"""Returns a response built from the given template, applied with the
 		given arguments. The engine parameters (KID, CHEETAH, DJANGO, etc) tells
 		which engine should be used to apply the template."""
 		return Response(self._applyTemplate(template, engine, **kwargs), [], 200)
 
-	def _applyTemplate(self, template, engine, **kwargs):
+	def _applyTemplate(self, template, engine=None, **kwargs):
 		"""Applies the given template with the given arguments, and returns a
 		string with the serialized template. This hook is called by the
 		`display` method, so you should redefine it to suit your needs."""

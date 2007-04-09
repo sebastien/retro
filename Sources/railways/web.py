@@ -790,8 +790,9 @@ class Application(Component):
 		Django('.djtml')."""
 		templates = self._config.templates()
 		if not type(templates) in (list,tuple): templates = [templates]
-		for template in templates:
-			path        = "%s/%s" % (template, name)
+		for template_dir in templates:
+			path        = "%s/%s" % (template_dir, name)
+			print "LOOKING FOR", path, KID
 			if os.path.isfile(path):
 				if engine:
 					return (engine, path)
@@ -803,15 +804,15 @@ class Application(Component):
 					return (DJANGO, path)
 				else:
 					raise Exception("Extension unknown and no engine given: %s" % (path))
-			kid_path    = "%s/%s.kid"    % (template, name)
+			kid_path    = "%s/%s.kid"    % (template_dir, name)
 			if os.path.isfile(kid_path): return  (KID, kid_path)
-			tmpl_path   = "%s/%s.tmpl"   % (template, name)
+			tmpl_path   = "%s/%s.tmpl"   % (template_dir, name)
 			if os.path.isfile(tmpl_path): return (CHEETAH, tmpl_path)
-			djtmpl_path = "%s/%s.djtmpl" % (template, name)
+			djtmpl_path = "%s/%s.djtmpl" % (template_dir, name)
 			if os.path.isfile(tmpl_path): return (DJANGO, tmpl_path)
 		return (-1, None)
 
-	def applyTemplate( self, name, engine, **kwargs ):
+	def applyTemplate( self, name, engine=None, **kwargs ):
 		"""Applies the the given arguments to the template with
 		the given name. This returns a string with the expanded template. This
 		automatically uses the proper template engine, depending on the
@@ -819,12 +820,17 @@ class Application(Component):
 		
 		 - '.kid' for KID templates
 		 - '.tmpl' for Cheetah templates
-		 - '.dtmpl' for Django templates"""
+		 - '.dtmpl' for Django templates
+		
+		"""
 		start = time.time()
 		res   = None
 		templ_type, templ_path = self.ensureTemplate(name, engine)
-		if templ_type is -1: return "Template not found:" + name
-		if templ_type is None: raise Exception("No matching template engine for template: " + name)
+		# FIXME: Add a proper message handler for that
+		if templ_type is -1:
+			return "Template not found:" + name
+		if templ_type is None:
+			raise Exception("No matching template engine for template: " + name)
 		if templ_type == KID:
 			t =  kid.Template(file=templ_path, **kwargs)
 			res = t.serialize(output=kid_serializer)
