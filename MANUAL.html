@@ -11,8 +11,7 @@ body {
 	padding: 20pt;
 	padding-top: 10pt;
 	background: rgb(255,255,255);
-	font:  9pt/13pt "Lucida Grande",Lucida,sans-serif;
-	font:  9.5pt/12pt sans-serif;
+	font:  10.5pt/15pt sans-serif;
 	color: rgb(80,80,80);
 }
 
@@ -66,7 +65,7 @@ aimg {
 	color: rgb(177,208,223);
 }
 
-#content {
+.kiwiContent {
 	text-align: left;
 }
 
@@ -82,7 +81,7 @@ aimg {
 	margin-bottom: 0;
 }
 
-#meta {
+.kiwiMeta {
 	width: 100%;
 	padding: 5pt;
 	margin-bottom:  2em;
@@ -90,73 +89,73 @@ aimg {
 	background-color: rgb(250,250,250);
 }
 
-#meta tr td {
+.kiwiMeta tr td {
 	color: rgb(22, 130, 178);
 }
 
-#meta tr td.name {
+.kiwiMeta tr td.name {
 	font-weight: bold;
 }
 
-#content h1, #content h2{
+.kiwiContent h1, .kiwiContent h2{
 	padding-bottom: 5pt;
 	border-bottom:  1px dotted rgb(150, 220, 238);
 }
 
-#content h1 {
+.kiwiContent h1 {
 	font-size: 1.5em;
 	font-weight: normal;
 	padding-top: 1.5em;
 	padding-bottom: 0.5em;
 }
 
-#content h2 {
+.kiwiContent h2 {
 	font-size: 1.3em;
 }
 
-#content h3 {
+.kiwiContent h3 {
 	font-size: 1.1em;
 }
 
-#content pre {
+.kiwiContent pre {
 	padding: 5pt;
-	border-left:  1px solid rgb(150, 220, 238);
+	border:  1px solid rgb(150, 220, 238);
 	padding-left: 20pt;
-	background-color: rgb(250,250,250);
-	font-size: 80%;
+	background-color: rgb(240,240,250);
+	font-size: 8pt;
 	color: rgb(22,130,178);
 }
 
-#content code {
-	font-size: 80%;
-	color: rgb(143, 160, 168);
+.kiwiContent code {
+	font-size: 8pt;
+	background-color: rgb(240,240,250);
 }
 
-#content dt {
+.kiwiContent dt {
 	color: rgb(22,130,178);
 	font-weight: bold;
 }
 
-#content dd {
+.kiwiContent dd {
 	border-left:  1px solid rgb(150, 220, 238);
 	padding-left: 20pt;
 	margin-bottom: 2em;
 }
 
-#content dd pre {
+.kiwiContent dd pre {
 	border-left: 0px;
 }
 
-#content ul li {
+.kiwiContent ul li {
 	padding-bottom: 0.5em;
 }
 
-#content table {
+.kiwiContent table {
 	border:  1px solid rgb(150, 220, 238);
 	padding: 5pt;
 }
 
-#content table caption {
+.kiwiContent table caption {
 	font-family: serif;
 	padding-top: 1em;
 	padding-bottom: 0.5em;
@@ -165,69 +164,68 @@ aimg {
 	color: rgb(22, 130, 178);
 }
 
-#content table tbody {
+.kiwiContent table tbody {
 }
 
-#content table tr {
+.kiwiContent table tr {
 	margin: 0;
 }
 
-#content table tr td {
+.kiwiContent table tr td {
 	margin: 0;
 	padding: 0px;
 	padding-right: 5pt;
 	background-color: rgb(250,250,250);
 }
 
-#content table tr.odd td {
+.kiwiContent table tr.odd td {
 	background-color: rgb(240,240,240);
 }
 
-#content .term {
+.kiwiContent .term {
 	color: rgb(22, 130, 178);
 	background: rgb(240, 250, 256);
 }
 
-#content .quote {
+.kiwiContent .quote {
 	font-style: italic;
 	color: rgb(120, 120, 120);
 }
 
-#content .citation {
+.kiwiContent .citation {
 	font-style: italic;
 	color: rgb(120, 120, 120);
 }
 
-#content div[class^="ann"] {
+.kiwiContent div[class^="ann"] {
 	margin-top: 5pt;
 	margin-bottom: 5pt;
 	padding: 5pt;
 	padding-left: 20pt;
 	color: rgb(100, 100, 100);
-	font-size: 0.8em;
 }
 
-#content div[class^="ann"] .title {
+.kiwiContent div[class^="ann"] .title {
 	font-weight: bold;
 }
 
-#content .annNote {
-	border-left:  1px solid rgb(103,183,0);
+.kiwiContent .annNote {
+	border:  1px solid rgb(103,183,0);
 	margin-top: 5pt;
 	margin-bottom: 5pt;
 	padding: 5pt;
 	padding-left: 20pt;
 	background: #fffbe4;
 	color: rgb(100, 100, 100);
-	font-size: 0.8em;
+	border:  1px solid #dedac3;
 }
 
-#content .annNote .title {
+.kiwiContent .annNote .title {
 	font-weight: bold;
 	display: none;
 }
 
-#references {
+.kiwiReferences {
 	font:  8pt/12pt "Lucida Grande",Lucida,sans-serif;
 	margin-top: 10pt;
 	padding: 5pt;
@@ -236,22 +234,22 @@ aimg {
 	color: rgb(200, 200, 200);
 	font-size: 8pt;
 }
-#references a:link, #references a:active, #references a:visited {
+.kiwiReferences a:link, .kiwiReferences a:active, .kiwiReferences a:visited {
 	color: rgb(150,150,150);
 }
 
-#references .entry {
+.kiwiReferences .entry {
 	padding-top: 5pt;
 	clear: both;
 }
 
-#references .entry .name {
+.kiwiReferences .entry .name {
 	float: left;
 	font-weight: bold;
 	padding-right: 5pt;
 }
 
-#references .entry .content {
+.kiwiReferences .entry .content {
 	text-align: right;
 }
 
@@ -259,7 +257,7 @@ aimg {
 </head>
 <body>
 
-<div class='content'><p>TODO:</p><ul><li>Support iterators in @ajax (when wrapped function returns an iterator, so that the construction of the request is broken into as many items as there are iterators). </li></ul></div>
+<div class="kiwiContent"><div class='content'><p>TODO:</p><ul><li>Support iterators in @ajax (when wrapped function returns an iterator, so that the construction of the request is broken into as many items as there are iterators). </li></ul></div></div>
 
 </body>
 </html>

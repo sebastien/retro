@@ -150,6 +150,17 @@ class Request:
 		if not self._loaded: self.load()
 		return self._params
 
+	def file( self, name ):
+		"""Returns the file (as a 'cgi.FieldStorage') which was submitted
+		as parameter with the given name. You will have more information
+		accessible than with 'get' or 'param', retured as a dict with
+		'param', 'filename', 'contentType' and 'data' fields."""
+		if not self._files: return None
+		for n, s in self._files:
+			if n == name:
+				return s
+		return None
+
 	def param( self, name ):
 		"""Gets the parameter with the given name. It is an alias for get"""
 		return self.get(name)
@@ -243,9 +254,8 @@ class Request:
 					else:
 						part_content_type = None
 					param_name = names['name']
-					file_name  = names['filename']
-					s = cgi.FieldStorage(param_name, filename, part_content_type, part.get_payload())
-					self._files.append((file_name, s))
+					s = {"param":param_name, "filename":filename, "contentType":part_content_type, "data":part.get_payload()}
+					self._files.append((param_name, s))
 					self._params.setdefault(param_name, part.get_payload())
 				else:
 					value = part.get_payload()
