@@ -138,7 +138,8 @@ class Request:
 		return None
 
 	def cookies( self ):
-		"""Returns the cookies attached to this request."""
+		"""Returns the cookies (as a 'Cookie.SimpleCookie' instance)
+		attached to this request."""
 		if self._cookies != None: return self._cookies
 		cookies = Cookie.SimpleCookie()
 		cookies.load(self.environ(self.HTTP_COOKIE) or '')
@@ -425,6 +426,10 @@ class Request:
 		# file is too big
 		f = file(path, 'r') ; r = f.read() ; f.close()
 		return Response(r, [("Content-Type", contentType)], 200)
+
+	def notFound( self, content="Resource not found" ):
+		"""Returns an Error 404"""
+		return Response(content, status=404)
 
 # ------------------------------------------------------------------------------
 #

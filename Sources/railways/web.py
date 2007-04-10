@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 22-Mar-2007
+# Last mod  : 10-Apr-2007
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -413,7 +413,6 @@ class Dispatcher:
 			request.environ("railways.variables", variables)
 			# TODO: ADD PROPER ERROR HANDLER
 			# The app is expected to produce a response object
-			print handler, variables
 			response = handler(request, **variables)
 			if isinstance(response, Response):
 				return response.asWSGI(start_response, self.app().config().charset())
@@ -681,7 +680,7 @@ class Application(Component):
 			# And now we return the response as JS
 			return request.returns(r)
 
-	def __init__( self, components, prefix='' ):
+	def __init__( self, components=(), prefix='' ):
 		Component.__init__(self)
 		self._config     = Configuration()
 		self._dispatcher = Dispatcher(self)
