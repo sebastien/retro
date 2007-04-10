@@ -8,10 +8,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 03-Apr-2007
+# Last mod  : 10-Apr-2007
 # -----------------------------------------------------------------------------
 
-import os, sys, cgi, re, urllib, email, types, BaseHTTPServer, Cookie
+import os, sys, cgi, re, urllib, email, types, mimetypes, BaseHTTPServer, Cookie
 import simplejson
 
 NOTHING     = sys
@@ -39,7 +39,12 @@ def asJSON( value, **options ):
 	"""Converts the given value to a JSON representation. This function is an
 	enhanced version of `simplejson`, because it supports more datatypes
 	(datetime, struct_time) and provides more flexibilty in how values can be
-	serialized."""
+	serialized.
+	
+	Specifically, the given 'value' contains a 'asJS' or 'asJSON' method,
+	this method will be invoked with this function as first argument and
+	the options as keyword-arguments ('**options')
+	"""
 	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
 		res = simplejson.dumps(value)
 	elif type(value) in (list, tuple):
@@ -407,13 +412,17 @@ class Request:
 		else:
 			raise Exception("Apply template not available for this Request subclass.")
 
-	def localfile( self, path, contentType=None ):
+	def localFile( self, path, contentType=None ):
+		"""Responds with a local file. The content type is guessed using
+		the 'mimetypes' module. If the file is not found in the local
+		filesystem, and exception is raised."""
 		path = os.path.abspath(path)
 		if not contentType:
-			if   path.endswith(".js"):  contentType = "text/javascript"
-			elif path.endswith(".css"): contentType = "text/css"
-			elif path.endswith(".html"): contentType = "text/html"
-			else: mime = "text/plain"
+			mime, _ = mimetypes.guess_type(path)
+		if not os.path.exists(path):
+			raise Exception("File not found in Request.localFile: %s" % (path))
+		# FIXME: This could be improved by returning a generator if the
+		# file is too big
 		f = file(path, 'r') ; r = f.read() ; f.close()
 		return Response(r, [("Content-Type", contentType)], 200)
 

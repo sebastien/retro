@@ -100,7 +100,7 @@ class Main(Component):
 	@on(GET="lib/{path:any}")
 	def lib( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
-		return request.localfile(self.app().localPath("../../Library/" + path))
+		return request.localFile(self.app().localPath("../../Library/" + path))
 
 if __name__ == "__main__":
 	run(

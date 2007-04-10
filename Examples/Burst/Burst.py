@@ -69,7 +69,7 @@ class Main(Component):
 		localpath = self.app().localPath("lib/" + path)
 		libpath   = self.app().localPath("../../Library/" + path)
 		if not os.path.exists(localpath): localpath = libpath
-		return request.localfile(localpath)
+		return request.localFile(localpath)
 
 	@on( GET="/")
 	@display("index")
@@ -85,7 +85,7 @@ class Main(Component):
 		"""Sets a value"""
 		self._values[request.get("name")]=request.get("value")
 		return request.bounce()
-	
+
 	@ajax( GET="/values" )
 	def getvalues( self ):
 		return self._values

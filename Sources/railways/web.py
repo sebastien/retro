@@ -413,6 +413,7 @@ class Dispatcher:
 			request.environ("railways.variables", variables)
 			# TODO: ADD PROPER ERROR HANDLER
 			# The app is expected to produce a response object
+			print handler, variables
 			response = handler(request, **variables)
 			if isinstance(response, Response):
 				return response.asWSGI(start_response, self.app().config().charset())

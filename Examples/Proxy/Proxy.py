@@ -105,7 +105,7 @@ class Main(Component):
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
 		try:
-			return request.localfile(self.app().localPath(path))
+			return request.localFile(self.app().localPath(path))
 		except:
 			return request.respond(status=404)
 		
