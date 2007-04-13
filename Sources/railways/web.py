@@ -792,7 +792,6 @@ class Application(Component):
 		if not type(templates) in (list,tuple): templates = [templates]
 		for template_dir in templates:
 			path        = "%s/%s" % (template_dir, name)
-			print "LOOKING FOR", path, KID
 			if os.path.isfile(path):
 				if engine:
 					return (engine, path)

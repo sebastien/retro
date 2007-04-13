@@ -419,13 +419,13 @@ class Request:
 		filesystem, and exception is raised."""
 		path = os.path.abspath(path)
 		if not contentType:
-			mime, _ = mimetypes.guess_type(path)
+			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
 			raise Exception("File not found in Request.localFile: %s" % (path))
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'r') ; r = f.read() ; f.close()
-		return Response(r, [("Content-Type", contentType)], 200)
+		return Response(content=r, headers=[("Content-Type", contentType)], status=200)
 
 	def notFound( self, content="Resource not found" ):
 		"""Returns an Error 404"""
