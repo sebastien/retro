@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 10-Apr-2007
+# Last mod  : 19-Apr-2007
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, types, mimetypes, BaseHTTPServer, Cookie
@@ -47,12 +47,12 @@ def asJSON( value, **options ):
 	"""
 	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
 		res = simplejson.dumps(value)
-	elif type(value) in (list, tuple):
+	elif type(value) in (list, tuple, set):
 		res = "[%s]" % (",".join(map(lambda x:asJSON(x,**options), value)))
 	elif type(value) == dict:
 		r = []
 		for k in value.keys():
-			r.append('"%s":%s' % (k, asJSON(value[k], **options)))
+			r.append('"%s":%s' % (k.replace('"', '\\"'), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
 	elif value.__class__.__name__ == "datetime":
 		res = asJSON(str(value), **options)
