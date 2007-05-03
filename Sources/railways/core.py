@@ -52,7 +52,7 @@ def asJSON( value, **options ):
 	elif type(value) == dict:
 		r = []
 		for k in value.keys():
-			r.append('"%s":%s' % (k.replace('"', '\\"'), asJSON(value[k], **options)))
+			r.append('%s:%s' % (repr(str(k)), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
 	elif value.__class__.__name__ == "datetime":
 		res = asJSON(str(value), **options)
