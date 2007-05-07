@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 19-Apr-2007
+# Last mod  : 07-May-2007
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, types, mimetypes, BaseHTTPServer, Cookie
@@ -384,9 +384,9 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200)
 
-	def returns( self, value=None, js=None, contentType="text/javascript" ):
+	def returns( self, value=None, js=None, contentType="text/javascript", status=200 ):
 		if js == None: js = asJSON(value)
-		return Response(js, [("Content-Type", contentType)], 200)
+		return Response(js, [("Content-Type", contentType)], status)
 
 	def display( self, template, engine=None, **kwargs ):
 		"""Returns a response built from the given template, applied with the
@@ -413,7 +413,7 @@ class Request:
 		else:
 			raise Exception("Apply template not available for this Request subclass.")
 
-	def localFile( self, path, contentType=None ):
+	def localFile( self, path, contentType=None, status=200 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised."""
@@ -425,11 +425,11 @@ class Request:
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'r') ; r = f.read() ; f.close()
-		return Response(content=r, headers=[("Content-Type", contentType)], status=200)
+		return Response(content=r, headers=[("Content-Type", contentType)], status=status)
 
-	def notFound( self, content="Resource not found" ):
+	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
-		return Response(content, status=404)
+		return Response(content, status=status)
 
 # ------------------------------------------------------------------------------
 #
