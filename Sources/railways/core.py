@@ -526,6 +526,9 @@ class Session:
 	def isNew( self ):
 		return self._service.isSessionNew
 
+	def get( self, key=NOTHING, value=NOTHING ):
+		return self.value(key, value)
+
 	def value( self, key=NOTHING, value=NOTHING ):
 		if   key == NOTHING:
 			return self._data

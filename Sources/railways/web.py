@@ -735,7 +735,9 @@ class Application(Component):
 
 	def rootPath( self ):
 		"""Returns the absolute path where this application is rooted. This is
-		only set at the execution.""" 
+		only set at the execution.
+		
+		This is an alias for 'config("root")'""" 
 		return self._config.root()
 
 	def localPath( self, path ):
