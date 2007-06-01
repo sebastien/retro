@@ -69,9 +69,15 @@ class LocalFiles(Component):
 
 	LIST_DIR = True
 
-	def __init__( self, root=None, name = None ):
+	def __init__( self, root="", name = None, processors={} ):
+		"""Creates a new LocalFiles, with the optional root, name and
+		processors. Processors are functions that modify the content
+		of the file and returned the processed data."""
 		Component.__init__(self, name="LocalFiles")
 		self._localRoot = root
+		self._processors  = {}
+		for key, value in processors.items():
+			self._processors[key] = value
 
 	def init( self, root=None ):
 		if not (root is None) :
@@ -106,6 +112,14 @@ class LocalFiles(Component):
 		f = file(path, 'r') ; c=f.read() ; f.close()
 		return c
 
+	def processorFor( self, path ):
+		"""Returns the processors for the given path."""
+		ext = os.path.splitext(path)[1][1:]
+		for key, value in self._processors.items():
+			if ext == key:
+				return value
+		return lambda x,p:(x, self.getContentType(path))
+
 	@on(GET_POST="/")
 	def catchall( self, request ):
 		"""A catchall that will display the content of the current
@@ -116,6 +130,7 @@ class LocalFiles(Component):
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
 		resolved_path = self.app().localPath(os.path.join(self._localRoot, path))
+		processor = self.processorFor(path)
 		if not os.path.exists(resolved_path):
 			return request.respond("File not found: %s" % (resolved_path), status=404)
 		elif os.path.isdir(resolved_path):
@@ -124,7 +139,8 @@ class LocalFiles(Component):
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		else:
-			return request.respond(content=self.getContent(resolved_path), contentType=self.getContentType(resolved_path))
+			content, content_type = processor(self.getContent(resolved_path), path)
+			return request.respond(content=content, contentType=content_type)
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""
