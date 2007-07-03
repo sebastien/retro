@@ -793,7 +793,7 @@ class Application(Component):
 				# We register the handler within the selector
 				component.registerHandler(method,
 					handlerinfo.get("on"),
-					component.getPriority() + handlerinfo.get("priority")
+					component.getPriority() + int(handlerinfo.get("priority"))
 				)
 			# We initialize the component (if it is one)
 			component.init()
