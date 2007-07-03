@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 10-Apr-2007
+# Last mod  : 03-Jul-2007
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -501,6 +501,17 @@ class Component:
 		self._name      = name
 		self._app       = None
 		self._context   = {}
+		self._priority  = 0
+
+	def setPriority( self, level ):
+		"""Sets the priority level for this component. The component
+		priority level (0 by default) will be added to the individual
+		dispatcher priorities."""
+		self._priority = int(level)
+
+	def getPriority( self ):
+		"""Returns the priority level for this component (usually 0)."""
+		return self._priority
 
 	def init( self ):
 		"""Init is called when the component is registered within its parent
@@ -780,7 +791,10 @@ class Application(Component):
 				if handlerinfo.get("ajax"):
 					method = Application.AJAXWrapper(component, method)
 				# We register the handler within the selector
-				component.registerHandler(method, handlerinfo.get("on"), handlerinfo.get("priority"))
+				component.registerHandler(method,
+					handlerinfo.get("on"),
+					component.getPriority() + handlerinfo.get("priority")
+				)
 			# We initialize the component (if it is one)
 			component.init()
 
