@@ -42,14 +42,12 @@ class Proxy(Component):
 
 	@on(GET="/{rest:rest}", priority="10")
 	def proxyGet( self, request, rest ):
-		rest   = request.uri()[len("/ojibwe/api/"):]
 		result, ctype, code = self._curl(self._proxyTo, "GET", rest)
 		# TODO: Add headers processing here
 		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
 
 	@on(POST="/{rest:rest}", priority="10")
 	def proxyPost( self, request, rest ):
-		rest   = request.uri()[len("/ojibwe/api/"):]
 		result, ctype, code = self._curl(self._proxyTo, "POST", rest, body=request.body())
 		# TODO: Add headers processing here
 		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
