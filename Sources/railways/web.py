@@ -798,6 +798,39 @@ class Application(Component):
 			# We initialize the component (if it is one)
 			component.init()
 
+	def _compileCheetahTemplateDeps( self, path ):
+		# FIXME: This is really not optimal, we should optimize this
+		# like in debug mode, compile all the time, and in live mode
+		# compile at start only.
+		f = file(path, 'r')
+		i = 0
+		depends = []
+		for line in f:
+			if i == 10: break
+			line = line.strip()
+			if line.startswith("#extends"):
+				template = line[len("#extends"):].strip().replace(".", "/") + ".tmpl"
+				depends.append(self.ensureTemplate(template, CHEETAH)[1])
+			i += 0
+		f.close()
+		for template in depends:
+			dirname  = os.path.dirname(template)
+			filename = os.path.basename(os.path.splitext(template)[0])
+			temp = Cheetah.Compiler.Compiler(
+				file=template,
+				moduleName=filename,
+				mainClassName=filename
+			)
+			try:
+				temp = str(temp)
+			except Cheetah.Parser.ParseError, e:
+				raise Ee
+			if temp != None:
+				output = open(os.path.splitext(template)[0]+".py", "w")
+				output.write("# Encoding: ISO-8859-1\n" + str(temp))
+				output.close()
+			if not dirname in sys.path:sys.path.append(dirname)
+
 	def ensureTemplate( self, name, engine=None):
 		"""Ensures that the a template with the given name exists and returns
 		the corresponding path, or None if not found.
@@ -814,17 +847,22 @@ class Application(Component):
 				elif path.endswith(".kid"):
 					return (KID, path)
 				elif path.endswith(".tmpl"):
+					self._compileCheetahTemplateDeps(path)
 					return (CHEETAH, path)
 				elif path.endswith(".djtmpl"):
 					return (DJANGO, path)
 				else:
 					raise Exception("Extension unknown and no engine given: %s" % (path))
 			kid_path    = "%s/%s.kid"    % (template_dir, name)
-			if os.path.isfile(kid_path): return  (KID, kid_path)
+			if os.path.isfile(kid_path):
+				return  (KID, kid_path)
 			tmpl_path   = "%s/%s.tmpl"   % (template_dir, name)
-			if os.path.isfile(tmpl_path): return (CHEETAH, tmpl_path)
+			if os.path.isfile(tmpl_path):
+				self._compileCheetahTemplateDeps(path)
+				return (CHEETAH, tmpl_path)
 			djtmpl_path = "%s/%s.djtmpl" % (template_dir, name)
-			if os.path.isfile(tmpl_path): return (DJANGO, tmpl_path)
+			if os.path.isfile(tmpl_path):
+				return (DJANGO, tmpl_path)
 		return (-1, None)
 
 	def applyTemplate( self, name, engine=None, **kwargs ):
