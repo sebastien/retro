@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 03-Jul-2007
+# Last mod  : 26-Jul-2007
 # -----------------------------------------------------------------------------
 
 import os, sys, time, webbrowser
@@ -40,15 +40,17 @@ class Proxy(Component):
 		if not self.hasCurl():
 			raise Exception("Curl is required.")
 
-	@on(GET="/{rest:rest}", priority="10")
-	def proxyGet( self, request, rest ):
-		result, ctype, code = self._curl(self._proxyTo, "GET", rest)
+	@on(GET="/{rest:rest}?{parameters}", priority="10")
+	def proxyGet( self, request, rest, parameters ):
+		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
+		result, ctype, code = self._curl(self._proxyTo, "GET", uri)
 		# TODO: Add headers processing here
 		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
 
 	@on(POST="/{rest:rest}", priority="10")
 	def proxyPost( self, request, rest ):
-		result, ctype, code = self._curl(self._proxyTo, "POST", rest, body=request.body())
+		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
+		result, ctype, code = self._curl(self._proxyTo, "POST", uri, body=request.body())
 		# TODO: Add headers processing here
 		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
 
@@ -64,11 +66,11 @@ class Proxy(Component):
 		"""This function uses os.popen to communicate with the 'curl'
 		command-line client and to GET or POST requests to the given server."""
 		if method == "GET":
-			result = os.popen("curl -s -w '\n\n%{content_type}\n\n%{http_code}'" +
-			" '%s/%s'" % (server, url)).read()
+			command = "curl -s -w '\n\n%{content_type}\n\n%{http_code}'" + " '%s/%s'" % (server, url)
+			result = os.popen(command).read()
 		else:
-			result = os.popen("curl -s -w '\n\n%{content_type}\n\n%{http_code}'" +
-			" '%s/%s' -d '%s'" % (server, url, body)).read()
+			command = "curl -s -w '\n\n%{content_type}\n\n%{http_code}'" + " '%s/%s' -d '%s'" % (server, url, body)
+			result = os.popen(command).read()
 		code_start  = result.rfind("\n\n")
 		code        = result[code_start+2:]
 		result      = result[:code_start]
