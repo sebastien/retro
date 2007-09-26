@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 07-May-2007
+# Last mod  : 26-May-2007
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, types, mimetypes, BaseHTTPServer, Cookie
@@ -45,6 +45,10 @@ def asJSON( value, **options ):
 	this method will be invoked with this function as first argument and
 	the options as keyword-arguments ('**options')
 	"""
+	if options.has_key("currentDepth"):
+		options["currentDepth"] = options["currentDepth"] + 1
+	else:
+		options["currentDepth"] = 0
 	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
 		res = simplejson.dumps(value)
 	elif type(value) in (list, tuple, set):
