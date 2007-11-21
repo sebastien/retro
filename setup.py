@@ -8,17 +8,21 @@
 # License           :   Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation date     :   20-Mar-2005
-# Last mod.         :   09-Nov-2006
+# Last mod.         :   21-Nov-2007
 # -----------------------------------------------------------------------------
 
 import sys ; sys.path.insert(0, "Sources")
-from tahchee import main
+from railways import main
 from distutils.core import setup
 
-SUMMARY     = "Declarative Web Framework"
+SUMMARY     = "Lightweb Declarative Web Toolkit"
 DESCRIPTION = """\
-\
+Railways is a lightweight declarative web toolkit designed to make it easier to
+develop web services and Web applications in Python. Railways uses WSGI and
+provide a set of decorators that make it very easy to turn your existing code
+into a web application or to write new ones.
 """
+
 # ------------------------------------------------------------------------------
 #
 # SETUP DECLARATION
@@ -35,7 +39,7 @@ setup(
     url         = "http://www.ivy.fr/railways",
     download_url= "http://www.ivy.fr/railways/railways-%s.tar.gz" % (main.__version__) ,
     package_dir = { "": "Sources" },
-    packages    = ["railways", "prevail"],
+    packages    = ["railways"],
     classifiers = [
       "Development Status :: 4 - Beta",
       "Environment :: Web Environment",

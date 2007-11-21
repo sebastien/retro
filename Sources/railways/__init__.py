@@ -17,6 +17,8 @@ from core import asJSON
 from web  import on, ajax, display, predicate, when, Component, Application, \
 Dispatcher, Configuration, ValidationError, KID, CHEETAH, DJANGO
 
+# FIXME: Add support for stackable applications
+
 __version__ = "0.4.1"
 __doc__     = """\
 This is the main Railways module. You can generally do the following:
@@ -82,8 +84,9 @@ CONFIG = Configuration()
 #
 # ------------------------------------------------------------------------------
 
-def run( app=None, components=(), method=STANDALONE, name="railways", root = ".",
-resetlog=False, address="", port=8000, prefix='', async=False, sessions=True ):
+def run( app=None, components=(), method=STANDALONE, name="railways",
+root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
+sessions=True ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
