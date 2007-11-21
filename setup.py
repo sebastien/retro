@@ -11,9 +11,24 @@
 # Last mod.         :   21-Nov-2007
 # -----------------------------------------------------------------------------
 
-import sys ; sys.path.insert(0, "Sources")
-from railways import main
+import sys
 from distutils.core import setup
+
+REQUIRES = 'simplejson'.split()
+def check_dependencies():
+	failures = []
+	for package in REQUIRES:
+		try:
+			exec "import %s" % (package)
+		except:
+			failures.append(package)
+			print "ERROR: Cannot install Railways, the following packages are required"
+			for f in failures: print " - ", f
+	sys.exit(-1)
+check_dependencies()
+
+import sys ; sys.path.insert(0, "Sources")
+import railways
 
 SUMMARY     = "Lightweb Declarative Web Toolkit"
 DESCRIPTION = """\
@@ -31,7 +46,7 @@ into a web application or to write new ones.
 
 setup(
     name        = "Railways",
-    version     = main.__version__,
+    version     = railways.__version__,
     author      = "Sebastien Pierre", author_email = "sebastien@type-z.org",
     description = SUMMARY, long_description = DESCRIPTION,
     license     = "Revised BSD License",
