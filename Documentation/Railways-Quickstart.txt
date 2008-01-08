@@ -1,0 +1,215 @@
+== Railways Quickstart
+== Version 0.5.1
+
+
+_Railways_ is a lightweight Python Web WSGI-based framework that is designed for
+easy of prototyping and simplicity. The only purpose of Railways is to offer a
+simple architecture that allows you to write Web services and applications in a
+very RESTful style.
+
+The main role of Railways is to provide you with an easy way of mapping URLs to
+your Python code and offer you nice OO abstractions to the HTTP protocol.
+Railways takes advantage of newer Python features such as _decorators_ to give
+you a concise, declarative way of turning your Python code into web services and
+applications.
+
+In this short tutorial we'll walk through the most important steps of creating a
+web application, leaving out the details to the API reference.
+
+Creating a server
+=================
+
+The first step is to import the Railways symbols into your namespace:
+
+>	from railways import *
+
+As Railways has a component-based architecture (your web application will be
+made of components), you have to write a ''main'' component. You do this by
+subclassing the 'railways.Component' class, which you just imported:
+
+>	class Main(Component):
+>		def __init__( self ):
+>			Component.__init__(self, name="My first application")
+
+We will add functionality to the component later. In the meantime, let's test
+the component by using the 'railways.run' function in the module main:
+
+>	if __name__ == "__main__":
+>		my_app = Application()
+>		my_app.register(Main())
+>		run(app=my_app, port=8080)
+
+Now, if your start your module, you will see this on your command line:
+
+>	Railways embedded server listening on 0.0.0.0:8080
+
+and you can visit <http://localhost:8080/> and see the following message:
+
+>	405 Method Not Supported
+
+This is normal, because you've not setup any *mapping* between URLs and your
+application...
+
+Mapping URLs
+============
+
+To be able to server pages and content in your application, you have to express
+a mapping between URL and actual methods of your components.
+
+In Railways, you define a mapping by _exposing_ a method of your component using
+the '@on' decorator:
+
+>	class Main(Component):
+>		...
+>		@on(GET="/index")
+>		def index( self, request ):
+>			return request.respond("Hello, world !")
+
+Here, we've defined the 'index' method (the name is not important), and
+_exposed_ to react to a 'GET' HTTP method sent to the '/index' URL. Restarting
+your server and going to <http://localhost:8080/index> will give you this text:
+
+>	Hello, world !
+
+The '@on' decorator parameters are made of the following elements:
+
+  - a _parameter name_ (like 'GET', 'POST', 'GET_POST'), where the HTTP methods
+    are uppercase and joined by underscores
+
+  - a _parameter value_, which is an expression that defines matching URLs.
+
+  - an optional 'priority', which allows one mapping with higher priority to be used
+    in preference when more than one mapping matches the URL.
+
+The parameter value expression can contain specific parts that will be matched
+and given as arguments to the decorated method:
+
+>		@on(GET="/int/{i:integer}")
+>		def getInteger(self, request, i):
+>			return request.respond("Here is number %d" % (i))
+
+Now, if you go to <http://localhost:8080/int/0>, or
+<http://localhost:8080/int/1>, <http://localhost:8080/int/2>, you will see these
+numbers printed out.
+
+Generally speaking, anything between '{' and '}' in parameter expressions will
+be interpreted as a _matching argument_. The format is like that:
+
+>	{ NAME : EXPRESSION }
+
+where 'NAME' must match an argument of the decorated method, and where
+'EXPRESSION' is either a regular expression (as of Python 're' module), or one
+of the following values:
+
+ - 'word', 'alpha':  any sequence of alphabetical chars
+ - 'string': everything that is not a '/'
+ - 'digits': a sequence of digits, cast to an 'int'
+ - 'number': a floating point or an int, negative or positive
+ - 'int', 'integer': an int, negative or positive
+ - 'float': an float, negative or positive
+ - 'file': two alphanumeric words joined by a dot
+ - 'chunk': everything which is neither a '/' nor a '.'
+ - 'rest', 'any' : the rest of the URL
+ - 'range': two integers joined by ':' (Python-style)
+
+Once you have your mapping right, you may want to do more complicated things
+with your exposed methods... and we'll see in the next section what we can do
+with the mysterious 'request' parameter.
+
+The Request object
+====================
+
+The 'railways.core.Request' class defines a class that represents an HTTP
+request. The 'request' parameter we've seen in the previous section is an
+instance of this class, that represents the request sent by the client browser
+and received by the Railways server.
+
+The request object offers different kind of functionalities:
+
+ - Accessing the request parameters, cookies and  data: whether 'POST' or 'GET', whether
+   url-encoded or form-encoded, parameters and attachments are retrievable
+   using the 'param', 'cookies' and 'data' methods.
+
+ - Accessing request method, headers and various information: TODO
+
+ - Creating a response: the request object contains methods to create specific
+   responses, whether it is serving a local file, returning JSON data,
+   redirecting, returning an error, or simply returning specific content. These
+   methods are mainly 'respond', 'returns', 'redirect', 'bounce', 'notFound',
+   'localFile'.
+
+In practice, you need only to know a few things. First, how to get access to
+parameters.
+
+Say you have a request to that URL:
+
+>	http://localhost:8080/api/doThis?a=1&b=2
+
+and that you have a handler bound to '/api/doThis', here is how you would get
+access to a and b:
+
+>	@on(GET_POST='/api/doThis')
+>	def doThis( self, request ):
+>		a = request.get('a')
+>		b = request.get('b')
+>		if a is None or b is None:
+>			return request.respond(
+>				"You must give proper 'a' and 'b' parameters",
+>				status=400
+>			)
+>		else:
+>			return request.respond(
+>				"Here a:%s and here is b:%s" % (a,b)
+>			)
+
+This is the simplest, and most common case. Now if you want to receive a file
+that was 'POST'ed by the client, by a form like this one:
+
+>	<form action="/api/postThis" method="POST">
+>		<input type="text" name="name" value="File name" />
+>		<input type="file" name="file" value="Upload file" />
+>	</form>
+
+you would do the following:
+
+>	@on(POST='/api/postThis')
+>	def postThis( self, request ):
+>		file_name = request.get('name')
+>		file_data = request.get('file')
+>		file_info = request.file('file')
+>		return request.respond(
+>			"Received file %s, of %s bytes, with content type:%s" %
+>			(file_info.get("filename"),len(file_data),file_info.get("contentType"))
+>		)
+
+we see here that the file data is available as any other parameter, but that we
+can use the 'request.file' method to get more information about the file, like
+its content type and original filename.
+
+	Note _____________________________________________________________________________
+	It is important to note that *you must return the result* of the
+	'request.[respond, returns, redirect, bounce, ...]' methods. These methods
+	actually return a generator that will be used by Railways to produce the
+	content of the response.
+
+
+Sessions management
+===================
+
+Session management is another important aspect of web applications. Railways
+session manage is provided by Alan Saddi's [FLUP][FLUP] session middleware and
+is easily accessible through the request object 'session'
+
+AJAXify your code
+=================
+
+Components architecture
+=======================
+
+Integration with Apache
+=======================
+
+
+	[FLUP]: FLUP, random WSGI stuff, Alan Saddi, <http://trac.saddi.com/flup>
+
+# EOF
