@@ -791,6 +791,7 @@ class Application(Component):
 				if handlerinfo.get("ajax"):
 					method = Application.AJAXWrapper(component, method)
 				# We register the handler within the selector
+				# FIXME: Handle exception when @on("someurl") instead of @on(GET="someurl")
 				component.registerHandler(method,
 					handlerinfo.get("on"),
 					component.getPriority() + int(handlerinfo.get("priority"))

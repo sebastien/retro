@@ -84,6 +84,28 @@ CONFIG = Configuration()
 #
 # ------------------------------------------------------------------------------
 
+OPT_PORT     = "Specifies the port on which the server should be run"
+OPT_PREFIX   = "Prefix to prepend to the URLs"
+OPT_SESSIONS = "Enable sessions support (false by default)"
+
+def command( args, **extra ):
+	if type(args) not in (type([]), type(())): args = [args]
+	from optparse import OptionParser
+	# We create the parse and register the options
+	oparser = OptionParser(version="Railways " + __version__)
+	oparser.add_option("-p", "--port", action="store", dest="port",
+		help=OPT_PORT, default="8000")
+	oparser.add_option("-P", "--prefix", action="store", dest="prefix",
+		help=OPT_PREFIX, default=None)
+	oparser.add_option("-s", "--sessions", action="store_true", dest="sessions",
+		help=OPT_SESSIONS, default=False)
+	# We parse the options and arguments
+	options, args = oparser.parse_args(args=args)
+	extra["sessions"] = options.sessions
+	extra["prefix"]   = options.prefix
+	extra["port"]     = int(options.port)
+	run(**extra)
+
 def run( app=None, components=(), method=STANDALONE, name="railways",
 root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
 sessions=True ):
