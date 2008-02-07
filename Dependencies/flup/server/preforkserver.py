@@ -22,10 +22,10 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $Id: preforkserver.py 2174 2006-12-02 23:26:13Z asaddi $
+# $Id: preforkserver.py 2311 2007-01-23 00:05:04Z asaddi $
 
 __author__ = 'Allan Saddi <allan@saddi.com>'
-__version__ = '$Revision: 2174 $'
+__version__ = '$Revision: 2311 $'
 
 import sys
 import os
@@ -47,7 +47,7 @@ else:
 # See <http://www.inoi.fi/open/trac/eunuchs>.
 if not hasattr(socket, 'socketpair'):
     try:
-        import eunuchs
+        import eunuchs.socketpair
     except ImportError:
         # TODO: Other alternatives? Perhaps using os.pipe()?
         raise ImportError, 'Requires eunuchs module for Python < 2.4'
