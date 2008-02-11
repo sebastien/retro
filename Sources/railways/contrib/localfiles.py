@@ -153,13 +153,14 @@ class LocalFiles(Component):
 			file_path = localPath + "/" + file_name
 			ext       = os.path.splitext(file_path)[1].replace(".", "_")
 			if file_name.startswith("."): ext +=" hidden"
+			file_url = "/" + path + "/" +file_name
 			if os.path.isdir(file_path):
-				dirs.append("<li class='directory %s'><span class='bullet'>&fnof;</span><a href='%s/%s'>%s</a></li>" % (
-					ext, os.path.basename(path), file_name, file_name
+				dirs.append("<li class='directory %s'><span class='bullet'>&fnof;</span><a href='%s'>%s</a></li>" % (
+					ext, file_url, file_name
 				))
 			else:
-				files.append("<li class='file %s'><span class='bullet'>&mdash;</span><a href='%s/%s'>%s</a></li>" % (
-					ext, os.path.basename(path), file_name, file_name
+				files.append("<li class='file %s'><span class='bullet'>&mdash;</span><a href='%s'>%s</a></li>" % (
+					ext, file_url, file_name
 				))
 		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files))
 
