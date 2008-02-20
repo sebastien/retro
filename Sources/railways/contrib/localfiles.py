@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 22-Mar-2007
+# Last mod  : 11-Feb-2008
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -153,7 +153,7 @@ class LocalFiles(Component):
 			file_path = localPath + "/" + file_name
 			ext       = os.path.splitext(file_path)[1].replace(".", "_")
 			if file_name.startswith("."): ext +=" hidden"
-			file_url = "/" + path + "/" +file_name
+			file_url = ("/" + path + "/" +file_name).replace("//","/")
 			if os.path.isdir(file_path):
 				dirs.append("<li class='directory %s'><span class='bullet'>&fnof;</span><a href='%s'>%s</a></li>" % (
 					ext, file_url, file_name
