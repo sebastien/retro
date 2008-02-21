@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 26-Jul-2007
+# Last mod  : 21-Feb-2008
 # -----------------------------------------------------------------------------
 
 import os, sys, time, webbrowser
@@ -78,4 +78,48 @@ class Proxy(Component):
 		ctype       = result[ctype_start+2:]
 		result      = result[:ctype_start]
 		return result, ctype, code
+
+# ------------------------------------------------------------------------------
+#
+# MAIN
+#
+# ------------------------------------------------------------------------------
+
+
+def run( args ):
+	if type(args) not in (type([]), type(())): args = [args]
+	from optparse import OptionParser
+	# We create the parse and register the options
+	oparser = OptionParser(version="Railways[+proxy]")
+	oparser.add_option("-p", "--port", action="store", dest="port",
+		help=OPT_PORT, default="8000")
+	oparser.add_option("-f", "--files", action="store_true", dest="files",
+		help="Server local files", default=None)
+	# We parse the options and arguments
+	options, args = oparser.parse_args(args=args)
+	print options, args
+	if len(args) == 0:
+		print "The URL to proxy is expected as first argument"
+		return False
+	if len(args) == 2:
+		prefix = args[1]
+	else:
+		prefix = "/"
+	components = [Proxy(args[0], prefix)]
+	if options.files:
+		import railways.contrib.localfiles
+		components.append(railways.contrib.localfiles.LocalFiles())
+	app    = Application(components=components)
+	import railways
+	return railways.run(app=app,sessions=False,port=int(options.port))
+
+# -----------------------------------------------------------------------------
+#
+# Main
+#
+# -----------------------------------------------------------------------------
+
+if __name__ == "__main__":
+	run(sys.argv[1:])
+
 # EOF
