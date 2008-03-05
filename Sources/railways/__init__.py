@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 09-Apr-2007
+# Last mod  : 05-Mar-2008
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -19,7 +19,7 @@ Dispatcher, Configuration, ValidationError, KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 __doc__     = """\
 This is the main Railways module. You can generally do the following:
 
@@ -108,7 +108,7 @@ def command( args, **extra ):
 
 def run( app=None, components=(), method=STANDALONE, name="railways",
 root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
-sessions=True ):
+sessions=True, processStack=lambda x:x ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
@@ -137,6 +137,7 @@ sessions=True ):
 	app.config(config)
 	# We start the WSGI stack
 	stack = app._dispatcher
+	stack = processStack(stack)
 	# And run the application in a specific server
 	if sessions:
 		if not has(FLUP):
