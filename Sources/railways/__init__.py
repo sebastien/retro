@@ -47,15 +47,19 @@ CGI  = True
 STANDALONE = "STANDALONE"
 
 try:
-	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
 	from flup.server.fcgi import WSGIServer as FLUP_FCGIServer
 	from flup.server.scgi import WSGIServer as FLUP_SCGIServer
 	FLUP = "FLUP"
 	FCGI = "FLUP_FCGI"
 	SCGI = "FLUP_SCGI"
-	SESSIONS = True
 except ImportError:
 	FLUP = None
+
+try:
+	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
+	SESSIONS = True
+except ImportError:
+	SESSIONS = False
 
 try:
 	import wsgiref.simple_server

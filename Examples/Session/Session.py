@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
+# Encoding  : iso-8859-1
 # -----------------------------------------------------------------------------
-# Project   : Wiki Example
+# Project   : Sessions Example
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 08-Aug-2006
-# Last mod  : 08-Aug-2006
+# Last mod  : 06-Mar-2008
 # -----------------------------------------------------------------------------
 
 from railways import *
@@ -102,11 +101,28 @@ class Main(Component):
 		"""Serves the files located in the `Library` grand parent directory."""
 		return request.localFile(self.app().localPath("../../Library/" + path))
 
-if __name__ == "__main__":
-	run(
-		app        = Application(Main()),
-		name       = os.path.splitext(os.path.basename(__file__))[1],
-		method     = STANDALONE
-	)
+def setupStack( stack ):
+	"""Sets up the WSGI stack, by adding a session middleware"""
+	from beaker.middleware import SessionMiddleware
+	stack = SessionMiddleware(stack,type='dbm', data_dir=".")
+	return stack
 
-# EOF
+if __name__ == "__main__":
+	print "python Session.py [beaker|flup]"
+	print "       runs the example with 'beaker' or 'flup' session back-end\n"
+	args = sys.argv
+	if len(args) == 2 and args[1].lower() == "beaker":
+		run(
+			app          = Application(Main()).configure(session="BEAKER"),
+			name         = os.path.splitext(os.path.basename(__file__))[1],
+			method       = STANDALONE,
+			processStack = setupStack
+		)
+	else:
+		run(
+			app          = Application(Main()).configure(session="FLUP"),
+			name         = os.path.splitext(os.path.basename(__file__))[1],
+			method       = STANDALONE,
+		)
+
+# EOF - vim: tw=80 ts=4 sw=4 noet

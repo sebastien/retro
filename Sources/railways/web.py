@@ -12,9 +12,11 @@
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
-from core import Request, Response, Session, asJSON
+from core import Request, Response, FlupSession, BeakerSession, asJSON
 
 TEMPLATE_ENGINES = []
+SESSION_ENGINES  = []
+
 try:
 	import kid
 	kid_serializer = kid.HTMLSerializer()
@@ -46,7 +48,6 @@ try:
 	TEMPLATE_ENGINES.append(DJANGO)
 except ImportError:
 	DJANGO = None
-
 except ImportError:
 	DJANGO = Noned
 
@@ -56,6 +57,21 @@ try:
 	TEMPLATE_ENGINES.append(CHEETAH)
 except ImportError:
 	CHEETAH = None
+
+try:
+	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
+	FLUP_SESSION = "FLUP"
+	SESSION_ENGINES.append(FLUP_SESSION)
+except ImportError:
+	FLUP_SESSION = None
+
+try:
+	from beaker.middleware import SessionMiddleware
+	BEAKER_SESSION = "BEAKER"
+	SESSION_ENGINES.append(BEAKER_SESSION)
+except ImportError:
+	BEAKER_SESSION = None
+	pass
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = True
@@ -395,7 +411,7 @@ class Dispatcher:
 			fallback_handler = self.notSupported
 		if matched_handlers:
 			matched_handlers.sort(lambda a,b:cmp(b[0],a[0]))
-			matched_handlers.append((-1, fallback_handler, {}))
+			matched_handlers.append((-1, fallback_handler, {}, None))
 			return matched_handlers
 		elif path and path[0] == "/":
 			return self.dispatch(environ, path[1:], method)
@@ -560,11 +576,30 @@ class Component:
 
 	def session( self, request, create=True ):
 		"""Tells if there is a session attached with this request, creating it
-		if `create` is true (by default)."""
-		res = Session.hasSession(request)
-		if res: return res
-		elif create: return Session(request)
-		else: return None
+		if `create` is true (by default).
+		
+		This will required either Flup session middleware or Beaker session
+		middleware to be available. The application configuration 'session'
+		option will be used to determine which session middleware should be
+		used. Beaker is the recommended one, but Flup remains the default one.
+		"""
+		session_type = self.app().config("session")
+		if FLUP_SESSION and session_type == FLUP_SESSION:
+			res = FlupSession.hasSession(request)
+			if res: return res
+			elif create: return FlupSession(request)
+			else: return None
+		elif BEAKER_SESSION and session_type == BEAKER_SESSION:
+			res = BeakerSession.hasSession(request)
+			if res: return res
+			elif create: return BeakerSession(request)
+			else: return None
+		elif session_type:
+			log("Unknown session type: %s" % (session_typ))
+			return None
+		else:
+			log("No supported session middleware available")
+			return None
 
 	def app( self ):
 		return self._app
@@ -914,7 +949,7 @@ class Application(Component):
 			template = django.template.loader.get_template(templ_path)
 			res = template.render(context)
 		if LOG_TEMPLATE_ON:
-			print "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start)
+			log( "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start) )
 		return res
 
 # ------------------------------------------------------------------------------
@@ -932,6 +967,7 @@ class Configuration:
 	- `templates` is the path to the templates directory
 	- `charset`   is the default charset for handling request/response data
 	- `root`      is the location of the server root (default '.')
+	- `session`   is the name of the session adapter (for now, 'FLUP' or 'BEAKER')
 
 	It should be noted that unless absolute, paths are all relative to the
 	configured application root, which is set by default to the current working
@@ -947,6 +983,7 @@ class Configuration:
 			"prefix"   :"",
 			"port"     :"",
 			"address"  :"",
+			"session"  :(SESSION_ENGINES and SESSION_ENGINES[0] or ""),
 		}
 		self._logfile   = None
 		if config:
@@ -974,7 +1011,6 @@ class Configuration:
 			self._logfile.write(str(args))
 		self._logfile.write("\n")
 		self._logfile.flush()
-	
 
 	def set( self, name, value ):
 		"""Sets the given property with the given value."""
@@ -985,6 +1021,10 @@ class Configuration:
 		if value != re:
 			self._properties[name] = value
 		return self._properties[name]
+
+	def session( self, value=re):
+		"""Returns the name of the session"""
+		return self.get("session", value)
 
 	def name( self, value=re ):
 		"""Returns the configured application name. """

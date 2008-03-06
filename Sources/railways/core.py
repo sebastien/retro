@@ -8,10 +8,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 25-Feb-2008
+# Last mod  : 06-Mar-2008
 # -----------------------------------------------------------------------------
 
-import os, sys, cgi, re, urllib, email, types, mimetypes, BaseHTTPServer, Cookie
+import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
 import simplejson
 
 NOTHING     = sys
@@ -551,13 +551,32 @@ class Response:
 
 class Session:
 
+	def __init__(self):
+		pass
+
 	@staticmethod
 	def hasSession( request ):
 		"""Tells if there is a session related to the given request, and returns
 		it if found. If not found, returns None"""
+
+	def isNew( self ):
+		"""Tells if the session is a new session or an existing one."""
+
+	def get( self, key=NOTHING, value=NOTHING ):
+		"""Alias to 'self.value(key,value)'"""
+		return self.value(key, value)
+
+	def value( self, key=NOTHING, value=NOTHING ): 
+		"""Sets or gets the 'value' bound to the given 'key'"""
+
+class FlupSession(Session):
+	"""Implementation of the Session object for Flup Session Middleware"""
+
+	@staticmethod
+	def hasSession( request ):
 		service = request.environ()['com.saddi.service.session']
 		if service.hasSession:
-			return Session(request)
+			return FlupSession(request)
 		else:
 			return None
 
@@ -578,6 +597,46 @@ class Session:
 			return self._data.get(key)
 		else:
 			self._data[key] = value
+
+	def expire( self, time ):
+		raise Exception("Not implemented yet")
+
+class BeakerSession(Session):
+	"""Implementation of the Session object for Flup Session Middleware"""
+
+	@staticmethod
+	def hasSession( request ):
+		session = request.environ()['beaker.session']
+		if session:
+			return BeakerSession(request, session)
+		else:
+			return None
+
+	def __init__( self, request, session=None ):
+		if session is None:
+			session = request.environ()['beaker.session']
+		self._session = session
+		if not session.get("RAILWAYS_SESSION"):
+			session["RAILWAYS_SESSION"] = time.time()
+			session.save()
+			self._isNew = True
+		else:
+			self._isNew = False
+
+	def isNew( self ):
+		return self._isNew
+
+	def get( self, key=NOTHING, value=NOTHING ):
+		return self.value(key, value)
+
+	def value( self, key=NOTHING, value=NOTHING ):
+		if   key == NOTHING:
+			return self._session
+		elif value == NOTHING:
+			return self._session.get(key)
+		else:
+			self._session[key] = value
+			self._session.save()
 
 	def expire( self, time ):
 		raise Exception("Not implemented yet")
