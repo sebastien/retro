@@ -1,1 +1,1 @@
-- API to add/remove rules from components
+- API to add/remove rules from components- @on(POST="/{o:oid}?{content:object}&{user:object}&{subject:string}...)

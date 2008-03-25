@@ -28,6 +28,7 @@ class Authenticated:
 	NOT_AUTHENTICATED = 0
 	LOGGED_IN         = 1
 	ADMIN             = 65000
+
 	@predicate
 	def isAuthenticated( self, request, level=1 ):
 		return request.session("authenticated") 
