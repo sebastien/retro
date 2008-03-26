@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 05-Mar-2008
+# Last mod  : 26-Mar-2008
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -55,7 +55,7 @@ try:
 except ImportError:
 	FLUP = None
 
-try:
+try:try:
 	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
 	SESSIONS = True
 except ImportError:

@@ -8,15 +8,13 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 25-Feb-2007
+# Last mod  : 03-Jul-2007
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
-from core import Request, Response, FlupSession, BeakerSession, asJSON
+from core import Request, Response, Session, asJSON
 
 TEMPLATE_ENGINES = []
-SESSION_ENGINES  = []
-
 try:
 	import kid
 	kid_serializer = kid.HTMLSerializer()
@@ -48,6 +46,7 @@ try:
 	TEMPLATE_ENGINES.append(DJANGO)
 except ImportError:
 	DJANGO = None
+
 except ImportError:
 	DJANGO = Noned
 
@@ -57,21 +56,6 @@ try:
 	TEMPLATE_ENGINES.append(CHEETAH)
 except ImportError:
 	CHEETAH = None
-
-try:
-	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
-	FLUP_SESSION = "FLUP"
-	SESSION_ENGINES.append(FLUP_SESSION)
-except ImportError:
-	FLUP_SESSION = None
-
-try:
-	from beaker.middleware import SessionMiddleware
-	BEAKER_SESSION = "BEAKER"
-	SESSION_ENGINES.append(BEAKER_SESSION)
-except ImportError:
-	BEAKER_SESSION = None
-	pass
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = True
@@ -411,7 +395,7 @@ class Dispatcher:
 			fallback_handler = self.notSupported
 		if matched_handlers:
 			matched_handlers.sort(lambda a,b:cmp(b[0],a[0]))
-			matched_handlers.append((-1, fallback_handler, {}, None))
+			matched_handlers.append((-1, fallback_handler, {}))
 			return matched_handlers
 		elif path and path[0] == "/":
 			return self.dispatch(environ, path[1:], method)
@@ -576,30 +560,11 @@ class Component:
 
 	def session( self, request, create=True ):
 		"""Tells if there is a session attached with this request, creating it
-		if `create` is true (by default).
-		
-		This will required either Flup session middleware or Beaker session
-		middleware to be available. The application configuration 'session'
-		option will be used to determine which session middleware should be
-		used. Beaker is the recommended one, but Flup remains the default one.
-		"""
-		session_type = self.app().config("session")
-		if FLUP_SESSION and session_type == FLUP_SESSION:
-			res = FlupSession.hasSession(request)
-			if res: return res
-			elif create: return FlupSession(request)
-			else: return None
-		elif BEAKER_SESSION and session_type == BEAKER_SESSION:
-			res = BeakerSession.hasSession(request)
-			if res: return res
-			elif create: return BeakerSession(request)
-			else: return None
-		elif session_type:
-			log("Unknown session type: %s" % (session_typ))
-			return None
-		else:
-			log("No supported session middleware available")
-			return None
+		if `create` is true (by default)."""
+		res = Session.hasSession(request)
+		if res: return res
+		elif create: return Session(request)
+		else: return None
 
 	def app( self ):
 		return self._app
@@ -608,40 +573,36 @@ class Component:
 		"""Returns the name for the component."""
 		return self._name
 
-	@on(POST="/channels:burst", priority=0)
-	def processBurstChannel( self, request ):
+	@on(POST="/rw:requests", priority=0)
+	def postRequests( self, request ):
 		"""The `postRequest` method implements a mechanism that allows the
 		Railways _burst channel_ to work properly. It allows to put multiple
 		requests into a single request, and then put the corresponding responses
 		withing the body of this request."""
-		boundary       = request.header("X-Channel-Boundary") or "8<-----BURST-CHANNEL-REQUEST-------"
-		channel_type   = request.header("X-Channel-Type")
-		requests_count = request.header("X-Channel-Requests")
-		requests      = request.body().split(boundary + "\n")
+		requests      = request.body().split("[[[REQUEST]]]")
 		# We create a fake start response that will simply yield the results
 		# The iterate method is a generator that will produce the result
-		response_boundary = "8<-----BURST-CHANNEL-RESPONSE-------"
 		def iterate(self=self,request=request):
 			context = {}
 			# When the fake_start_response gets called, we will update the
 			# context dict with the response status and header info, so that we
 			# can output it within the aggregate response
 			def fake_start_response(status, header,context=context):
-				s, r = status.split(" ", 1)
-				context['status'] = int(s)
-				context['reason'] = r
+				context['status'] = status
 				context['headers'] = header
 			has_responded = False
 			dispatcher    = self.app()._dispatcher
 			# We iterate on each request embedded within the body of this
 			# request
-			origin = request.uri()
 			for request_string in requests:
-				req, headers, body = request_string.split("\r\n", 2)
-				method, url = req.split(" ",1)
+				sep = request_string.find("\n\n")
+				first_line = request_string[:sep]
+				body = request_string[sep+2:]
+				sep = first_line.find(" ")
+				method = first_line[:sep]
+				url    = first_line[sep+1:]
 				# We update the current request object (instead of creating one
 				# new)
-				if not url or url[0] != "/": url = os.path.dirname(origin) + url
 				request._environ[request.REQUEST_METHOD]=method
 				request._environ[request.REQUEST_URI]=url
 				# FIXME: PATH_INFO should be computed properly
@@ -650,23 +611,18 @@ class Component:
 				# If we already generated a response, we add the response
 				# spearator
 				if has_responded:
-					yield response_boundary
+					yield "[[[RESPONSE]]]"
 				# And now we generate the body of the request
 				for res in dispatcher(request.environ(), fake_start_response, request):
 					if context.items():
-						yield "{'status':%s,'reason':%s,'headers':%s,'body':%s}\n\n" % (
-							asJSON(context['status']),
-							asJSON(context['reason']),
-							asJSON(context['headers']),
-							asJSON(res)
-						)
+						yield "{status:%s,header:%s}\n\n" % (asJSON(context['status']),asJSON(context['headers']))
 						del context['status']
-						del context['reason']
 						del context['headers']
 						assert not context.items()
+					yield res
 				has_responded = True
 		# We respond using the given iterator
-		return request.respond(iterate(),headers=[["X-Channel-Boundary", response_boundary]])
+		return request.respond(iterate())
 
 # ------------------------------------------------------------------------------
 #
@@ -949,7 +905,7 @@ class Application(Component):
 			template = django.template.loader.get_template(templ_path)
 			res = template.render(context)
 		if LOG_TEMPLATE_ON:
-			log( "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start) )
+			print "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start)
 		return res
 
 # ------------------------------------------------------------------------------
@@ -967,7 +923,6 @@ class Configuration:
 	- `templates` is the path to the templates directory
 	- `charset`   is the default charset for handling request/response data
 	- `root`      is the location of the server root (default '.')
-	- `session`   is the name of the session adapter (for now, 'FLUP' or 'BEAKER')
 
 	It should be noted that unless absolute, paths are all relative to the
 	configured application root, which is set by default to the current working
@@ -983,7 +938,6 @@ class Configuration:
 			"prefix"   :"",
 			"port"     :"",
 			"address"  :"",
-			"session"  :(SESSION_ENGINES and SESSION_ENGINES[0] or ""),
 		}
 		self._logfile   = None
 		if config:
@@ -1011,6 +965,7 @@ class Configuration:
 			self._logfile.write(str(args))
 		self._logfile.write("\n")
 		self._logfile.flush()
+	
 
 	def set( self, name, value ):
 		"""Sets the given property with the given value."""
@@ -1021,10 +976,6 @@ class Configuration:
 		if value != re:
 			self._properties[name] = value
 		return self._properties[name]
-
-	def session( self, value=re):
-		"""Returns the name of the session"""
-		return self.get("session", value)
 
 	def name( self, value=re ):
 		"""Returns the configured application name. """

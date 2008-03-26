@@ -8,10 +8,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 06-Mar-2008
+# Last mod  : 26-May-2007
 # -----------------------------------------------------------------------------
 
-import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
+import os, sys, cgi, re, urllib, email, types, mimetypes, BaseHTTPServer, Cookie
 import simplejson
 
 NOTHING     = sys
@@ -105,7 +105,6 @@ class Request:
 	def __init__( self, environ, charset ):
 		"""This creates a new request."""
 		self._environ          = environ
-		self._headers          = None
 		self._charset          = charset
 		self._loaded           = False
 		self._percentageLoaded = False
@@ -114,43 +113,6 @@ class Request:
 		self._component        = None
 		self._cookies          = None
 		self._files            = None
-
-	def headers( self ):
-		if self._headers is None:
-			e = self._environ
-			headers = {
-				"Accept": e.get("HTTP_ACCEPT"),
-				"Accept-Charset": e.get("HTTP_ACCEPT_CHARSET"),
-				"Accept-Encoding": e.get("HTTP_ACCEPT_ENCODING"),
-				"Accept-Language": e.get("HTTP_ACCEPT_LANGUAGE"),
-				"Cache-Control": e.get("HTTP_CACHE_CONTROL"),
-				"Connection": e.get("HTTP_CONNECTION"),
-				"Content-Length": e.get("HTTP_CONTENT_LENGTH"),
-				"Content-Type": e.get("HTTP_CONTENT_TYPE"),
-				"Cookie": e.get("HTTP_COOKIE"),
-				"Host": e.get("HTTP_HOST"),
-				"Keep-Alive": e.get("HTTP_KEEP_ALIVE"),
-				"Pragma": e.get("HTTP_PRAGMA"),
-				"Referer": e.get("HTTP_REFERER"),
-				"User-Agent": e.get("HTTP_USER_AGENT")
-			}
-			i = 0
-			c = True
-			while c:
-				k = "HTTP_" + str(i)
-				if e.has_key(k):
-					name,value = e[k].split(",",1)
-					headers[name] = value
-				else:
-					c = False
-				i += 1
-			self._headers = headers
-			return self._headers
-		else:
-			return self._headers
-
-	def header( self, name ):
-		return self.headers().get(name)
 
 	def method( self ):
 		"""Returns the method (GET, POST, etc) for this request."""
@@ -551,32 +513,13 @@ class Response:
 
 class Session:
 
-	def __init__(self):
-		pass
-
 	@staticmethod
 	def hasSession( request ):
 		"""Tells if there is a session related to the given request, and returns
 		it if found. If not found, returns None"""
-
-	def isNew( self ):
-		"""Tells if the session is a new session or an existing one."""
-
-	def get( self, key=NOTHING, value=NOTHING ):
-		"""Alias to 'self.value(key,value)'"""
-		return self.value(key, value)
-
-	def value( self, key=NOTHING, value=NOTHING ): 
-		"""Sets or gets the 'value' bound to the given 'key'"""
-
-class FlupSession(Session):
-	"""Implementation of the Session object for Flup Session Middleware"""
-
-	@staticmethod
-	def hasSession( request ):
 		service = request.environ()['com.saddi.service.session']
 		if service.hasSession:
-			return FlupSession(request)
+			return Session(request)
 		else:
 			return None
 
@@ -597,46 +540,6 @@ class FlupSession(Session):
 			return self._data.get(key)
 		else:
 			self._data[key] = value
-
-	def expire( self, time ):
-		raise Exception("Not implemented yet")
-
-class BeakerSession(Session):
-	"""Implementation of the Session object for Flup Session Middleware"""
-
-	@staticmethod
-	def hasSession( request ):
-		session = request.environ()['beaker.session']
-		if session:
-			return BeakerSession(request, session)
-		else:
-			return None
-
-	def __init__( self, request, session=None ):
-		if session is None:
-			session = request.environ()['beaker.session']
-		self._session = session
-		if not session.get("RAILWAYS_SESSION"):
-			session["RAILWAYS_SESSION"] = time.time()
-			session.save()
-			self._isNew = True
-		else:
-			self._isNew = False
-
-	def isNew( self ):
-		return self._isNew
-
-	def get( self, key=NOTHING, value=NOTHING ):
-		return self.value(key, value)
-
-	def value( self, key=NOTHING, value=NOTHING ):
-		if   key == NOTHING:
-			return self._session
-		elif value == NOTHING:
-			return self._session.get(key)
-		else:
-			self._session[key] = value
-			self._session.save()
 
 	def expire( self, time ):
 		raise Exception("Not implemented yet")
