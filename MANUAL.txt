@@ -1,13 +1,14 @@
-== Railways Quickstart
-== Version 0.5.1
+== Railways
+== Lightweight Declarative Python Web Toolkit
+-- Author: Sebastien Pierre <sebastien@ivy.fr>
+-- Revision: 0.5.0 (08-Apr-2008)
 
-
-_Railways_ is a lightweight Python Web WSGI-based framework that is designed for
-easy of prototyping and simplicity. The only purpose of Railways is to offer a
+_Railways_ is a lightweight Python Web WSGI-based toolkit that is designed for
+easy development of HTTP applications. The main purpose of Railways is to offer a
 simple architecture that allows you to write Web services and applications in a
 very RESTful style.
 
-The main role of Railways is to provide you with an easy way of mapping URLs to
+The main features of Railways  provide you with an easy way of mapping URLs to
 your Python code and offer you nice OO abstractions to the HTTP protocol.
 Railways takes advantage of newer Python features such as _decorators_ to give
 you a concise, declarative way of turning your Python code into web services and
@@ -197,8 +198,8 @@ Sessions management
 ===================
 
 Session management is another important aspect of web applications. Railways
-session manage is provided by Alan Saddi's [FLUP][FLUP] session middleware and
-is easily accessible through the request object 'session'
+session manage is provided by Alan Saddi's [FLUP][FLUP] session middleware or by
+the [Beaker][BEAKER] library.
 
 AJAXify your code
 =================
@@ -209,7 +210,14 @@ Components architecture
 Integration with Apache
 =======================
 
+How-tos
+=======
 
-	[FLUP]: FLUP, random WSGI stuff, Alan Saddi, <http://trac.saddi.com/flup>
+  - Serving localfiles
+  - Proxying a server
+
+
+	[FLUP]:   FLUP, random WSGI stuff, Alan Saddi, <http://trac.saddi.com/flup>
+	[BEAKER]: BEAKER
 
 # EOF
