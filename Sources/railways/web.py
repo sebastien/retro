@@ -593,7 +593,7 @@ class Component:
 			elif create: return BeakerSession(request)
 			else: return None
 		elif session_type:
-			log("Unknown session type: %s" % (session_typ))
+			log("Unknown session type: %s" % (session_type))
 			return None
 		else:
 			log("No supported session middleware available")
