@@ -267,12 +267,6 @@ class Dispatcher:
 		dispatcher."""
 		return self._app
 
-	def notFound(self, request):
-		return Response("404 Not Found", [], 404)
-
-	def notSupported(self, request):
-		return Response("405 Method Not Supported", [], 405)
-
 	def _parseExpression( self, expression, isStart=True ):
 		"""Handler expressions are paths (URLs) that can contain typed variables
 		that will match integers, strings, dates, etc, and optional groups.
@@ -389,7 +383,7 @@ class Dispatcher:
 		returns the handler plus a map of variables to pass to the handler."""
 		if path == None: path     = environ['PATH_INFO']
 		if method == None: method = environ['REQUEST_METHOD']
-		fallback_handler = self.notFound
+		fallback_handler = self.app().notFound
 		matched_handlers = []
 		for priority, regexp, params_name, converters, method_dict in self._handlers:
 			match = regexp.search(path)
@@ -406,7 +400,7 @@ class Dispatcher:
 				# We return the handler along with the variables
 				matched_handlers.append((priority, method_handler, variables, params_name))
 		if not matched_handlers:
-			fallback_handler = self.notSupported
+			fallback_handler = self.app().notSupported
 		if matched_handlers:
 			matched_handlers.sort(lambda a,b:cmp(b[0],a[0]))
 			matched_handlers.append((-1, fallback_handler, {}, None))
@@ -745,6 +739,12 @@ class Application(Component):
 				map(self.register, component)
 			else:
 				self.register(component)
+
+	def notFound(self, request):
+		return Response("404 Not Found", [], 404)
+
+	def notSupported(self, request):
+		return Response("405 Method Not Supported", [], 405)
 
 	def location( self ):
 		"""Returns the location of this application. The location will not
