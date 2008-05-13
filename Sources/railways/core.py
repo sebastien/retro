@@ -61,7 +61,7 @@ def asJSON( value, **options ):
 	elif value.__class__.__name__ == "datetime":
 		res = asJSON(str(value), **options)
 	elif value.__class__.__name__ == "struct_time":
-		res = tuple(value)
+		res = asJSON(tuple(value), **options)
 	elif hasattr(value, "asJSON")  and callable(value.asJSON):
 		res = value.asJSON(asJSON, **options)
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
