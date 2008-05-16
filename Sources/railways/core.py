@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 06-Mar-2008
+# Last mod  : 16-May-2008
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -61,7 +61,7 @@ def asJSON( value, **options ):
 	elif value.__class__.__name__ == "datetime":
 		res = asJSON(str(value), **options)
 	elif value.__class__.__name__ == "struct_time":
-		res = asJSON("%04d-%02d-%02d %02d:%02d:%02d" % (value[:6]), **options)
+		res = asJSON(tuple(value), **options)
 	elif hasattr(value, "asJSON")  and callable(value.asJSON):
 		res = value.asJSON(asJSON, **options)
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
