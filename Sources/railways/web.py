@@ -176,7 +176,7 @@ def ajax( priority=0, **methods ):
 		function.__dict__.setdefault(_RAILW_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
 			if http_method == "json":
-				function.__dict__.setdefault(_RAILW_AJAX_JSON, url)
+				function.__dict__[_RAILW_AJAX_JSON] = url
 			else:
 				v.append((http_method, url))
 		return function
