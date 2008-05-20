@@ -59,7 +59,9 @@ def asJSON( value, **options ):
 			r.append('%s:%s' % (repr(str(k)), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
 	elif value.__class__.__name__ == "datetime":
-		res = asJSON(str(value), **options)
+		res = asJSON(tuple(value.timetuple()), **options)
+	elif value.__class__.__name__ == "date":
+		res = asJSON(tuple(value.timetuple()), **options)
 	elif value.__class__.__name__ == "struct_time":
 		res = asJSON(tuple(value), **options)
 	elif hasattr(value, "asJSON")  and callable(value.asJSON):
@@ -67,7 +69,6 @@ def asJSON( value, **options ):
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
 	# that there is a library implemented on the client side
 	elif hasattr(value, "asJS") and callable(value.asJS):
-		# print "AS JSON ON", value, value.asJS
 		res = value.asJS(asJSON, **options)
 	# There may be a "serializer" function that knows better about the different
 	# types of object. We use it if it is provided.
@@ -76,6 +77,7 @@ def asJSON( value, **options ):
 		res = serializer(asJSON, value, **options)
 		if res is None: res = asJSON(value.__dict__, **options)
 	else:
+		print value, type(value)
 		res = asJSON(value.__dict__, **options)
 	return res
 
