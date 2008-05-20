@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 16-May-2008
+# Last mod  : 20-May-2008
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -426,8 +426,8 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200)
 
-	def returns( self, value=None, js=None, contentType="text/javascript", status=200 ):
-		if js == None: js = asJSON(value)
+	def returns( self, value=None, js=None, contentType="text/javascript", status=200, options=None ):
+		if js == None: js = asJSON(value, **(options or {}))
 		return Response(js, [("Content-Type", contentType)], status)
 
 	def display( self, template, engine=None, **kwargs ):

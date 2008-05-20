@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 25-Feb-2008
+# Last mod  : 20-May-2008
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -119,6 +119,7 @@ class ApplicationError(Exception):
 _RAILW_ON              = "_railways_on"
 _RAILW_ON_PRIORITY     = "_railways_on_priority"
 _RAILW_AJAX            = "_railways_ajax"
+_RAILW_AJAX_JSON       = "_railways_ajax_json"
 _RAILW_WHEN            = "_railways_when"
 _RAILW_TEMPLATE        = "_railways_template"
 _RAILW_TEMPLATE_ENGINE = "_railways_template_engine"
@@ -168,12 +169,16 @@ def ajax( priority=0, **methods ):
 	This is perfect if you have an existing python class and want to expose it
 	to the web."""
 	def decorator(function):
-		v = function.__dict__.setdefault(_RAILW_AJAX, True)
+		function.__dict__.setdefault(_RAILW_AJAX, True)
+		function.__dict__.setdefault(_RAILW_AJAX_JSON, None)
 		# This is copy and paste of the @on body
 		v = function.__dict__.setdefault(_RAILW_ON,   [])
 		function.__dict__.setdefault(_RAILW_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
-			v.append((http_method, url))
+			if http_method == "json":
+				function.__dict__.setdefault(_RAILW_AJAX_JSON, url)
+			else:
+				v.append((http_method, url))
 		return function
 	return decorator
 
@@ -725,7 +730,7 @@ class Application(Component):
 					e
 				)
 			# And now we return the response as JS
-			return request.returns(r)
+			return request.returns(r, options=getattr(self.function,_RAILW_AJAX_JSON))
 
 	def __init__( self, components=(), prefix='' ):
 		Component.__init__(self)
