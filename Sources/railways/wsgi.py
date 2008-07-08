@@ -21,7 +21,7 @@ WSGI servers, which makes it the ideal target for development.
 
 import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 import sys, logging, socket, errno, time
-import traceback, StringIO, threading, atexit
+import traceback, StringIO, threading, signal
 import core
 
 # ------------------------------------------------------------------------------
@@ -109,7 +109,6 @@ class WSGIReactor:
 	def __init__( self ):
 		self._handlers      = []
 		self._handlersCount = 0
-		self._handlersLock  = threading.Lock()
 		self._mainthread    = None
 		self._isRunning     = False
 
@@ -118,49 +117,89 @@ class WSGIReactor:
 		self._handlers.append((handler, application))
 		self._handlersCount += 1
 		self._handlersLock.release()
+		self._hasHandlersEvent.set()
 
 	def start( self ):
-		self._mainthread  = threading.Thread(target=self.run)
-		self._isRunning   = True
-		self._mainthread.start()
+		if not self._isRunning:
+			assert self._mainthread is None
+			self._handlersLock     = threading.Lock()
+			self._hasHandlersEvent = threading.Event()
+			self._hasHandlersEvent.clear()
+			self._isRunning   = True
+			self._mainthread  = threading.Thread(target=self.run)
+			self._mainthread.start()
 		return self
 
 	def stop( self ):
-		self._isRunning = False
-		if self._mainthread:
-			self._mainthread.join()
-		self._mainthread = None
+		if self._isRunning:
+			self._hasHandlersEvent.set()
+			self._isRunning = False
+			self._mainthread = None
+
+	def shutdown( self, *args ):
+		self.stop()
+		sys.exit()
 
 	def run( self ):
+		"""The Reactor runs by iterating on each handler, one at a time.
+		Basically, each handler is a response generator and each handler is
+		allowed to produce only one item per round. In other words, handlers are
+		interleaved."""
 		i = 0
 		while self._isRunning:
+			self._hasHandlersEvent.wait()
+			# This situation may happen when we shutdown on empty handlers list
 			if not self._handlers:
 				continue
 			self._handlersLock.acquire()
 			handler, application = self._handlers[i]
 			self._handlersLock.release()
-			if not handler.next(application):
+			# If the handler is done, we simply remove it from the handlers list
+			# FIXME: Do traceback here
+			value = handler.next(application)
+			if not value:
 				self._handlersLock.acquire()
 				del self._handlers[i]
 				self._handlersCount -= 1
+				if self._handlersCount == 0:
+					self._hasHandlersEvent.clear()
+					i = 0
+				else:
+					i -= 1
 				self._handlersLock.release()
+			# Otherwise we simply go to the next handler
 			else:
 				i = (i + 1) % self._handlersCount
 
-REACTOR = None
-def hasReactor():
+
+USE_REACTOR = False
+REACTOR     = None
+
+def shutdown(*args):
+	if REACTOR:
+		REACTOR.shutdown()
+	sys.exit()
+
+def createReactor():
+	global REACTOR
+	REACTOR = WSGIReactor()
+	signal.signal( signal.SIGINT,  shutdown)
+	signal.signal( signal.SIGHUP,  shutdown)
+	signal.signal( signal.SIGABRT, shutdown)
+	signal.signal( signal.SIGQUIT, shutdown)
+	signal.signal( signal.SIGTERM, shutdown)
+
+
+createReactor()
+
+def usesReactor():
 	"""Tells wether the reactor is enabled or not."""
-	return not (REACTOR is None)
+	return USE_REACTOR
 
 def getReactor(autocreate=True):
 	"""Returns the shared reactor instance for this module, creating a new
 	reactor if necessary."""
-	global REACTOR
-	if REACTOR is None and autocreate:
-		#atexit.register(REACTOR.stop)
-		# TODO: For some reason, the execution of some handlers completely freeze the
-		# reactor
-		REACTOR = WSGIReactor()
+	REACTOR.start()
 	return REACTOR
 
 # ------------------------------------------------------------------------------
@@ -218,7 +257,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		self._state = self.STARTED
 		# When using the reactor, we simply submit the application for
 		# execution (we delegate the execution to the reactor)
-		if hasReactor():
+		if usesReactor():
 			getReactor().register(self, application)
 		# Otherwise we iterate on the application (one shot execution)
 		else:

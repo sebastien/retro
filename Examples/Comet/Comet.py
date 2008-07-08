@@ -7,20 +7,72 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 14-Jun-2006
-# Last mod  : 14-Jun-2006
+# Last mod  : 08-Jul-2006
 # -----------------------------------------------------------------------------
 
-import os, time
+import os, time, threading
 from railways import *
 
 __doc__ = """\
 This example shows how to do implement a Comet service  with Railways. 
 """
+
+READ = """
+<html>
+	<head>
+		<title>Railways | Comet Example</title>
+	</head>
+	<body>
+		<h3>Output</h3>
+		<iframe src="/api/pipe/0/read" style="width:100%;height:450px" />
+		<br />
+	</body>
+</html>
+"""
+
+WRITE = """
+<html>
+	<head>
+		<title>Railways | Comet Example</title>
+	</head>
+	<body>
+		<h3>Input</h3>
+		<form action="/api/pipe/0/write" method="POST">
+			<input type=text value="Type something here" />
+			<input type=submit value="Send" />
+			<small><a href="/read">read here</a></small>
+		<form>
+	</body>
+</html>
+"""
+
 # ------------------------------------------------------------------------------
 #
 # MAIN COMPONENT
 #
 # ------------------------------------------------------------------------------
+
+class Pipe:
+
+	def __init__( self ):
+		self.hasDataEvent = threading.Event()
+		self.data    = []
+
+	def hasData( self ):
+		return len(self.data) > 0
+
+	def write( self, data ):
+		self.data.append(data)
+		self.hasDataEvent.set()
+
+	def read( self ):
+		v = self.data[0]
+		if len(v) > 1:
+			self.data = self.data[1:]
+		else:
+			self.data = []
+			self.hasDataEvent.clear()
+		return v
 
 class Main(Component):
 
@@ -36,9 +88,12 @@ class Main(Component):
 		return request.localFile(self.app().localPath("../../Library/" + path))
 
 	@on(GET="/")
-	@display("index")
 	def main( self, request ):
-		pass
+		return request.respond(WRITE,contentType="text/html")
+
+	@on(GET="/read")
+	def read( self, request ):
+		return request.respond(READ,contentType="text/html")
 
 	@on(GET="/api/processes")
 	def processes( self, request ):
@@ -50,20 +105,32 @@ class Main(Component):
 				time.sleep(5)
 		return request.respondMultiple(push())
 
-	def ensurePipe( self, n ) :
+	def ensurePipe( self, n ):
 		k = str(n)
-		return self.pipes.setdefault(k,[])
+		if self.pipes.has_key(k):
+			return self.pipes[k]
+		else:
+			p = Pipe()
+			self.pipes[k] = p
+			return p
 
-	@on(GET="/pipe/{n:number}/read")
-	def onPipeRead( self, request ):
-		def condition()
+	@on(GET="/api/pipe/{n:number}/read")
+	def onPipeRead( self, request, n ):
+		pipe = self.ensurePipe(n)
 		def stream():
 			while True:
-				yield
-				
+				if pipe.hasData():
+					yield str(pipe.read()) + "<br />"
+		# Continuous production/polling mode:
+		# return request.respond(stream()).produceOn(pipe.dataWritten)
+		# Burst/event-based production mode:
+		return request.respond(stream()).produceOn(pipe.dataWritten)
 
-	def onPipeWrite( self, request ):
-	@on(GET="/api/date")
+	@on(POST="/api/pipe/{n:number}/write")
+	def onPipeWrite( self, request, n ):
+		pipe = self.ensurePipe(n)
+		pipe.write(str(request.body()))
+		return request.bounce()
 
 	def date( self, request ):
 		def push():
@@ -77,6 +144,6 @@ class Main(Component):
 if __name__ == "__main__":
 	app  = Application(Main())
 	name = os.path.splitext(os.path.basename(__file__))[0]
-	run( app=app, name=name, method=STANDALONE, port=8000 )
+	run( app=app, name=name, method=STANDALONE, port=8000, withReactor=True )
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

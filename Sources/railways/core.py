@@ -249,7 +249,7 @@ class Request:
 			self._percentageLoaded = 100
 			self._loadPostProcess()
 			self._loaded = True
-		
+
 	def body( self, body=re ):
 		"""Gets/sets the request body (it is an alias for data)"""
 		return self.data(body)
@@ -487,12 +487,28 @@ class Response:
 	DEFAULT_CONTENT = "text/html"
 	REASONS = BaseHTTPServer.BaseHTTPRequestHandler.responses
 
-	def __init__( self, content=None, headers=None, status=200, reason=None):
+	def __init__( self, content=None, headers=None, status=200, reason=None,
+	produceWhen=None):
 		if headers == None: headers = []
 		self.status  = status
 		self.reason  = reason
 		self.headers = headers
 		self.content = content
+		self.produceEventGuard = None
+
+	def isGuarded( self ):
+		"""Tell if this response is guarded by an event."""
+		return self.produceEventGuard != None
+
+	def produceWhen( self, event ):
+		"""Guards the production of the response by this event. This allows the
+		reactor (if any) to now when to start."""
+		self.produceEventGuard = event
+
+	def getProduceGuard( self ):
+		"""If the reponse has an associated 'produceWhen' (a 'threading.Event'
+		isntance), the event is returned."""
+		return self.produceEventGuard
 
 	def hasHeader(self, name):
 		"""Tells if the given header exists. If so, it returns its value (which

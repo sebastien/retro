@@ -112,7 +112,7 @@ def command( args, **extra ):
 
 def run( app=None, components=(), method=STANDALONE, name="railways",
 root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
-sessions=True, processStack=lambda x:x ):
+sessions=True, withReactor=None, processStack=lambda x:x ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
@@ -122,6 +122,8 @@ sessions=True, processStack=lambda x:x ):
 	if async:
 		async = False
 		return thread.start_new_thread(run,(),locals())
+	if not (withReactor is None):
+		wsgi.USE_REACTOR = withReactor
 	if app == None: app = Application(prefix=prefix,components=components)
 	else: map(app.register, components)
 	# We set up the configuration if necessary
