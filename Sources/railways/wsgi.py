@@ -359,12 +359,12 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			if (socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
 				logging.debug ("Network error caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 				# For common network errors we just return
-				self._state = ERROR
+				self._state = self.ERROR
 				return False
 		except socket.timeout, socketTimeout:
 			# Socket time-out
 			logging.debug ("Socket timeout")
-			self._state = ERROR
+			self._state = self.ERROR
 			return False
 
 	def _processEnd( self ):
