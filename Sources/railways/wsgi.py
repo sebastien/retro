@@ -9,7 +9,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 22-Mar-2006
+# Last mod  : 08-Jul-2008
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -156,8 +156,8 @@ class WSGIReactor:
 				self._hasHandlersEvent.clear()
 			self._handlersLock.release()
 			if self.debugMode:
-				print "PROCESSING", handler
-				time.sleep(1)
+				print "PROCESSING", handler, application
+				time.sleep(0.5)
 			# If the handler is done, we simply remove it from the handlers list
 			# If the handler continues, we re-schedule it
 			if handler.next(application) is True:
@@ -225,6 +225,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	STARTED    = "Started"
 	PROCESSING = "Processing"
+	WAITING    = "Waiting"
 	ENDED      = "Ended"
 	ERROR      = "Error"
 
@@ -252,6 +253,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		will be asynchronous is a reactor is available and that the useReactor
 		parameter is True (this is the case by default)."""
 		self._state = self.STARTED
+		self._rendezvous = None
 		# When using the reactor, we simply submit the application for
 		# execution (we delegate the execution to the reactor)
 		if usesReactor():
@@ -271,6 +273,23 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		elif self._state == self.PROCESSING:
 			self._processIterate()
 			res = True
+		elif self._state == self.WAITING:
+			# If a reactor is used, we re-schedule the continuation of this
+			# process when the condition/rendez-vous is met
+			if usesReactor():
+				print "WAITING TO MEET ON ", self._rendezvous
+				handler = self
+				def resume_on_rdv(*args,**kwargs):
+					handler._state = handler.PROCESSING
+					getReactor().register(handler, application)
+				self._rendezvous.onMeet(resume_on_rdv)
+				return False
+			# If we are in a process/threaded mode, we create an Event object
+			# that will be set to true when the event is met
+			else:
+				# FIXME: Implement this
+				raise "NOT IMPLEMENTED"
+				pass
 		elif self._state != self.ENDED:
 			self._processEnd()
 			res = False
@@ -329,7 +348,11 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		try:
 			try:
 				data = self._result.next()
-				if data: self._writeData(data)
+				if isinstance(data, core.RendezVous):
+					self._rendezvous = data
+					self._state = self.WAITING
+				elif data:
+					self._writeData(data)
 				return self._state
 			except StopIteration:
 				if hasattr(self._result, 'close'):

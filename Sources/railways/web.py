@@ -12,7 +12,8 @@
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
-from core import Request, Response, FlupSession, BeakerSession, Event, asJSON
+from core import Request, Response, FlupSession, BeakerSession, Event, \
+RendezVous, asJSON
 
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
@@ -432,8 +433,7 @@ class Dispatcher:
 			# TODO: Add an option to warn on None returned by handlers
 			elif response == None:
 				response = Response("",[],200)
-				res = response.asWSGI(start_response, self.app().config().charset())
-				return res
+				return response.asWSGI(start_response, self.app().config().charset())
 			else:
 				return response
 		# We try the handlers (the fallback handler is contained within the

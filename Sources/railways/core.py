@@ -94,18 +94,52 @@ class Event:
 
 	def observe( self, observer ):
 		assert not (observer in self.observers)
-		self.observers.append(observers)
+		self.observers.append(observer)
 
 	def unobserve( self, observer ):
 		assert (observer in self.observers)
-		del self.observers[self.observers.index(observers)]
+		del self.observers[self.observers.index(observer)]
 
 	def trigger( self, *args, **kwargs ):
 		for o in self.observers:
-			o(*args,**kwargs)
+			o(self, o, *args,**kwargs)
 
 	def __call__( self,  *args, **kwargs ):
 		self.trigger(*args,**kwargs)
+
+class RendezVous:
+
+	def __init__( self, expect=1 ):
+		self.count   = 0
+		self.goal    = expect
+		self._events = None
+		self._onMeet = None
+
+	def joinEvent( self, event ):
+		if self._events is None: self._events = []
+		self._events.append(event)
+		event.observe(self._eventMet)
+		return self
+
+	def _eventMet( self, event, observer, *args, **kwargs ):
+		event.unobserve(observer)
+		self.meet()
+
+	def onMeet( self, callback ):
+		if self._onMeet is None: self._onMeet = []
+		self._onMeet.append(callback)
+
+	def meet( self ):
+		print "RDV ", self.count, "/", self.goal, "   ", self
+		self.count += 1
+		if self.count == self.goal:
+			print "RDV met !"
+			# When the goal is reached, we call the callbacks
+			if self._onMeet:
+				for c in self._onMeet:
+					c(self,c,self.count)
+				self._onMeet = None
+		return self
 
 # ------------------------------------------------------------------------------
 #
@@ -557,6 +591,8 @@ class Response:
 		self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
 
 	def asWSGI( self, startResponse, charset=None ):
+		"""This is the main WSGI function handler. This is what generates the
+		actual request and produces the response from the attached 'content'."""
 		# TODO: Document this, and explain the use of yield
 		self.prepare()
 		# TODO: Take care of encoding

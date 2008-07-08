@@ -63,6 +63,7 @@ class Pipe:
 
 	def write( self, data ):
 		self.data.append(data)
+		self.dataWritten.trigger()
 
 	def read( self ):
 		v = self.data[0]
@@ -71,7 +72,6 @@ class Pipe:
 		else:
 			self.data = []
 			self.hasDataEvent.clear()
-		self.dataWritten.trigger()
 		return v
 
 class Main(Component):
@@ -124,11 +124,13 @@ class Main(Component):
 					print ">>>", value
 					yield value
 				else:
-					yield
+					# FIXME: This takes considerable time when there is no
+					# reactor bound
+					yield RendezVous(expect=1).joinEvent(pipe.dataWritten)
 		# Continuous production/polling mode:
 		# return request.respond(stream()).produceOn(pipe.dataWritten)
 		# Burst/event-based production mode:
-		return request.respond(stream()).produceOn(pipe.dataWritten)
+		return request.respond(stream())
 
 	@on(POST="/api/pipe/{n:number}/write")
 	def onPipeWrite( self, request, n ):

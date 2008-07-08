@@ -8,14 +8,15 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 26-Mar-2008
+# Last mod  : 08-Jul-2008
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
 from wsgi import WSGIServer, REACTOR
 from core import asJSON
-from web  import on, ajax, display, predicate, when, Event, Component, Application, \
-Dispatcher, Configuration, ValidationError, KID, CHEETAH, DJANGO
+from web  import on, ajax, display, predicate, when,Component, Application, \
+Dispatcher, Configuration, ValidationError, Event, RendezVous, \
+KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
 
