@@ -8,11 +8,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 20-May-2008
+# Last mod  : 08-Jul-2008
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
-from core import Request, Response, FlupSession, BeakerSession, asJSON
+from core import Request, Response, FlupSession, BeakerSession, Event, asJSON
 
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []

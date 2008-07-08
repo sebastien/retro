@@ -38,7 +38,7 @@ WRITE = """
 	<body>
 		<h3>Input</h3>
 		<form action="/api/pipe/0/write" method="POST">
-			<input type=text value="Type something here" />
+			<input name=message type=text value="Type something here" />
 			<input type=submit value="Send" />
 			<small><a href="/read">read here</a></small>
 		<form>
@@ -55,15 +55,14 @@ WRITE = """
 class Pipe:
 
 	def __init__( self ):
-		self.hasDataEvent = threading.Event()
 		self.data    = []
+		self.dataWritten = Event()
 
 	def hasData( self ):
 		return len(self.data) > 0
 
 	def write( self, data ):
 		self.data.append(data)
-		self.hasDataEvent.set()
 
 	def read( self ):
 		v = self.data[0]
@@ -72,6 +71,7 @@ class Pipe:
 		else:
 			self.data = []
 			self.hasDataEvent.clear()
+		self.dataWritten.trigger()
 		return v
 
 class Main(Component):
@@ -120,7 +120,11 @@ class Main(Component):
 		def stream():
 			while True:
 				if pipe.hasData():
-					yield str(pipe.read()) + "<br />"
+					value = str(pipe.read()) + "<br />"
+					print ">>>", value
+					yield value
+				else:
+					yield
 		# Continuous production/polling mode:
 		# return request.respond(stream()).produceOn(pipe.dataWritten)
 		# Burst/event-based production mode:
@@ -129,7 +133,7 @@ class Main(Component):
 	@on(POST="/api/pipe/{n:number}/write")
 	def onPipeWrite( self, request, n ):
 		pipe = self.ensurePipe(n)
-		pipe.write(str(request.body()))
+		pipe.write(request.param("message"))
 		return request.bounce()
 
 	def date( self, request ):
@@ -145,5 +149,6 @@ if __name__ == "__main__":
 	app  = Application(Main())
 	name = os.path.splitext(os.path.basename(__file__))[0]
 	run( app=app, name=name, method=STANDALONE, port=8000, withReactor=True )
+	REACTOR.debugMode = True
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

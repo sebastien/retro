@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 20-May-2008
+# Last mod  : 08-Jul-2008
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -80,6 +80,32 @@ def asJSON( value, **options ):
 		print value, type(value)
 		res = asJSON(value.__dict__, **options)
 	return res
+
+# ------------------------------------------------------------------------------
+#
+# EVENT OBJECT
+#
+# ------------------------------------------------------------------------------
+
+class Event:
+
+	def __init__( self ):
+		self.observers =[]
+
+	def observe( self, observer ):
+		assert not (observer in self.observers)
+		self.observers.append(observers)
+
+	def unobserve( self, observer ):
+		assert (observer in self.observers)
+		del self.observers[self.observers.index(observers)]
+
+	def trigger( self, *args, **kwargs ):
+		for o in self.observers:
+			o(*args,**kwargs)
+
+	def __call__( self,  *args, **kwargs ):
+		self.trigger(*args,**kwargs)
 
 # ------------------------------------------------------------------------------
 #
@@ -496,19 +522,11 @@ class Response:
 		self.content = content
 		self.produceEventGuard = None
 
-	def isGuarded( self ):
-		"""Tell if this response is guarded by an event."""
-		return self.produceEventGuard != None
-
-	def produceWhen( self, event ):
+	def produceOn( self, event ):
 		"""Guards the production of the response by this event. This allows the
 		reactor (if any) to now when to start."""
 		self.produceEventGuard = event
-
-	def getProduceGuard( self ):
-		"""If the reponse has an associated 'produceWhen' (a 'threading.Event'
-		isntance), the event is returned."""
-		return self.produceEventGuard
+		return self
 
 	def hasHeader(self, name):
 		"""Tells if the given header exists. If so, it returns its value (which

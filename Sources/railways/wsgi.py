@@ -108,14 +108,13 @@ class WSGIReactor:
 
 	def __init__( self ):
 		self._handlers      = []
-		self._handlersCount = 0
 		self._mainthread    = None
 		self._isRunning     = False
+		self.debugMode      = True
 
 	def register( self, handler, application ):
 		self._handlersLock.acquire()
 		self._handlers.append((handler, application))
-		self._handlersCount += 1
 		self._handlersLock.release()
 		self._hasHandlersEvent.set()
 
@@ -145,31 +144,29 @@ class WSGIReactor:
 		Basically, each handler is a response generator and each handler is
 		allowed to produce only one item per round. In other words, handlers are
 		interleaved."""
-		i = 0
 		while self._isRunning:
 			self._hasHandlersEvent.wait()
 			# This situation may happen when we shutdown on empty handlers list
 			if not self._handlers:
 				continue
 			self._handlersLock.acquire()
-			handler, application = self._handlers[i]
+			handler, application = self._handlers[0]
+			del self._handlers[0]
+			if not self._handlers:
+				self._hasHandlersEvent.clear()
 			self._handlersLock.release()
+			if self.debugMode:
+				print "PROCESSING", handler
+				time.sleep(1)
 			# If the handler is done, we simply remove it from the handlers list
-			# FIXME: Do traceback here
-			value = handler.next(application)
-			if not value:
+			# If the handler continues, we re-schedule it
+			if handler.next(application) is True:
 				self._handlersLock.acquire()
-				del self._handlers[i]
-				self._handlersCount -= 1
-				if self._handlersCount == 0:
-					self._hasHandlersEvent.clear()
-					i = 0
-				else:
-					i -= 1
+				self._handlers.append((handler,application))
+				self._hasHandlersEvent.set()
 				self._handlersLock.release()
-			# Otherwise we simply go to the next handler
 			else:
-				i = (i + 1) % self._handlersCount
+				print "HANDLER STOP"
 
 
 USE_REACTOR = False
@@ -343,11 +340,13 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			if (socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
 				logging.debug ("Network error caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 				# For common network errors we just return
-				return
+				self._state = ERROR
+				return False
 		except socket.timeout, socketTimeout:
 			# Socket time-out
 			logging.debug ("Socket timeout")
-			return
+			self._state = ERROR
+			return False
 
 	def _processEnd( self ):
 		self._state = self.ENDED

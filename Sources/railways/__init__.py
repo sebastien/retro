@@ -12,9 +12,9 @@
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
-from wsgi import WSGIServer
+from wsgi import WSGIServer, REACTOR
 from core import asJSON
-from web  import on, ajax, display, predicate, when, Component, Application, \
+from web  import on, ajax, display, predicate, when, Event, Component, Application, \
 Dispatcher, Configuration, ValidationError, KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
