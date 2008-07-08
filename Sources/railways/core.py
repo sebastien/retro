@@ -130,10 +130,8 @@ class RendezVous:
 		self._onMeet.append(callback)
 
 	def meet( self ):
-		print "RDV ", self.count, "/", self.goal, "   ", self
 		self.count += 1
 		if self.count == self.goal:
-			print "RDV met !"
 			# When the goal is reached, we call the callbacks
 			if self._onMeet:
 				for c in self._onMeet:

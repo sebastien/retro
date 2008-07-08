@@ -155,9 +155,8 @@ class WSGIReactor:
 			if not self._handlers:
 				self._hasHandlersEvent.clear()
 			self._handlersLock.release()
-			if self.debugMode:
-				print "PROCESSING", handler, application
-				time.sleep(0.5)
+			#if self.debugMode:
+				#time.sleep(0.5)
 			# If the handler is done, we simply remove it from the handlers list
 			# If the handler continues, we re-schedule it
 			if handler.next(application) is True:
@@ -165,8 +164,6 @@ class WSGIReactor:
 				self._handlers.append((handler,application))
 				self._hasHandlersEvent.set()
 				self._handlersLock.release()
-			else:
-				print "HANDLER STOP"
 
 
 USE_REACTOR = False
@@ -277,7 +274,6 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			# If a reactor is used, we re-schedule the continuation of this
 			# process when the condition/rendez-vous is met
 			if usesReactor():
-				print "WAITING TO MEET ON ", self._rendezvous
 				handler = self
 				def resume_on_rdv(*args,**kwargs):
 					handler._state = handler.PROCESSING
