@@ -171,7 +171,12 @@ def getReactor(autocreate=True):
 
 class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	"""A simple handler class that takes makes a WSGI interface to the
-	default Python HTTP server."""
+	default Python HTTP server. 
+	
+	This handler is made to handle HTTP response generation in multiple times,
+	allowing easy implementation of streaming/comet/push (whatever you call it).
+	It will also automatically delegate the processing of the requests to the
+	module REACTOR if it exists (see 'getReactor()') """
 
 	class ResponseExpected(Exception):
 		"""This exception occurs when a handler does not returns a Response,
@@ -205,12 +210,14 @@ Use request methods to create a response (request.respond, request.returns, ...)
 	def _finish( self ):
 		SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
 
-	def run(self, application):
+	def run(self, application, useReactor=True):
 		"""This is the main function that runs a Railways application and
-		produces the response."""
+		produces the response. This does not return anything, and the execution
+		will be asynchronous is a reactor is available and that the useReactor
+		parameter is True (this is the case by default)."""
 		self._state = self.STARTED
 		# When using the reactor, we simply submit the application for
-		# execution
+		# execution (we delegate the execution to the reactor)
 		if hasReactor():
 			getReactor().register(self, application)
 		# Otherwise we iterate on the application (one shot execution)
@@ -219,7 +226,8 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def next( self, application ):
 		"""This function should be called by the main thread, and allows to
-		process the request step by step (as opposed to one-shot processing)."""
+		process the request step by step (as opposed to one-shot processing).
+		This makes it easier to do streaming."""
 		res = False
 		if self._state == self.STARTED:
 			self._processStart(application)
@@ -233,6 +241,13 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		return res
 
 	def _processStart( self, application ):
+		"""First step called in the processing of a request. It creates the
+		WSGI-compatible environment and invokes passes the environment (which
+		describes the request) and the function to output the response the
+		application request handler.
+		
+		The state of the server is set to PROCESSING or ERROR if the request
+		handler fails."""
 		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.path)
 		if not hasattr(application, "fromRailways"):
 			raise Exception("Railways embedded Web server can only work with Railways applications.")
