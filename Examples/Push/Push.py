@@ -31,7 +31,7 @@ class Main(Component):
 		# This is really only useful when running standalone, as with normal
 		# setups, this data should be served by a more poweful web server, with
 		# caching and load balancing.
-		return request.localFile(self.app().localPath("../../Library/" + path))
+		return request.respondFile(self.app().localPath("../../Library/" + path))
 
 	@on(GET="/")
 	@display("index")
