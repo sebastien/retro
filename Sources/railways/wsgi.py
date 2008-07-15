@@ -19,6 +19,7 @@ Railways applications, but it will give you many more features than any other
 WSGI servers, which makes it the ideal target for development.
 """
 
+
 import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 import sys, logging, socket, errno, time
 import traceback, StringIO, threading, signal
@@ -115,8 +116,8 @@ class WSGIReactor:
 	def register( self, handler, application ):
 		self._handlersLock.acquire()
 		self._handlers.append((handler, application))
-		self._handlersLock.release()
 		self._hasHandlersEvent.set()
+		self._handlersLock.release()
 
 	def start( self ):
 		if not self._isRunning:
@@ -183,7 +184,6 @@ def createReactor():
 	signal.signal( signal.SIGQUIT, shutdown)
 	signal.signal( signal.SIGTERM, shutdown)
 
-
 createReactor()
 
 def usesReactor():
@@ -209,7 +209,12 @@ class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	This handler is made to handle HTTP response generation in multiple times,
 	allowing easy implementation of streaming/comet/push (whatever you call it).
 	It will also automatically delegate the processing of the requests to the
-	module REACTOR if it exists (see 'getReactor()') """
+	module REACTOR if it exists (see 'getReactor()')
+	
+	NOTE: It seems like some browsers (including FireFox) won't allow more than
+	one open POST connection per session... so be sure to test streaming with
+	two different instances.
+	"""
 
 	class ResponseExpected(Exception):
 		"""This exception occurs when a handler does not returns a Response,
@@ -240,7 +245,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def finish( self ):
 		return
-	
+
 	def _finish( self ):
 		SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
 
@@ -435,11 +440,4 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		self.serveFiles         = 0
 		self.serverShuttingDown = 0
 
-	def handle(self):
-		"""Handle multiple requests if necessary."""
-		# FIXME: Don't know if this is necessary
-		self.close_connection = 1
-		self.handle_one_request()
-		while not self.close_connection:
-			self.handle_one_request()
 # EOF

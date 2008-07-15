@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
-import simplejson
+import simplejson, threading
 
 NOTHING     = sys
 
@@ -77,7 +77,6 @@ def asJSON( value, **options ):
 		res = serializer(asJSON, value, **options)
 		if res is None: res = asJSON(value.__dict__, **options)
 	else:
-		print value, type(value)
 		res = asJSON(value.__dict__, **options)
 	return res
 
@@ -91,18 +90,27 @@ class Event:
 
 	def __init__( self ):
 		self.observers =[]
+		self.observersLock = threading.Lock()
 
 	def observe( self, observer ):
+		self.observersLock.acquire()
 		assert not (observer in self.observers)
 		self.observers.append(observer)
+		self.observersLock.release()
 
 	def unobserve( self, observer ):
+		self.observersLock.acquire()
 		assert (observer in self.observers)
 		del self.observers[self.observers.index(observer)]
+		self.observersLock.release()
 
 	def trigger( self, *args, **kwargs ):
-		for o in self.observers:
+		i = 0
+		# We have to clone the observers, as the observer callbacks may remove themselve
+		obs = tuple(self.observers)
+		for o in obs:
 			o(self, o, *args,**kwargs)
+			i += 1
 
 	def __call__( self,  *args, **kwargs ):
 		self.trigger(*args,**kwargs)
