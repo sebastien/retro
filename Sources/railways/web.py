@@ -183,6 +183,8 @@ def ajax( priority=0, **methods ):
 		return function
 	return decorator
 
+expose = ajax
+
 def display( template, engine=sys ):
 	"""The @display(template) decorator can be used to indicate that the
 	decorated  handler will display the given page (only when it returns
