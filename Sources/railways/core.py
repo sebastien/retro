@@ -523,7 +523,7 @@ class Request:
 		else:
 			raise Exception("Apply template not available for this Request subclass.")
 
-	def localFile( self, path, contentType=None, status=200 ):
+	def respondFile( self, path, contentType=None, status=200 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised."""
@@ -531,7 +531,7 @@ class Request:
 		if not contentType:
 			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
-			raise Exception("File not found in Request.localFile: %s" % (path))
+			raise Exception("File not found in Request.respondFile: %s" % (path))
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'r') ; r = f.read() ; f.close()

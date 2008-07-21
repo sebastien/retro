@@ -41,7 +41,7 @@ class Main(Component):
 		localpath = self.app().localPath(path)
 		libpath   = self.app().localPath("../../Library/" + path)
 		if not os.path.exists(localpath): localpath = libpath
-		return request.localFile(localpath)
+		return request.respondFile(localpath)
 
 	@on( GET="/")
 	@display("index")
