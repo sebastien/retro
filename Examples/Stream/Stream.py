@@ -88,7 +88,6 @@ class Main(Component):
 		def stream():
 			while True:
 				value = str(COUNTER.data) + "<br />"
-				#print ">>>", value
 				yield value
 				yield RendezVous(expect=1).joinEvent(COUNTER.dataWritten)
 		# Continuous production/polling mode:

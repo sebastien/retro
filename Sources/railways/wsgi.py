@@ -9,7 +9,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 08-Jul-2008
+# Last mod  : 22-Jul-2008
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -375,8 +375,13 @@ Use request methods to create a response (request.respond, request.returns, ...)
 	def _processEnd( self ):
 		self._state = self.ENDED
 		if (not self._sentHeaders):
-			# We must write out something!
-			self._writeData (" ")
+			# If we have an exception here in the socket, we can safely ignore
+			# it, because the client stopped the connection anyway
+			try:
+				# We must write out something!
+				self._writeData (" ")
+			except:
+				pass
 		self._finish()
 		return self._state
 
