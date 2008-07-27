@@ -9,7 +9,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 22-Jul-2008
+# Last mod  : 27-Jul-2008
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -111,7 +111,7 @@ class WSGIReactor:
 		self._handlers      = []
 		self._mainthread    = None
 		self._isRunning     = False
-		self.debugMode      = True
+		self.debugMode      = False
 
 	def register( self, handler, application ):
 		self._handlersLock.acquire()
@@ -317,6 +317,8 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			,'wsgi.multithread': 1
 			,'wsgi.multiprocess': 0
 			,'wsgi.run_once': 0
+			,'extra.request': self.raw_requestline
+			,'extra.headers': self.headers.headers
 			,'REQUEST_METHOD': self.command
 			,'SCRIPT_NAME': script
 			,'PATH_INFO': path
