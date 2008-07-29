@@ -500,10 +500,11 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200)
 
-	def returns( self, value=None, js=None, contentType="text/javascript", status=200, headers=(), options=None ):
+	def returns( self, value=None, js=None, contentType="text/javascript", status=200, headers=None, options=None ):
 		if js == None: js = asJSON(value, **(options or {}))
-		h = [("Content-Type", contentType)] ; h.extend(headers)
-		return Response(js, headers=headers, status=status)
+		h = [("Content-Type", contentType)]
+		if headers: h.extend(headers)
+		return Response(js, headers=h, status=status)
 
 	def display( self, template, engine=None, **kwargs ):
 		"""Returns a response built from the given template, applied with the
