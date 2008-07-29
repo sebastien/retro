@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Jul-2008
+# Last mod  : 29-Jul-2008
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -256,6 +256,12 @@ class Request:
 		self._cookies = cookies
 		return self._cookies
 
+	def cookie( self, name ):
+		"""Returns the value of the given cookie or 'None'"""
+		c = self.cookies().get(name)
+		if c: return c.value
+		else: return None
+
 	def has(self, name):
 		"""Tells if the request has the given parameter."""
 		if not self._loaded: self.load()
@@ -494,9 +500,10 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200)
 
-	def returns( self, value=None, js=None, contentType="text/javascript", status=200, options=None ):
+	def returns( self, value=None, js=None, contentType="text/javascript", status=200, headers=(), options=None ):
 		if js == None: js = asJSON(value, **(options or {}))
-		return Response(js, [("Content-Type", contentType)], status)
+		h = [("Content-Type", contentType)] ; h.extend(headers)
+		return Response(js, headers=headers, status=status)
 
 	def display( self, template, engine=None, **kwargs ):
 		"""Returns a response built from the given template, applied with the
@@ -541,6 +548,10 @@ class Request:
 		"""Returns an Error 404"""
 		return Response(content, status=status)
 
+	def fail( self, content=None,status=412, headers=None ):
+		"""Returns an Error 412 with the given content"""
+		return Response(content, status=status, headers=headers)
+
 # ------------------------------------------------------------------------------
 #
 # RESPONSE OBJECT
@@ -558,7 +569,8 @@ class Response:
 		if headers == None: headers = []
 		self.status  = status
 		self.reason  = reason
-		self.headers = headers
+		if type(headers) == tuple: headers = list(headers)
+		self.headers = headers or []
 		self.content = content
 		self.produceEventGuard = None
 
