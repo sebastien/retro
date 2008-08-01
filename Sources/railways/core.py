@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 29-Jul-2008
+# Last mod  : 01-Aug-2008
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -111,6 +111,16 @@ class Event:
 		for o in obs:
 			o(self, o, *args,**kwargs)
 			i += 1
+
+	def __getstate__( self ):
+		s = self.__dict__.copy()
+		del s["observersLock"]
+		return s
+
+	def __setstate__( self, s ):
+		self.__dict__.update(s)
+		if self.__dict__.get("observersLock") == None:
+			self.observersLock = threading.Lock()
 
 	def __call__( self,  *args, **kwargs ):
 		self.trigger(*args,**kwargs)
