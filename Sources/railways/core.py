@@ -88,8 +88,10 @@ def asJSON( value, **options ):
 
 class Event:
 
-	def __init__( self ):
-		self.observers =[]
+	def __init__( self, description=None, name=None ):
+		self.name          = name
+		self.description   = description
+		self.observers     =[]
 		self.observersLock = threading.Lock()
 
 	def observe( self, observer ):
@@ -103,6 +105,14 @@ class Event:
 		assert (observer in self.observers)
 		del self.observers[self.observers.index(observer)]
 		self.observersLock.release()
+
+	def pipe( self, event ):
+		assert isinstance(event, Event)
+		self.observe(event.trigger)
+
+	def unpipe( self, event ):
+		assert isinstance(event, Event)
+		self.unobserve(event.trigger)
 
 	def trigger( self, *args, **kwargs ):
 		i = 0
