@@ -88,7 +88,7 @@ def asJSON( value, **options ):
 
 class Event:
 
-	def __init__( self, description=None, name=None ):
+	def __init__( self, name=None, description=None ):
 		self.name          = name
 		self.description   = description
 		self.observers     =[]
