@@ -58,11 +58,11 @@ def asJSON( value, **options ):
 		for k in value.keys():
 			r.append('%s:%s' % (repr(str(k)), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
-	elif value.__class__.__name__ == "datetime":
+	elif hasattr(value, "__class__") and value.__class__.__name__ == "datetime":
 		res = asJSON(tuple(value.timetuple()), **options)
-	elif value.__class__.__name__ == "date":
+	elif hasattr(value, "__class__") and value.__class__.__name__ == "date":
 		res = asJSON(tuple(value.timetuple()), **options)
-	elif value.__class__.__name__ == "struct_time":
+	elif hasattr(value, "__class__") and value.__class__.__name__ == "struct_time":
 		res = asJSON(tuple(value), **options)
 	elif hasattr(value, "asJSON")  and callable(value.asJSON):
 		res = value.asJSON(asJSON, **options)
