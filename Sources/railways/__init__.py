@@ -113,7 +113,7 @@ def command( args, **extra ):
 
 def run( app=None, components=(), method=STANDALONE, name="railways",
 root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
-sessions=True, withReactor=None, processStack=lambda x:x ):
+sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
@@ -217,7 +217,7 @@ sessions=True, withReactor=None, processStack=lambda x:x ):
 		socket = server.socket.getsockname()
 		print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
 		try:
-			while True: server.handle_request() 
+			while runCondition: server.handle_request() 
 		except KeyboardInterrupt:
 			print "done"
 	#
@@ -233,7 +233,8 @@ sessions=True, withReactor=None, processStack=lambda x:x ):
 		socket = server.socket.getsockname()
 		print "Railways embedded server listening on %s:%s" % ( socket[0], socket[1])
 		try:
-			while True: server.handle_request() 
+			while runCondition:
+				server.handle_request() 
 		except KeyboardInterrupt:
 			print "done"
 # EOF
