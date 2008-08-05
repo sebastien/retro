@@ -346,6 +346,10 @@ class Request:
 		"""Gets/sets the request body (it is an alias for data)"""
 		return self.data(body)
 
+	def referer( self ):
+		"""Rerturns the HTTP referer for this request."""
+		return self.environ("HTTP_REFERER")
+
 	def clientIP( self ):
 		"""Returns the HTTP client IP for this request. This method will get the
 		HTTP_X_FORWARDED_FOR variable instead of the REMOTE_ADDR if it is set."""
