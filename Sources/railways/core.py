@@ -96,14 +96,14 @@ class Event:
 
 	def observe( self, observer ):
 		self.observersLock.acquire()
-		assert not (observer in self.observers)
-		self.observers.append(observer)
+		if  not (observer in self.observers)
+			self.observers.append(observer)
 		self.observersLock.release()
 
 	def unobserve( self, observer ):
 		self.observersLock.acquire()
-		assert (observer in self.observers)
-		del self.observers[self.observers.index(observer)]
+		if not (observer in self.observers)
+			del self.observers[self.observers.index(observer)]
 		self.observersLock.release()
 
 	def pipe( self, event ):
