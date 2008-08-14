@@ -96,13 +96,13 @@ class Event:
 
 	def observe( self, observer ):
 		self.observersLock.acquire()
-		if  not (observer in self.observers)
+		if  not (observer in self.observers):
 			self.observers.append(observer)
 		self.observersLock.release()
 
 	def unobserve( self, observer ):
 		self.observersLock.acquire()
-		if not (observer in self.observers)
+		if not (observer in self.observers):
 			del self.observers[self.observers.index(observer)]
 		self.observersLock.release()
 
