@@ -15,7 +15,7 @@ import sys
 from distutils.core import setup
 
 VERSION     = "0.4.1"
-SUMMARY     = "Lightweb Declarative Web Toolkit"
+SUMMARY     = "Lightweight Declarative Web Toolkit"
 DESCRIPTION = """\
 Railways is a lightweight declarative web toolkit designed to make it easier to
 develop web services and Web applications in Python. Railways uses WSGI and
