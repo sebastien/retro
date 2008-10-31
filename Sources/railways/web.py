@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Jul-2008
+# Last mod  : 22-Oct-2008
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -308,20 +308,20 @@ class Dispatcher:
 					var_type = "chunk"
 				elif len(variable) == 2:
 					var_name = variable[0]
-					var_type = variable[1].lower()
+					var_type = variable[1]
 				else:
 					raise DispatcherSyntaxError("Variable syntax is {name} or {name:type}, got " + expression[var_group+1:end_group])
 				# We warn of unsupported variable type
-				if not var_type in self.patterns.keys():
+				if not var_type.lower() in self.patterns.keys():
 					result += "(?P<%s>%s)" % (var_name, var_type)
 					convert[var_name] = lambda x: x
 				else:
 					# We generate the expression
-					result += "(?P<%s>%s)" % (var_name, self.patterns[var_type][0])
+					result += "(?P<%s>%s)" % (var_name, self.patterns[var_type.lower()][0])
 					if convert.get(var_name):
 						raise DispatcherSyntaxError("Two variables with same name: " +
 						var_name + " in " + str(convert))
-					convert[var_name] = self.patterns[var_type][1]
+					convert[var_name] = self.patterns[var_type.lower()][1]
 				offset = min(end_group + 1, len(expression))
 				expression = expression[offset:]
 			# Or we found an optional group
@@ -562,7 +562,7 @@ class Component:
 		return res
 
 	def log( self, *args):
-		sellf._app.log(*args)
+		self._app.log(*args)
 
 	def set( self, key, value ):
 		self._context[key] = value
@@ -723,8 +723,9 @@ class Application(Component):
 			# We try to invoke the function with the optional arguments
 			for key, value in request.params().items(): 
 				if key: kwargs.setdefault(key, value)
+			r = self.function(**kwargs)
 			try:
-				r = self.function(**kwargs)
+				pass
 			except TypeError, e:
 				raise ApplicationError(
 					"Error when invoking %s" % (self.function),
@@ -874,7 +875,7 @@ class Application(Component):
 			try:
 				temp = str(temp)
 			except Cheetah.Parser.ParseError, e:
-				raise Ee
+				raise e
 			if temp != None:
 				output = open(os.path.splitext(template)[0]+".py", "w")
 				output.write("# Encoding: ISO-8859-1\n" + str(temp))
@@ -944,6 +945,7 @@ class Application(Component):
 		elif templ_type == DJANGO:
 			# FIXME: There is some overhead here, that I think
 			# we could try to get rid of.
+			import django
 			django.conf.settings = django.conf.LazySettings()
 			django.conf.settings.configure(
 				DEBUG=True, TEMPLATE_DEBUG=True, 
