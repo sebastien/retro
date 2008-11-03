@@ -95,16 +95,22 @@ class Event:
 		self.observersLock = threading.Lock()
 
 	def observe( self, observer ):
+		res = False
 		self.observersLock.acquire()
 		if  not (observer in self.observers):
 			self.observers.append(observer)
+			res = True
 		self.observersLock.release()
+		return res
 
 	def unobserve( self, observer ):
+		res = False
 		self.observersLock.acquire()
-		if not (observer in self.observers):
+		if (observer in self.observers):
 			del self.observers[self.observers.index(observer)]
+			res = True
 		self.observersLock.release()
+		return res
 
 	def pipe( self, event ):
 		assert isinstance(event, Event)
