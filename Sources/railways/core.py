@@ -97,6 +97,7 @@ class Event:
 	def observe( self, observer ):
 		res = False
 		self.observersLock.acquire()
+		res = False
 		if  not (observer in self.observers):
 			self.observers.append(observer)
 			res = True

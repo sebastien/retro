@@ -201,6 +201,7 @@ sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
 			for key, value in headers:
 				print "%s: %s" % (key, value)
 			print
+		# FIXME: This is broken
 		res = "".join(tuple(self.dispatcher(environ, start_response)))
 		print res
 		if sessions:
