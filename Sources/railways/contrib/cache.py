@@ -47,7 +47,7 @@ class Cache:
 		if self._cachedSig.get(tag) != sig:
 			return True, None
 		else:
-			return False, self._cachedData(tag)
+			return False, self._cachedData.get(tag)
 
 	def put( self, tag, sig, data ):
 		self._cachedSig[tag]  = sig
