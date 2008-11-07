@@ -95,6 +95,7 @@ class Event:
 		self.observersLock = threading.Lock()
 
 	def observe( self, observer ):
+		res = False
 		self.observersLock.acquire()
 		res = False
 		if  not (observer in self.observers):
@@ -104,8 +105,8 @@ class Event:
 		return res
 
 	def unobserve( self, observer ):
-		self.observersLock.acquire()
 		res = False
+		self.observersLock.acquire()
 		if (observer in self.observers):
 			del self.observers[self.observers.index(observer)]
 			res = True
