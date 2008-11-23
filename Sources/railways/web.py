@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 22-Oct-2008
+# Last mod  : 23-Nov-2008
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -740,6 +740,7 @@ class Application(Component):
 		self._config     = Configuration()
 		self._dispatcher = Dispatcher(self)
 		self._app        = self
+		self._components = []
 		self.PREFIX      = prefix
 		if type(components) not in (list, tuple): components = [components]
 		for component in components:
@@ -827,6 +828,7 @@ class Application(Component):
 				apply(self.register, component)
 				continue
 			assert isinstance(component, Component)
+			assert not component in self._components
 			component._app = self
 			# We iterate on the component slots
 			for slot, method, handlerinfo in self.introspect(component):
@@ -846,8 +848,25 @@ class Application(Component):
 					handlerinfo.get("on"),
 					component.getPriority() + int(handlerinfo.get("priority"))
 				)
+			self._components.append(component)
 			# We initialize the component (if it is one)
 			component.init()
+
+
+	def component( self, nameOrClass ):
+		"""Returns the component with the given class name (not case sensitive)
+		or the component(s) that are instances of the given class. If no
+		component matches, 'None' is returned, otherwise the component is
+		returned, if there are many, a list of components is returned."""
+		res = []
+		if type(nameOrClass) in (str,unicode):
+			nameOrClass = nameOrClass.lower().strip()
+			res = filter(lambda c:c.__class__.name.lower() == nameOrClass.lower(), self._components)
+		else:
+			res = filter(lambda c:isinstance(c, nameOrClass), self._components)
+		if not res: return None
+		elif len(res) == 1: return res[0]
+		else: return res
 
 	def _compileCheetahTemplateDeps( self, path ):
 		# FIXME: This is really not optimal, we should optimize this
