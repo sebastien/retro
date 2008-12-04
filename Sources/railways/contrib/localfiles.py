@@ -149,7 +149,9 @@ class LocalFiles(Component):
 		parent = os.path.dirname(path)
 		if path and path not in ("/", "."):
 			dirs.append("<li class='previous dir'><span class='bullet'>&hellip;</span><a class='parent' href='%s/%s'>(parent)</a></li>" % (self.PREFIX, parent))
-		for file_name in os.listdir(localPath):
+		local_files = os.listdir(localPath)
+		local_files.sort()
+		for file_name in local_files:
 			file_path = localPath + "/" + file_name
 			ext       = os.path.splitext(file_path)[1].replace(".", "_")
 			if file_name.startswith("."): ext +=" hidden"
