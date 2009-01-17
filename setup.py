@@ -36,7 +36,7 @@ setup(
     description = SUMMARY, long_description = DESCRIPTION,
     license     = "Revised BSD License",
     keywords    = "web, lightweight, framework, http, ajax, declarative",
-    url         = "http://www.github.com/sebastien/railways",
+    url         = "http://www.ivy.fr/railways",
     download_url= "http://www.ivy.fr/railways/railways-%s.tar.gz" % (VERSION) ,
     package_dir = { "": "Sources" },
     packages    = ["railways"],
