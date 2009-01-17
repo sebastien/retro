@@ -8,13 +8,13 @@
 # License           :   Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation date     :   20-Mar-2005
-# Last mod.         :   21-Nov-2007
+# Last mod.         :   17-Jan-2008
 # -----------------------------------------------------------------------------
 
-import sys
+import sys, os
 from distutils.core import setup
 
-VERSION     = "0.4.1"
+VERSION     = os.popen("""grep __version__ Sources/railways/__init__.py | head -n1 | cut -d'"' -f2""").read().split("\n")[0]
 SUMMARY     = "Lightweight Declarative Web Toolkit"
 DESCRIPTION = """\
 Railways is a lightweight declarative web toolkit designed to make it easier to
@@ -35,8 +35,8 @@ setup(
     author      = "Sebastien Pierre", author_email = "sebastien@type-z.org",
     description = SUMMARY, long_description = DESCRIPTION,
     license     = "Revised BSD License",
-    keywords    = "web, framework, http, ajax, declarative",
-    url         = "http://www.ivy.fr/railways",
+    keywords    = "web, lightweight, framework, http, ajax, declarative",
+    url         = "http://www.github.com/sebastien/railways",
     download_url= "http://www.ivy.fr/railways/railways-%s.tar.gz" % (VERSION) ,
     package_dir = { "": "Sources" },
     packages    = ["railways"],

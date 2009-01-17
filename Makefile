@@ -24,20 +24,20 @@
 # Project variables___________________________________________________________
 
 # Project name. Do not put spaces.
-PROJECT         = Railways
-PROJECT_VERSION = $(shell grep __version__ Sources/railways/__init__.py | cut -d'"' -f2)
+PROJECT         = railways
+PROJECT_VERSION = $(shell grep __version__ Sources/railways/__init__.py | head -n1 | cut -d'"' -f2)
 PROJECT_STATUS  = DEVELOPMENT
 
 DOCUMENTATION   = Documentation
 SOURCES         = Sources
 TESTS           = Tests
-SCRIPTS         = Scripts
+SCRIPTS         = 
 LIBRARY         = Library
-RESOURCES       = Resources
+RESOURCES       =
 DISTRIBUTION    = Distribution
 API             = $(DOCUMENTATION)/railways-api.html
 DISTROCONTENT   = $(DOCUMENTATION) $(SOURCES) $(SCRIPTS) $(TESTS) $(RESOURCES) \
-                  Makefile README.txt setup.py
+                  Makefile README setup.py
 
 # Project files_______________________________________________________________
 
@@ -45,7 +45,7 @@ PACKAGE         = railways
 MAIN            = __init__.py
 MODULES         = railways railways.core railways.web
 
-TEST_MAIN       = $(TESTS)/$(PROJECT)Test.py
+TEST_MAIN       = 
 SOURCE_FILES    = $(shell find $(SOURCES) -name "*.py")
 TEST_FILES      = $(shell find $(TESTS) -name "*.py")
 CHECK_BLACKLIST = 
@@ -154,13 +154,13 @@ dist:
 	-C $(DISTRIBUTION) $(PROJECT)-$(PROJECT_VERSION)
 	@rm -rf $(DISTRIBUTION)/$(PROJECT)-$(PROJECT_VERSION)
 
-man: README.txt
-	kiwi -m -ilatin-1 README.txt  MANUAL.html
+man: README
+	kiwi -m -ilatin-1 README  Documentation/manual.html
 
 doc: man
 	@echo "Generating $(PROJECT) documentation"
 ifeq ($(shell basename spam/$(SDOC)),sdoc)
-	@$(SDOC) -cp$(SOURCES) $(MODULES) $(API)
+	@$(SDOC) -mkiwi -cp$(SOURCES) $(MODULES) $(API)
 else
 	@echo "Sdoc is required to generate $(PROJECT) documentation."
 	@echo "Please see <http://www.ivy.fr/sdoc>"
