@@ -175,4 +175,7 @@ else
 	@echo "Please see <http://ctags.sf.net>"
 endif
 
+publish:
+	python setup.py register
+
 #EOF
