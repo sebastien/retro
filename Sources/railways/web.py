@@ -8,11 +8,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Nov-2008
+# Last mod  : 17-Jan-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
-from core import Request, Response, FlupSession, BeakerSession, Event, \
+from core import Request, Response, BeakerSession, Event, \
 RendezVous, asJSON
 
 TEMPLATE_ENGINES = []
@@ -35,7 +35,7 @@ except ImportError:
 	GENSHI = None
 
 try:
-	# Django suppor is inspired from the following code
+	# Django support is inspired from the following code
 	# http://cavedoni.com/2007/02/venus/planet/shell/dj.py
 	try:
 		import django.conf, django.template, django.template.loader
@@ -56,13 +56,6 @@ try:
 	TEMPLATE_ENGINES.append(CHEETAH)
 except ImportError:
 	CHEETAH = None
-
-try:
-	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
-	FLUP_SESSION = "FLUP"
-	SESSION_ENGINES.append(FLUP_SESSION)
-except ImportError:
-	FLUP_SESSION = None
 
 try:
 	from beaker.middleware import SessionMiddleware
@@ -583,12 +576,7 @@ class Component:
 		used. Beaker is the recommended one, but Flup remains the default one.
 		"""
 		session_type = self.app().config("session")
-		if FLUP_SESSION and session_type == FLUP_SESSION:
-			res = FlupSession.hasSession(request)
-			if res: return res
-			elif create: return FlupSession(request)
-			else: return None
-		elif BEAKER_SESSION and session_type == BEAKER_SESSION:
+		if BEAKER_SESSION and session_type == BEAKER_SESSION:
 			res = BeakerSession.hasSession(request)
 			if res: return res
 			elif create: return BeakerSession(request)
