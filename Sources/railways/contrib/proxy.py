@@ -90,6 +90,65 @@ class Proxy(Component):
 
 # ------------------------------------------------------------------------------
 #
+# WWW-CLIENT PROXY COMPONENT
+#
+# ------------------------------------------------------------------------------
+
+class WWWClientProxy(Proxy):
+
+	def start( self ):
+		"""Starts the component, checking if the 'curl' utility is available."""
+		if not self.hasCurl():
+			raise Exception("wwwclient is required.")
+
+	@on(GET="/{rest:rest}?{parameters}", priority="10")
+	def proxyGet( self, request, rest, parameters ):
+		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
+
+		 wwwclient.browse.Session(self._proxyTo).get(uri)
+		# TODO: Add headers processing here
+		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
+
+	@on(POST="/{rest:rest}", priority="10")
+	def proxyPost( self, request, rest ):
+		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
+		result, ctype, code = self._curl(self._proxyTo, "POST", uri, body=request.body())
+		# TODO: Add headers processing here
+		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
+
+	# CURL WRAPPER
+	# ____________________________________________________________________________
+
+	def hasWWWClient( self ):
+		"""Tells if the 'curl' command-line utility is avialable."""
+		import wwwclient
+		return wwwclient
+
+	def _curlCommand( self ):
+		base = "curl "
+		if self.user: base += " --anyauth -u%s " % (self.user)
+		base += " -s -w"
+		return base
+
+	def _curl( self, server, method, url, body="" ):
+		"""This function uses os.popen to communicate with the 'curl'
+		command-line client and to GET or POST requests to the given server."""
+		c = self._curlCommand()
+		if method == "GET":
+			command = c + "'\n\n%{content_type}\n\n%{http_code}'" + " '%s/%s'" % (server, url)
+			result = os.popen(command).read()
+		else:
+			command = c + "'\n\n%{content_type}\n\n%{http_code}'" + " '%s/%s' -d '%s'" % (server, url, body)
+			result = os.popen(command).read()
+		code_start  = result.rfind("\n\n")
+		code        = result[code_start+2:]
+		result      = result[:code_start]
+		ctype_start = result.rfind("\n\n")
+		ctype       = result[ctype_start+2:]
+		result      = result[:ctype_start]
+		return result, ctype, code
+# ------------------------------------------------------------------------------
+#
 # MAIN
 #
 # ------------------------------------------------------------------------------
