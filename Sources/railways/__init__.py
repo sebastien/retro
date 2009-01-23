@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Jul-2009
+# Last mod  : 23-Jan-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -43,6 +43,7 @@ module, so you should not have to bother with anything else."""
 #
 # ------------------------------------------------------------------------------
 
+DEFAULT_PORT = 8000
 FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
 STANDALONE = "STANDALONE"
@@ -92,13 +93,13 @@ def command( args, **extra ):
 	# We create the parse and register the options
 	oparser = OptionParser(version="Railways " + __version__)
 	oparser.add_option("-p", "--port", action="store", dest="port",
-		help=OPT_PORT, default="8000")
+		help=OPT_PORT, default=DEFAULT_PORT)
 	oparser.add_option("-P", "--prefix", action="store", dest="prefix",
 		help=OPT_PREFIX, default=None)
 	# We parse the options and arguments
 	options, args = oparser.parse_args(args=args)
 	extra["prefix"]   = options.prefix
-	extra["port"]     = int(options.port)
+	extra["port"]     = int(extra.get("port") or options.port)
 	run(**extra)
 
 def run( app=None, components=(), method=STANDALONE, name="railways",
