@@ -723,9 +723,9 @@ class Application(Component):
 			# And now we return the response as JS
 			return request.returns(r, options=getattr(self.function,_RAILW_AJAX_JSON))
 
-	def __init__( self, components=(), prefix='', config=None ):
+	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)
-		self._config     = Configuration(path=config)
+		self._config     = Configuration(path=config, defaults=defaults)
 		self._dispatcher = Dispatcher(self)
 		self._app        = self
 		self._components = []
@@ -987,7 +987,7 @@ class Configuration:
 	configured application root, which is set by default to the current working
 	directory when the application is first run."""
 
-	def __init__( self, config=None, properties={}, path=None ):
+	def __init__( self, defaults={}, path=None ):
 		self._properties = {
 			"root"     :".",
 			"charset"  :"UTF-8",
@@ -995,12 +995,10 @@ class Configuration:
 			"port"     :None,
 		}
 		self._logfile   = None
+		if defaults:
+			self.merge(defaults)
 		if path:
-			self.load(path)
-		if config:
-			self.merge(config)
-		if properties:
-			self.merge(properties)
+			self.merge(self.load(path))
 
 	def save( self, path ):
 		f = file(path, 'w')
@@ -1009,9 +1007,9 @@ class Configuration:
 
 	def load( self, path):
 		f = file(path, 'r')
-		self._properties = simplejson.loads(f.read())
+		p = simplejson.loads(f.read())
 		f.close()
-		return self
+		return p
 
 	def merge( self, config ):
 		"""Merges the configuration from the given configuration into this
