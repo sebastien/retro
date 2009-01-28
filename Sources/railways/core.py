@@ -691,38 +691,6 @@ class Session:
 	def value( self, key=NOTHING, value=NOTHING ): 
 		"""Sets or gets the 'value' bound to the given 'key'"""
 
-class FlupSession(Session):
-	"""Implementation of the Session object for Flup Session Middleware"""
-
-	@staticmethod
-	def hasSession( request ):
-		service = request.environ()['com.saddi.service.session']
-		if service.hasSession:
-			return FlupSession(request)
-		else:
-			return None
-
-	def __init__( self, request ):
-		self._service = request.environ()['com.saddi.service.session']
-		self._data    = self._service.session
-
-	def isNew( self ):
-		return self._service.isSessionNew
-
-	def get( self, key=NOTHING, value=NOTHING ):
-		return self.value(key, value)
-
-	def value( self, key=NOTHING, value=NOTHING ):
-		if   key == NOTHING:
-			return self._data
-		elif value == NOTHING:
-			return self._data.get(key)
-		else:
-			self._data[key] = value
-
-	def expire( self, time ):
-		raise Exception("Not implemented yet")
-
 class BeakerSession(Session):
 	"""Implementation of the Session object for Flup Session Middleware"""
 

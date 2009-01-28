@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Jul-2008
+# Last mod  : 23-Jan-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -43,7 +43,8 @@ module, so you should not have to bother with anything else."""
 #
 # ------------------------------------------------------------------------------
 
-FLUP = FCGI = WSGIREF = SCGI = STANDALONE = SESSIONS = None
+DEFAULT_PORT = 8000
+FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
 STANDALONE = "STANDALONE"
 
@@ -55,12 +56,6 @@ try:
 	SCGI = "FLUP_SCGI"
 except ImportError:
 	FLUP = None
-
-try:
-	from flup.middleware.session import DiskSessionStore, SessionService, SessionMiddleware
-	SESSIONS = True
-except ImportError:
-	SESSIONS = False
 
 try:
 	import wsgiref.simple_server
@@ -91,7 +86,6 @@ CONFIG = Configuration()
 
 OPT_PORT     = "Specifies the port on which the server should be run"
 OPT_PREFIX   = "Prefix to prepend to the URLs"
-OPT_SESSIONS = "Enable sessions support (false by default)"
 
 def command( args, **extra ):
 	if type(args) not in (type([]), type(())): args = [args]
@@ -99,21 +93,18 @@ def command( args, **extra ):
 	# We create the parse and register the options
 	oparser = OptionParser(version="Railways " + __version__)
 	oparser.add_option("-p", "--port", action="store", dest="port",
-		help=OPT_PORT, default="8000")
+		help=OPT_PORT, default=DEFAULT_PORT)
 	oparser.add_option("-P", "--prefix", action="store", dest="prefix",
 		help=OPT_PREFIX, default=None)
-	oparser.add_option("-s", "--sessions", action="store_true", dest="sessions",
-		help=OPT_SESSIONS, default=False)
 	# We parse the options and arguments
 	options, args = oparser.parse_args(args=args)
-	extra["sessions"] = options.sessions
 	extra["prefix"]   = options.prefix
-	extra["port"]     = int(options.port)
+	extra["port"]     = int(extra.get("port") or options.port)
 	run(**extra)
 
 def run( app=None, components=(), method=STANDALONE, name="railways",
 root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
-sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
+sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
@@ -145,19 +136,11 @@ sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	# We start the WSGI stack
 	stack = app._dispatcher
 	stack = processStack(stack)
-	# And run the application in a specific server
-	if sessions:
-		if not has(FLUP):
-			raise ImportError("Flup is required to enable session management.\nSet 'session' to False to avoid this.")
-		session_store = DiskSessionStore()
-	#
 	# == FCGI (Flup-provided)
 	#
 	if method == FCGI:
 		if not has(FLUP):
 			raise ImportError("Flup is required to run FCGI")
-		if sessions:
-			stack  = SessionMiddleware(session_store,stack)
 		server = FLUP_FCGIServer(stack, bindAddress=(config.address(), config.port()))
 		server.run()
 	#
@@ -166,16 +149,12 @@ sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	elif method == SCGI:
 		if not has(FLUP):
 			raise ImportError("Flup is required to run SCGI")
-		if sessions:
-			stack  = SessionMiddleware(session_store,stack)
 		server = FLUP_SCGIServer(stack, bindAddress=(config.address(), config.port()))
 		server.run()
 	#
 	# == CGI
 	#
 	elif method == CGI:
-		if sessions:
-			session_service = SessionService(session_store, os.environ)
 		environ         = {} ; environ.update(os.environ)
 		# From <http://www.python.org/dev/peps/pep-0333/#the-server-gateway-side>
 		environ['wsgi.input']        = sys.stdin
@@ -212,8 +191,6 @@ sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	elif method == STANDALONE_WSGIREF:
 		server_address = (address, port)
 		server = WSGIServer(server_address, WSGIRequestHandler)
-		if sessions:
-			stack  = SessionMiddleware(session_store,stack)
 		server.set_app(stack)
 		socket = server.socket.getsockname()
 		print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
@@ -226,8 +203,6 @@ sessions=True, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	#
 	else:
 		server_address = (address, port)
-		if sessions:
-			stack  = SessionMiddleware(session_store,stack)
 		stack.fromRailways = True
 		stack.app          = lambda: app
 		server = WSGIServer(server_address, stack)
