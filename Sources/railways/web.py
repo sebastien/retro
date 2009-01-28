@@ -8,12 +8,12 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Nov-2008
+# Last mod  : 28-Jan-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
 from core import Request, Response, FlupSession, BeakerSession, Event, \
-RendezVous, asJSON
+RendezVous, asJSON, simplejson
 
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
@@ -735,9 +735,9 @@ class Application(Component):
 			# And now we return the response as JS
 			return request.returns(r, options=getattr(self.function,_RAILW_AJAX_JSON))
 
-	def __init__( self, components=(), prefix='' ):
+	def __init__( self, components=(), prefix='', config=None ):
 		Component.__init__(self)
-		self._config     = Configuration()
+		self._config     = Configuration(path=config)
 		self._dispatcher = Dispatcher(self)
 		self._app        = self
 		self._components = []
@@ -999,23 +999,31 @@ class Configuration:
 	configured application root, which is set by default to the current working
 	directory when the application is first run."""
 
-	def __init__( self, config=None, properties={} ):
+	def __init__( self, config=None, properties={}, path=None ):
 		self._properties = {
-			"templates":"templates",
-			"name"     :"railways",
-			"logfile"  :"railways.log",
 			"root"     :".",
 			"charset"  :"UTF-8",
-			"prefix"   :"",
-			"port"     :"",
-			"address"  :"",
-			"session"  :(SESSION_ENGINES and SESSION_ENGINES[0] or ""),
+			"prefix"   :None,
+			"port"     :None,
 		}
 		self._logfile   = None
+		if path:
+			self.load(path)
 		if config:
 			self.merge(config)
 		if properties:
 			self.merge(properties)
+
+	def save( self, path ):
+		f = file(path, 'w')
+		f.write(simplejson.dumps(self._properties, sort_keys=True, indent=4))
+		f.close()
+
+	def load( self, path):
+		f = file(path, 'r')
+		self._properties = simplejson.loads(f.read())
+		f.close()
+		return self
 
 	def merge( self, config ):
 		"""Merges the configuration from the given configuration into this
@@ -1048,6 +1056,7 @@ class Configuration:
 			self._properties[name] = value
 		return self._properties[name]
 
+	# FIXME: Clear up these varibles
 	def session( self, value=re):
 		"""Returns the name of the session"""
 		return self.get("session", value)
