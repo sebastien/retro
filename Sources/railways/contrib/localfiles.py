@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 11-Feb-2008
+# Last mod  : 02-Feb-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -58,6 +58,7 @@ LIST_DIR_HTML = """
 </body>
 </html>
 """
+
 # ------------------------------------------------------------------------------
 #
 # LOCAL FILE COMPONENT
@@ -165,5 +166,60 @@ class LocalFiles(Component):
 					ext, file_url, file_name
 				))
 		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files))
+
+# ------------------------------------------------------------------------------
+#
+# FILE SERVER COMPONENT
+#
+# ------------------------------------------------------------------------------
+
+class FileServer(Component):
+	"""Serves local files, should be replaced in production by another server."""
+
+	def init( self ):
+		self.DIR_LIBRARY = self.app().config("library.path")
+
+	@on(GET="crossdomain.xml")
+	def getCrossDomain( self, request ):
+		return request.respond(
+			'<?xml version="1.0"?>'
+			+ '<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">'
+			+ '<cross-domain-policy><allow-access-from domain="*" /></cross-domain-policy>'
+		)
+
+	@on(GET="lib/css/{css:[\w\-_\.]+\.css}")
+	def getCss( self, request, css ):
+		return request.respondFile(join(self.DIR_LIBRARY, "css", css))
+
+	@on(GET="lib/images/{image:[\w\-_]+\.(png|gif|jpg)}")
+	def getImage( self, request, image ):
+		return request.respondFile(join(self.DIR_LIBRARY, "images", image))
+
+	@on(GET="lib/swf/{script:\w+\.swf}")
+	def getFlash( self, request, script ):
+		# TODO: Rewrite respondFile
+		return request.respondFile(join(self.DIR_LIBRARY, "swf", script))
+
+	@on(GET="lib/js/{path:rest}")
+	@on(GET="lib/sjs/{path:rest}")
+	def getJavaScript( self, request, path ):
+		path = os.path.abspath(join(self.DIR_LIBRARY, "js", path))
+		if path.startswith(self.DIR_LIBRARY):
+			if path.endswith(".sjs"):
+				from sugar import main as sugar
+				# FIXME: Cache this
+				path = path.replace("/js", "/sjs")
+				timestamp         = CACHE.filemod(path)
+				has_changed, data = CACHE.get(path,timestamp)
+				if has_changed:
+					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (DIR_LIBRARY + "/sjs"))
+					CACHE.put(path,timestamp,data)
+				return request.respond(data,contentType="text/javascript")
+			else:
+				return request.respondFile(path)
+		else:
+			# Somebody is trying to hack the API !
+			# (the path is not the right path)
+			return request.returns(False)
 
 # EOF
