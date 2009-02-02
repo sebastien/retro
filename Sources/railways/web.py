@@ -1006,10 +1006,16 @@ class Configuration:
 		f.close()
 
 	def load( self, path):
-		f = file(path, 'r')
-		p = simplejson.loads(f.read())
-		f.close()
-		return p
+		if os.path.exists(path):
+			f = file(path, 'r')
+			d = f.read()
+			p = {}
+			if d:
+				p = simplejson.loads(p)
+			f.close()
+			return p
+		else:
+			return {}
 
 	def merge( self, config ):
 		"""Merges the configuration from the given configuration into this
