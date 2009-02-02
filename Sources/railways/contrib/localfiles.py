@@ -180,6 +180,10 @@ class FileServer(Component):
 		self.DIR_LIBRARY = self.app().config("library.path")
 		self.CACHE       = None
 
+	def setCache( self, cache ):
+		self.CACHE = cache
+		return self
+
 	@on(GET="crossdomain.xml")
 	def getCrossDomain( self, request ):
 		return request.respond(
