@@ -216,7 +216,7 @@ class FileServer(Component):
 				else:
 					has_changed = True
 				if has_changed:
-					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (DIR_LIBRARY + "/sjs"))
+					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (self.DIR_LIBRARY + "/sjs"))
 					if self.CACHE:
 						CACHE.put(path,timestamp,data)
 				return request.respond(data,contentType="text/javascript")
