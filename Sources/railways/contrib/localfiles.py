@@ -178,6 +178,7 @@ class FileServer(Component):
 
 	def init( self ):
 		self.DIR_LIBRARY = self.app().config("library.path")
+		self.CACHE       = None
 
 	@on(GET="crossdomain.xml")
 	def getCrossDomain( self, request ):
@@ -189,31 +190,35 @@ class FileServer(Component):
 
 	@on(GET="lib/css/{css:[\w\-_\.]+\.css}")
 	def getCss( self, request, css ):
-		return request.respondFile(join(self.DIR_LIBRARY, "css", css))
+		return request.respondFile(os.path.join(self.DIR_LIBRARY, "css", css))
 
 	@on(GET="lib/images/{image:[\w\-_]+\.(png|gif|jpg)}")
 	def getImage( self, request, image ):
-		return request.respondFile(join(self.DIR_LIBRARY, "images", image))
+		return request.respondFile(os.path.join(self.DIR_LIBRARY, "images", image))
 
 	@on(GET="lib/swf/{script:\w+\.swf}")
 	def getFlash( self, request, script ):
 		# TODO: Rewrite respondFile
-		return request.respondFile(join(self.DIR_LIBRARY, "swf", script))
+		return request.respondFile(os.path.join(self.DIR_LIBRARY, "swf", script))
 
 	@on(GET="lib/js/{path:rest}")
 	@on(GET="lib/sjs/{path:rest}")
 	def getJavaScript( self, request, path ):
-		path = os.path.abspath(join(self.DIR_LIBRARY, "js", path))
+		path = os.path.abspath(os.path.join(self.DIR_LIBRARY, "js", path))
 		if path.startswith(self.DIR_LIBRARY):
 			if path.endswith(".sjs"):
 				from sugar import main as sugar
 				# FIXME: Cache this
 				path = path.replace("/js", "/sjs")
-				timestamp         = CACHE.filemod(path)
-				has_changed, data = CACHE.get(path,timestamp)
+				if self.CACHE:
+					timestamp         = CACHE.filemod(path)
+					has_changed, data = CACHE.get(path,timestamp)
+				else:
+					has_changed = True
 				if has_changed:
 					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (DIR_LIBRARY + "/sjs"))
-					CACHE.put(path,timestamp,data)
+					if self.CACHE:
+						CACHE.put(path,timestamp,data)
 				return request.respond(data,contentType="text/javascript")
 			else:
 				return request.respondFile(path)
