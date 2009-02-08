@@ -1011,7 +1011,7 @@ class Configuration:
 			d = f.read()
 			p = {}
 			if d:
-				p = simplejson.loads(p)
+				p = simplejson.loads(d)
 			f.close()
 			return p
 		else:
