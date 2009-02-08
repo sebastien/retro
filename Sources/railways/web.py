@@ -424,17 +424,17 @@ class Dispatcher:
 			# The app is expected to produce a response object
 			response = handler(request, **variables)
 			if isinstance(response, Response):
-				return response.asWSGI(start_response, self.app().config().charset())
+				return response.asWSGI(start_response, self.app().config("charset"))
 			# TODO: Add an option to warn on None returned by handlers
 			elif response == None:
 				response = Response("",[],200)
-				return response.asWSGI(start_response, self.app().config().charset())
+				return response.asWSGI(start_response, self.app().config("charset"))
 			else:
 				return response
 		# We try the handlers (the fallback handler is contained within the
 		# list)
 		if request == None:
-			request = Request(environ, self.app().config().charset())
+			request = Request(environ, self.app().config("charset"))
 		for _, handler, variables, params_name in handlers:
 			can_handle = True
 			# NOTE: If there is a failure here (like AttributeError:

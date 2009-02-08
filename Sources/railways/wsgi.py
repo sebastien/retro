@@ -306,7 +306,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.path)
 		if not hasattr(application, "fromRailways"):
 			raise Exception("Railways embedded Web server can only work with Railways applications.")
-		script = application.app().config().root()
+		script = application.app().config("root")
 		logging.info ("Running application with script name %s path %s" % (script, path))
 		env = {
 			'wsgi.version': (1,0)
