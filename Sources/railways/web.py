@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 28-Jan-2009
+# Last mod  : 08-Feb-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -767,7 +767,7 @@ class Application(Component):
 	def log( self, *args):
 		self.config().log(*args)
 
-	def config( self, name=re ):
+	def config( self, name=re, value=re ):
 		"""Returns the configuration value for the given name. Please note that
 		this may raise an exception if the property is not part of the
 		configuration properties.
@@ -780,8 +780,10 @@ class Application(Component):
 			return self._config
 		if name == re:
 			return self._config
-		else:
+		elif value == re:
 			return self._config.get(name)
+		else:
+			return self._config.set(name, value)
 
 	def rootPath( self ):
 		"""Returns the absolute path where this application is rooted. This is
