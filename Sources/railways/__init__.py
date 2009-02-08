@@ -126,11 +126,11 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	if os.path.isfile(root): root = os.path.dirname(root)
 	# We set the application root to the given root, and do a chdir
 	os.chdir(root)
-	config.root(root)
-	config.name(name)
-	config.port(port)
-	config.address(address)
-	config.logfile(name + ".log")
+	config.setdefault("root", root)
+	config.setdefault("name",  name)
+	config.setdefault("port", port)
+	config.setdefault("address", address)
+	config.setdefault("logfile", name + ".log")
 	if resetlog: os.path.unlink(config.logfile())
 	app.config(config)
 	# We start the WSGI stack

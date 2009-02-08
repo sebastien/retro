@@ -790,7 +790,7 @@ class Application(Component):
 		only set at the execution.
 		
 		This is an alias for 'config("root")'""" 
-		return self._config.root()
+		return self._config.get("root")
 
 	def localPath( self, path ):
 		"""Returns an absolute path expressed relatively to the root."""
@@ -897,7 +897,7 @@ class Application(Component):
 
 		This method supports KID ('.kid'), Cheetah ('.tmpl') or 
 		Django('.djtml')."""
-		templates = self._config.templates()
+		templates = self._config.get("templates")
 		if not type(templates) in (list,tuple): templates = [templates]
 		for template_dir in templates:
 			path        = "%s/%s" % (template_dir, name)
@@ -1023,7 +1023,7 @@ class Configuration:
 		"""Merges the configuration from the given configuration into this
 		one."""
 		for key, value in config.items():
-			self._properties[key] = value
+			self.set(key,value)
 
 	def log( self, *args ):
 		"""A function to easily log data to the logfile."""
@@ -1044,44 +1044,17 @@ class Configuration:
 		"""Sets the given property with the given value."""
 		self._properties[name] = value
 
+	def setdefault( self, name, value ):
+		"""Sets the given property with the given value only if the property did
+		not exist before."""
+		if not self._properties.has_key(name):
+			self._properties[name] = value
+
 	def get( self, name, value=re):
 		"""Returns the value bound to the given property."""
 		if value != re:
 			self._properties[name] = value
-		return self._properties[name]
-
-	# FIXME: Clear up these varibles
-	def session( self, value=re):
-		"""Returns the name of the session"""
-		return self.get("session", value)
-
-	def name( self, value=re ):
-		"""Returns the configured application name. """
-		return self.get("name", value)
-
-	def root( self, value=re ):
-		"""Returns the application root."""
-		return self.get("root", value)
-
-	def port( self, value=re ):
-		"""Returns the application port (standalone only)."""
-		return self.get("port", value)
-
-	def address( self, value=re ):
-		"""Returns the application address (standalone only)."""
-		return self.get("address", value)
-
-	def logfile( self, value=re ):
-		"""Returns the application logfile (as a path)."""
-		return self._abspath(self.get("logfile", value))
-
-	def templates( self, value=re ):
-		"""Returns the application templates."""
-		return self._abspath(self.get("templates", value))
-	
-	def charset( self, value=re ):
-		"""Returns the default charset for the application."""
-		return self.get("charset", value)
+		return self._properties.get(name)
 
 	def items( self ):
 		"""Returns the key/values pairs of this configuration."""
