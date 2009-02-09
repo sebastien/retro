@@ -248,6 +248,7 @@ class Dispatcher:
 		'float'  : (r'\-?\d*.?\d+'  , float ),
 		'file'   : (r'\w+(.\w+)' , str   ),
 		'chunk'  : (r'[^/^.]+'   , str   ),
+		'path'   : (r'.+'        , str   ),
 		'segment': (r'[^/]+'     , str   ),
 		'any'    : (r'.+'        , str   ),
 		'rest'   : (r'.+'        , str   ),
