@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Feb-2009
+# Last mod  : 10-Feb-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -968,6 +968,11 @@ class Application(Component):
 		if LOG_TEMPLATE_ON:
 			log( "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start) )
 		return res
+
+	def __call__(self, environ, start_response, request=None):
+		"""Just a proxy to 'Dispatcher.__call__' so that Application can be
+		directly used as an WSGI app"""
+		return self._dispatcher.__call__(environ, start_response, request=None)
 
 # ------------------------------------------------------------------------------
 #

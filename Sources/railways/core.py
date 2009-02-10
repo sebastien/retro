@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 01-Aug-2008
+# Last mod  : 10-Fev-2009
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -650,13 +650,18 @@ class Response:
 		if reason: reason = reason[0]
 		status = "%s %s" % (self.status, self.reason or reason)
 		startResponse(status, self.headers)
+		def encode(v):
+			if type(v) == unicode:
+				return v.encode(charset or "UTF-8")
+			else:
+				return v
 		# If content is a generator we return it as-is
 		if type(self.content) == types.GeneratorType:
 			for c in self.content:
-				yield c
+				yield encode(c)
 		# Otherwise we return a single-shot generator
 		else:
-			yield self.content
+			yield encode(self.content)
 
 	def asString( self ):
 		self.prepare()
