@@ -570,7 +570,7 @@ class Request:
 		if not contentType:
 			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
-			raise Exception("File not found in Request.respondFile: %s" % (path))
+			return self.notFound("File not found: %" % (path))
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'r') ; r = f.read() ; f.close()
