@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 10-Feb-2009
+# Last mod  : 11-Feb-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -852,7 +852,7 @@ class Application(Component):
 		res = []
 		if type(nameOrClass) in (str,unicode):
 			nameOrClass = nameOrClass.lower().strip()
-			res = filter(lambda c:c.__class__.name.lower() == nameOrClass.lower(), self._components)
+			res = filter(lambda c:c.__class__.__name__.lower() == nameOrClass.lower(), self._components)
 		else:
 			res = filter(lambda c:isinstance(c, nameOrClass), self._components)
 		if not res: return None
