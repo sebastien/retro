@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Jan-2009
+# Last mod  : 31-Mar-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -103,7 +103,7 @@ def command( args, **extra ):
 	run(**extra)
 
 def run( app=None, components=(), method=STANDALONE, name="railways",
-root = ".", resetlog=False, address="", port=8000, prefix='', async=False,
+root = ".", resetlog=False, address="", port=None, prefix='', async=False,
 sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
@@ -126,9 +126,9 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	if os.path.isfile(root): root = os.path.dirname(root)
 	# We set the application root to the given root, and do a chdir
 	os.chdir(root)
-	config.setdefault("root", root)
-	config.setdefault("name",  name)
-	config.setdefault("port", port)
+	config.setdefault("root",    root)
+	config.setdefault("name",    name)
+	config.setdefault("port",    port)
 	config.setdefault("address", address)
 	config.setdefault("logfile", name + ".log")
 	if resetlog: os.path.unlink(config.logfile())
@@ -189,7 +189,7 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	# == STANDALONE (WSGIREF)
 	#
 	elif method == STANDALONE_WSGIREF:
-		server_address = (address, port)
+		server_address = (address, app.config("port"))
 		server = WSGIServer(server_address, WSGIRequestHandler)
 		server.set_app(stack)
 		socket = server.socket.getsockname()
@@ -202,7 +202,7 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	# == STANDALONE (Railways WSGI server)
 	#
 	else:
-		server_address = (address, port)
+		server_address = (address, app.config("port"))
 		stack.fromRailways = True
 		stack.app          = lambda: app
 		server = WSGIServer(server_address, stack)

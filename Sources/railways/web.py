@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 11-Feb-2009
+# Last mod  : 31-Mar-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -1074,5 +1074,8 @@ class Configuration:
 		if path != abspath:
 			return os.path.abspath(os.path.join(self.root(), path))
 		else: return path
+
+	def __repr__( self ):
+		return simplejson.dumps(self._properties, sort_keys=True, indent=4)
 
 # EOF
