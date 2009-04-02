@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 31-Mar-2009
+# Last mod  : 02-Apr-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -1053,7 +1053,7 @@ class Configuration:
 	def setdefault( self, name, value ):
 		"""Sets the given property with the given value only if the property did
 		not exist before."""
-		if not self._properties.has_key(name):
+		if not self._properties.get(name):
 			self._properties[name] = value
 
 	def get( self, name, value=re):

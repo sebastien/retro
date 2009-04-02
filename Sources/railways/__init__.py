@@ -128,11 +128,10 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	os.chdir(root)
 	config.setdefault("root",    root)
 	config.setdefault("name",    name)
-	config.setdefault("port",    port)
-	config.setdefault("address", address)
 	config.setdefault("logfile", name + ".log")
 	if resetlog: os.path.unlink(config.logfile())
 	app.config(config)
+	#print app.config()
 	# We start the WSGI stack
 	stack = app._dispatcher
 	stack = processStack(stack)
@@ -141,7 +140,14 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	if method == FCGI:
 		if not has(FLUP):
 			raise ImportError("Flup is required to run FCGI")
-		server = FLUP_FCGIServer(stack, bindAddress=(config.address(), config.port()))
+		fcgi_address = address or config.get("address")
+		fcgi_port    = port or config.get("port")
+		if fcgi_port and fcgi_address:
+			server = FLUP_FCGIServer(stack, bindAddress=(fcgi_address, fcgi_port))
+		elif fcgi_address:
+			server = FLUP_FCGIServer(stack, bindAddress=fcgi_address)
+		else:
+			server = FLUP_FCGIServer(stack)
 		server.run()
 	#
 	# == SCGI (Flup-provided)
@@ -149,7 +155,14 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	elif method == SCGI:
 		if not has(FLUP):
 			raise ImportError("Flup is required to run SCGI")
-		server = FLUP_SCGIServer(stack, bindAddress=(config.address(), config.port()))
+		fcgi_address = address or config.get("address")
+		fcgi_port    = port or config.get("port")
+		if fcgi_port and fcgi_address:
+			server = FLUP_SCGIServer(stack, bindAddress=(fcgi_address, fcgi_port))
+		elif fcgi_address:
+			server = FLUP_SCGIServer(stack, bindAddress=fcgi_address)
+		else:
+			server = FLUP_SCGIServer(stack)
 		server.run()
 	#
 	# == CGI
@@ -202,7 +215,7 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	# == STANDALONE (Railways WSGI server)
 	#
 	else:
-		server_address = (address, app.config("port"))
+		server_address     = (address or app.config("address"), port or app.config("port") or 8000)
 		stack.fromRailways = True
 		stack.app          = lambda: app
 		server = WSGIServer(server_address, stack)

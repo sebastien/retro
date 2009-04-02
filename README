@@ -1,7 +1,7 @@
 == Railways
 == Featherweight Web Development
 -- Author: Sebastien Pierre <sebastien@ivy.fr>
--- Revision: 0.9.0 (14-Jul-2008)
+-- Revision: 0.9.1 (02-Apr-2009)
 
 _Railways_ is a lightweight Python Web WSGI-based toolkit that is designed for
 easy prototyping and development of Web services and Web apps.
@@ -276,12 +276,122 @@ Reference
   session manage is provided by Alan Saddi's [FLUP][FLUP] session middleware or by
   the [Beaker][BEAKER] library.
 
-  Templates
-  ---------
 
+Deploying
+=========
+
+  Standalone
+  ----------
+
+  Railways comes with its own WSGI server, which is the more well-tested solution for
+  deploying applications that make use of advanced WSGI features (such as request
+  streaming using 'yield'.
+
+  Usually, a standalone Railways application ends with code similiar to this one (here
+  we have an application composed of two 'FileServer' and 'PageServer' custom
+  components).
+
+  >     def createApp():
+  >       return Application(components=(
+  >         FileServer(),
+  >         PageServer(),
+  >       ))
+  >   
+  >     def start( app=None, options=None ):
+  >       if app is None: app = createApp()
+  >       name = "My application"
+  >       run(
+  >         app=app, name=name, method=STANDALONE, port=options.get("port") or 8888, sessions=False,
+  >       )
+  >   
+  >     if __name__ == "__main__":
+  >       options = {}
+  >       for a in sys.argv[1:]:
+  >           a=a.split("=",1)
+  >           if len(a) == 1: v=True
+  >           else: v=a[1];a=a[0]
+  >           options[a.lower()] = v
+  >       start(options=options)
+
+  If your main server script is 'server.py', you can simply start it like this:
+
+  >   python server.py PORT=8888
+  >   Dispatcher: @on  GET /crossdomain.xml
+  >   Dispatcher: @on  GET /lib/css/{css:[\w\-_]+\.css}
+  >   Dispatcher: @on  GET /lib/swf/{script:\w+\.swf}
+  >   Dispatcher: @on  GET /lib/images/{image:[\w\-_]+\.(png|gif|jpg)}
+  >   ...
+  >   Railways embedded server listening on 0.0.0.0:8888
+
+  The next thing is to make this application available to your website, meaning you
+  have to map it to port '80'. You can bind it directly to port '80', but it's a 
+  better idea to use proxying.
+
+  Here is how to do it with Apache:
+
+  >   ProxyPass        /myapp http://localhost:8888/
+  >   ProxyPassReverse /myapp http://localhost:8888/
+  >   ProxyPreserveHost  On
+
+  You can also use something like [Pound](POUND), where a configuration would look like
+  this:
+
+  >     ListenHTTP
+  >         Address localhost
+  >         Port    80
+  >         
+  >         # Your Railways application
+  >         Service
+  >             URL "/myapp/.*"
+  >             BackEnd
+  >                 Address 0.0.0.0
+  >                 Port    8888 
+  >             End
+  >         End
+  >     End
+
+  Pound is definitely cooler, as the configuration is easy and it's a very fast
+  reverse proxy. What you can do is use Apache, Lighttpd or Nginx to serve
+  static files (like '/lib/.*'), overriding your Railways application default
+  server for static files.
+
+  With FastCGI
+  ------------
+
+  Railways can be connected to an FCGI (FastCGI) enabled server thanks to the
+  Python [FLUP](FLUP) module.
+
+  With modwsgi
+  ------------
+
+  Using [modwsgi] for Apache is by far the easiest solution to get a Railways
+  application up and running:
+
+  >   WSGIScriptAlias /altitude /home/sebastien/Servers/Datalicious.ca/altitude.wsgi
+
+  >   #!/usr/bin/python
+  >   import sys, os
+  >   sys.stdout = sys.stderr
+  >   
+  >   import myapplication.server
+  >   application = myapplication.server.createApp()
+  >   # EOF
+
+  And some tips:
+
+  - In your startup script extend and manipulate sys.path to make sure you control
+    the environment properly.
+
+  - In your startup script, change the current working directory to make sure
+    you run at the proper location
+
+  - WSGI is by default very similiar to CGI (one process per request), but with
+    more work in configuration you can get it work like FCGI.
 
 --
-  [FLUP]:   FLUP, random WSGI stuff, Alan Saddi, <http://trac.saddi.com/flup>
-  [BEAKER]: BEAKER
+  [FLUP]:    FLUP, random WSGI stuff, Alan Saddi, <http://trac.saddi.com/flup>
+  [BEAKER]:  BEAKER
+  [MODWSGI]: modwsgi, <http://code.google.com/p/modwsgi/>
+  [POUND]:   Pound proxy, <http://www.apsis.ch/pound/>
 
 # EOF - vim: ts=2 sw=2 syn=kiwi et
