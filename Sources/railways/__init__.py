@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 31-Mar-2009
+# Last mod  : 02-Apr-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -20,7 +20,7 @@ KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 __doc__     = """\
 This is the main Railways module. You can generally do the following:
 
@@ -131,6 +131,7 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	config.setdefault("logfile", name + ".log")
 	if resetlog: os.path.unlink(config.logfile())
 	app.config(config)
+	# NOTE: Maybe we should always print it
 	#print app.config()
 	# We start the WSGI stack
 	stack = app._dispatcher

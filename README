@@ -359,7 +359,67 @@ Deploying
   ------------
 
   Railways can be connected to an FCGI (FastCGI) enabled server thanks to the
-  Python [FLUP](FLUP) module.
+  Python [FLUP](FLUP) module. Here is how to do it using Lighttpd:
+
+  First create a 'myapp.fcgi' script:
+
+  >   #!/usr/bin/env python
+  >   from railways import *
+  >   from railways.contrib.localfiles import LocalFiles
+  >   from myapp import server
+  >   print "Railways: Starting FCGI"
+  >   run(
+  >       app        = server.createApp()
+  >       name       = os.path.splitext(os.path.basename(__file__))[1],
+  >       method     = FCGI,
+  >       sessions   = False
+  >   )
+  >   # EOF
+
+  The above script expects you to have a 'myapp.server.createApp()' function that
+  returns the railways application.
+
+  Second, create a 'myapp.lighttpd.conf' script:
+
+  >   server.modules += ( "mod_fastcgi" )
+  >   server.document-root = "."
+  >   server.port     = 8888
+  >   fastcgi.debug   = 1
+  >   fastcgi.server  = (
+  >       ".fcgi" => ( 
+  >           "localhost" => (
+  >               "min-procs" => 2,
+  >               "socket"    => "/tmp/railways-fastcgi.socket",
+  >               "bin-path"  => "/full/path/to/myapp.fcgi",
+  >           )
+  >       )
+  >   )
+
+  Notice that you have to give the *full absolute path* to 'myapp.fcgi' in your
+  'bin-path' field of the lighttpd configuration file.
+
+  Now type the following command:
+
+  >   $ lighttpd -D myapp.lighttpd.conf
+  >   2009-04-02 14:29:02: (log.c.75) server started 
+  >   2009-04-02 14:29:02: (mod_fastcgi.c.1325) --- fastcgi spawning local 
+  >     proc: /home/sebastien/Projects/Public/Railways/Examples/FCGI/myapp.fcgi 
+  >     port:0
+  >     socket /tmp/railways-fastcgi.socket 
+  >     min-procs: 4 
+  >     max-procs: 4 
+  >   2009-04-02 14:29:02: (mod_fastcgi.c.1350) --- fastcgi spawning 
+  >     port: 0 
+  >     socket /tmp/railways-fastcgi.socket 
+  >     current: 0 / 4 
+  >     ...
+
+  And now open your browser and go to <http://localhost:8888/myapp.fcgi/>. You can now
+  play with Ligghttpd configuration options to change the root URL for your application.
+
+  Note that Lighttpd FCGI configuration is quite painful, as it's very hard to know
+  what doesn't work when things don't work. I'd recommend to use Apache's modwsgi or
+  a combination of Railways standalone and 'pound' load balancer.
 
   With modwsgi
   ------------
