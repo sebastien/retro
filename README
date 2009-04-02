@@ -277,8 +277,8 @@ Reference
   the [Beaker][BEAKER] library.
 
 
-Deploying
-=========
+Deployment
+==========
 
   Standalone
   ----------
@@ -448,7 +448,10 @@ Deploying
   - WSGI is by default very similiar to CGI (one process per request), but with
     more work in configuration you can get it work like FCGI.
 
---
+
+References
+==========
+
   [FLUP]:    FLUP, random WSGI stuff, Alan Saddi, <http://trac.saddi.com/flup>
   [BEAKER]:  BEAKER
   [MODWSGI]: modwsgi, <http://code.google.com/p/modwsgi/>
