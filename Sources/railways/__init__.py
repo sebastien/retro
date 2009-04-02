@@ -43,7 +43,8 @@ module, so you should not have to bother with anything else."""
 #
 # ------------------------------------------------------------------------------
 
-DEFAULT_PORT = 8000
+DEFAULT_PORT    = 8000
+DEFAULT_ADDRESS = "0.0.0.0"
 FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
 STANDALONE = "STANDALONE"
@@ -203,7 +204,10 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	# == STANDALONE (WSGIREF)
 	#
 	elif method == STANDALONE_WSGIREF:
-		server_address = (address, app.config("port"))
+		server_address     = (
+			address or app.config("address") or DEFAULT_ADDRESS,
+			port or app.config("port") or DEFAULT_PORT
+		)
 		server = WSGIServer(server_address, WSGIRequestHandler)
 		server.set_app(stack)
 		socket = server.socket.getsockname()
@@ -216,7 +220,10 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 	# == STANDALONE (Railways WSGI server)
 	#
 	else:
-		server_address     = (address or app.config("address"), port or app.config("port") or 8000)
+		server_address     = (
+			address or app.config("address") or DEFAULT_ADDRESS,
+			port or app.config("port") or DEFAULT_PORT
+		)
 		stack.fromRailways = True
 		stack.app          = lambda: app
 		server = WSGIServer(server_address, stack)
