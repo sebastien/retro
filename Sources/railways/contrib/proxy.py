@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 21-Feb-2008
+# Last mod  : 16-Apr-2009
 # -----------------------------------------------------------------------------
 
 import os, sys, time, webbrowser
@@ -104,8 +104,7 @@ class WWWClientProxy(Proxy):
 	@on(GET="/{rest:rest}?{parameters}", priority="10")
 	def proxyGet( self, request, rest, parameters ):
 		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
-
-		 wwwclient.browse.Session(self._proxyTo).get(uri)
+		wwwclient.browse.Session(self._proxyTo).get(uri)
 		# TODO: Add headers processing here
 		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
 
@@ -147,11 +146,32 @@ class WWWClientProxy(Proxy):
 		ctype       = result[ctype_start+2:]
 		result      = result[:ctype_start]
 		return result, ctype, code
+
 # ------------------------------------------------------------------------------
 #
 # MAIN
 #
 # ------------------------------------------------------------------------------
+
+def createProxies( args ):
+	"""Create proxy components from a list of arguments like
+	
+	>    {prefix}={url}
+	>    {prefix}={user}:{password}@{url}
+	"""
+
+	components = []
+	for arg in args:
+		prefix, url = arg.split("=",1)
+		if url.find("@") != -1:
+			user, url = url.split("@",1)
+			user, passwd = user.split(":",1)
+			print "Proxying %s as  %s:%s@%s" % (prefix, user, passwd, url)
+		else:
+			user, passwd = None, None
+			print "Proxying %s as %s" % (prefix, url)
+		components.append(Proxy(url, prefix, user=user, password=passwd))
+	return components
 
 
 def run( args ):
@@ -168,17 +188,7 @@ def run( args ):
 	if len(args) == 0:
 		print "The URL to proxy is expected as first argument"
 		return False
-	components = []
-	for arg in args:
-		prefix, url = arg.split("=",1)
-		if url.find("@") != -1:
-			user, url = url.split("@",1)
-			user, passwd = user.split(":",1)
-			print "Proxying %s as  %s:%s@%s" % (prefix, user, passwd, url)
-		else:
-			user, passwd = None, None
-			print "Proxying %s as %s" % (prefix, url)
-		components.append(Proxy(url, prefix, user=user, password=passwd))
+	components = self.createProxies(args)
 	if options.files:
 		import railways.contrib.localfiles
 		print "Serving local files..."
