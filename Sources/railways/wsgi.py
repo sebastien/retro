@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Railways - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 #             Colin Stewart                           <http://www.owlfish.com/>
+#             Fabien Moritz                           <fabien.moritz@gmail.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 27-Jul-2008
+# Last mod  : 19-May-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -185,11 +185,14 @@ def createReactor():
 	global REACTOR
 	REACTOR = WSGIReactor()
 	if HAS_SIGNAL:
-		signal.signal( signal.SIGINT,  shutdown)
-		signal.signal( signal.SIGHUP,  shutdown)
-		signal.signal( signal.SIGABRT, shutdown)
-		signal.signal( signal.SIGQUIT, shutdown)
-		signal.signal( signal.SIGTERM, shutdown)
+		# Jython does not support all signals, so we only use
+		# the available ones
+		signals = map(
+			lambda sig: getattr(signal, sig, None),
+			['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM'])
+		map(
+			lambda sig: signal.signal(sig, shutdown),
+			filter(lambda sig: not sig is None, signals))
 
 createReactor()
 
@@ -454,4 +457,4 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		self.serveFiles         = 0
 		self.serverShuttingDown = 0
 
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet
