@@ -12,7 +12,13 @@
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
-import simplejson, threading
+import threading
+
+try:
+	import simplejson
+	HAS_JSON = True
+except:
+	HAS_JSON = False
 
 NOTHING     = sys
 
@@ -35,6 +41,14 @@ completely standalone and separated from Railways Web applications.
 #
 # ------------------------------------------------------------------------------
 
+def json( value ):
+	assert HAS_JSON
+	return simplejson.dumps(value)
+
+def unjson( value ):
+	assert HAS_JSON
+	return simplejson.loads(value)
+
 def asJSON( value, **options ):
 	"""Converts the given value to a JSON representation. This function is an
 	enhanced version of `simplejson`, because it supports more datatypes
@@ -50,7 +64,10 @@ def asJSON( value, **options ):
 	else:
 		options["currentDepth"] = 0
 	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
-		res = simplejson.dumps(value)
+		if HAS_JSON:
+			res = json(value)
+		else:
+			res = repr(value)
 	elif type(value) in (list, tuple, set):
 		res = "[%s]" % (",".join(map(lambda x:asJSON(x,**options), value)))
 	elif type(value) == dict:

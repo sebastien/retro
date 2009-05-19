@@ -13,7 +13,7 @@
 
 import os, re, sys, time
 from core import Request, Response, BeakerSession, Event, \
-RendezVous, asJSON, simplejson
+RendezVous, asJSON, json, unjson
 
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
@@ -1010,7 +1010,7 @@ class Configuration:
 
 	def save( self, path ):
 		f = file(path, 'w')
-		f.write(simplejson.dumps(self._properties, sort_keys=True, indent=4))
+		f.write(json(self._properties, sort_keys=True, indent=4))
 		f.close()
 
 	def load( self, path):
@@ -1019,7 +1019,7 @@ class Configuration:
 			d = f.read()
 			p = {}
 			if d:
-				p = simplejson.loads(d)
+				p = unjson(d)
 			f.close()
 			return p
 		else:

@@ -21,8 +21,15 @@ WSGI servers, which makes it the ideal target for development.
 
 import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 import sys, logging, socket, errno, time
-import traceback, StringIO, threading, signal
+import traceback, StringIO, threading
 import core
+
+# Jython has no signal module
+try:
+	import signal
+	HAS_SIGNAL = True
+except:
+	HAS_SIGNAL = False
 
 # ------------------------------------------------------------------------------
 #
@@ -177,11 +184,12 @@ def shutdown(*args):
 def createReactor():
 	global REACTOR
 	REACTOR = WSGIReactor()
-	signal.signal( signal.SIGINT,  shutdown)
-	signal.signal( signal.SIGHUP,  shutdown)
-	signal.signal( signal.SIGABRT, shutdown)
-	signal.signal( signal.SIGQUIT, shutdown)
-	signal.signal( signal.SIGTERM, shutdown)
+	if HAS_SIGNAL:
+		signal.signal( signal.SIGINT,  shutdown)
+		signal.signal( signal.SIGHUP,  shutdown)
+		signal.signal( signal.SIGABRT, shutdown)
+		signal.signal( signal.SIGQUIT, shutdown)
+		signal.signal( signal.SIGTERM, shutdown)
 
 createReactor()
 
