@@ -1076,6 +1076,6 @@ class Configuration:
 		else: return path
 
 	def __repr__( self ):
-		return simplejson.dumps(self._properties, sort_keys=True, indent=4)
+		return json(self._properties, sort_keys=True, indent=4)
 
 # EOF

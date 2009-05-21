@@ -41,9 +41,9 @@ completely standalone and separated from Railways Web applications.
 #
 # ------------------------------------------------------------------------------
 
-def json( value ):
+def json( value, *args, **kwargs ):
 	assert HAS_JSON
-	return simplejson.dumps(value)
+	return simplejson.dumps(value, *args, **kwargs)
 
 def unjson( value ):
 	assert HAS_JSON
