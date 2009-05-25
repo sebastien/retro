@@ -1,0 +1,428 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Retro</title>
+<style><!-- 
+body {
+	margin-left: 10%;
+	margin-right: 10%;
+	padding: 20pt;
+	padding-top: 10pt;
+	background: rgb(255,255,255);
+	font:  10.5pt/15pt "Helvetica",Helvetica,sans-serif;
+	color: rgb(80,80,80);
+}
+
+h1, h2, h3, h4 {
+	font-family: "Trebuchet MS",Helvetica,sans-serif;
+	color: rgb(22, 130, 178);
+	font-weight: normal;
+	padding-top: 0.5em;
+	cursor: pointer;
+}
+
+hr {
+	color: rgb(150, 220, 238);
+	background: rgb(150, 220, 238);
+	height: 1px;
+	border: 0;
+}
+
+
+b {
+	color: rgb(22,130,178);
+}
+
+strong {
+	color: rgb(103,183,0);
+}
+
+
+a:link, a:active, a:visited {
+	color: rgb(22,130,178);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: none;
+	background-color: #dbecf4;
+}
+
+aimg {
+	border: 0;
+}
+
+#header, #footer {
+	font-size: 7pt;
+	clear: both;
+	width: 100%;
+	color: rgb(177,208,223);
+}
+
+.kiwiContent {
+	text-align: left;
+}
+
+
+#footer {
+	padding-top:  30pt;
+	text-align: right;
+}
+
+/*  Kiwi-specific  */
+
+.title {
+	margin-bottom: 0;
+}
+
+.kiwiMeta {
+	max-width: 700px;
+	padding: 5pt;
+	margin-bottom:  2em;
+	border-top:  1px solid rgb(150, 220, 238);
+	background-color: rgb(250,250,250);
+}
+
+.kiwiMeta tr td {
+	color: rgb(22, 130, 178);
+}
+
+.kiwiMeta tr td.name {
+	font-weight: bold;
+}
+
+.kiwiContent {
+	max-width: 700px;
+}
+
+.kiwiContent .heading .number {
+	display: none;
+	padding-right: 8pt;
+}
+
+.kiwiContent .heading .number .lastDot {
+	display: none;
+}
+
+
+.kiwiContent .heading .number .level0 .lastDot {
+	display: inline;
+}
+
+.kiwiContent h1 {
+	font-size: 1.8em;
+	font-weight: bold;
+	margin-top: 1.5em;
+	padding-bottom: 0.5em;
+	border-bottom:  1px dotted rgb(150, 220, 238);
+}
+
+.kiwiContent h2 {
+	font-size: 1.4em;
+	font-weight: bold;
+	padding-bottom: 0.5em;
+	border-bottom:  1px dotted rgb(150, 220, 238);
+}
+
+.kiwiContent h3 {
+	font-size: 1.2em;
+	font-weight: normal;
+}
+
+.kiwiContent pre {
+	padding: 5pt;
+	border:  1px solid rgb(150, 220, 238);
+	padding-left: 20pt;
+	background-color: rgb(240,240,250);
+	font-size: 8pt;
+	color: rgb(22,130,178);
+}
+
+.kiwiContent code {
+	font-size: 8pt;
+	background-color: rgb(240,240,250);
+}
+
+.kiwiContent dt {
+	color: rgb(22,130,178);
+	font-weight: bold;
+}
+
+.kiwiContent dd {
+	border-left:  1px solid rgb(150, 220, 238);
+	padding-left: 20pt;
+	margin-bottom: 2em;
+}
+
+.kiwiContent dd pre {
+}
+
+.kiwiContent ul {
+	padding-top: 0em;
+	margin-top: 0em;
+}
+
+.kiwiContent ul li {
+	padding-bottom: 0.2em;
+}
+
+.kiwiContent ul li.todo {
+	list-style-type: square;
+}
+
+.kiwiContent ul li.todo.done {
+	text-decoration: line-through;
+}
+
+.kiwiContent table {
+	border:  1px solid rgb(150, 220, 238);
+	padding: 0pt;
+}
+
+.kiwiContent table caption {
+	font-family: serif;
+	padding-top: 1em;
+	padding-bottom: 0.5em;
+	font-style: italic;
+	font-size: 90%;
+	color: rgb(22, 130, 178);
+}
+
+.kiwiContent table tbody {
+}
+
+.kiwiContent table tr {
+	margin: 0;
+}
+
+.kiwiContent table tr td {
+	margin: 0;
+	padding: 5pt;
+	font-size: 90%;
+	min-width: 125px;
+	background-color: rgb(250,250,250);
+	border-bottom: 1px solid rgb(150, 220, 238);
+}
+
+.kiwiContent table tr td.lastRow {
+	border-bottom: none;
+}
+
+.kiwiContent table tr td.lastCol {
+	border-right: none;
+}
+
+.kiwiContent table tr.even td {
+	background-color: #FEFEFE;
+
+}
+
+.kiwiContent table tr.odd td {
+	background-color: rgb(240,240,240);
+}
+
+.kiwiContent .term {
+	color: rgb(22, 130, 178);
+	background: rgb(240, 250, 256);
+}
+
+.kiwiContent .quote {
+	font-style: italic;
+	color: rgb(120, 120, 120);
+}
+
+.kiwiContent .citation {
+	font-style: italic;
+	color: rgb(120, 120, 120);
+}
+
+.kiwiContent div[class^="ann"] {
+	margin-top: 5pt;
+	margin-bottom: 5pt;
+	padding: 5pt;
+	padding-left: 20pt;
+	color: rgb(100, 100, 100);
+}
+
+.kiwiContent div[class^="ann"] .title {
+	font-weight: bold;
+}
+
+.kiwiContent .annNote {
+	border:  1px solid rgb(103,183,0);
+	margin-top: 5pt;
+	margin-bottom: 5pt;
+	padding: 5pt;
+	padding-left: 20pt;
+	background: #fffbe4;
+	color: rgb(100, 100, 100);
+	border:  1px solid #dedac3;
+}
+
+.kiwiContent .annNote .title {
+	font-weight: bold;
+	display: none;
+}
+
+.kiwiReferences {
+	font:  8pt/12pt "Lucida Grande",Lucida,sans-serif;
+	margin-top: 10pt;
+	padding: 5pt;
+	border-top:  1px solid rgb(200, 200, 200);
+	background-color: rgb(250,250,250);
+	color: rgb(200, 200, 200);
+	font-size: 8pt;
+}
+.kiwiReferences a:link, .kiwiReferences a:active, .kiwiReferences a:visited {
+	color: rgb(150,150,150);
+}
+
+.kiwiReferences .entry {
+	padding-top: 5pt;
+	clear: both;
+}
+
+.kiwiReferences .entry .name {
+	float: left;
+	font-weight: bold;
+	padding-right: 5pt;
+}
+
+.kiwiReferences .entry .content {
+	text-align: right;
+}
+
+ --></style>
+</head>
+<body>
+<div
+	class="title"><h1>Retro</h1><h2>Featherweight Web Development</h2></div><table class='kiwiMeta'><tr><td width='0px' class='name'>Author</td><td width='100%' class='value'>Sebastien Pierre &lt;sebastien@ivy.fr&gt;</td></tr><tr><td width='0px' class='name'>Revision</td><td width='100%' class='value'>0.9.1 (02-Apr-2009)</td></tr></table>
+<div class="kiwiContent"><div class='content'><p><span class='term'>Retro</span> is a lightweight Python Web WSGI-based toolkit that is designed for easy prototyping and development of Web services and Web apps.</p><p>Some facts:</p><ul><li>Retro is notably one of the very few web toolkit able to do <em>HTTP streaming</em> (aka. Comet) out of the box.</li></ul><ul><li>Retro comes with batteries included and features a simple, fast, <em>reactor-based WSGI server</em>.</li></ul><ul><li>Retro makes use of Python decorators for declarative web development.</li></ul><p>Core concept: web services are "just" message-passing over HTTP. Regular Python classes (and their methods) methods can be turned into web services using only decorators.</p><div class="section" level="1"><h1 class="heading"><span class="number"><span class="level0">1<span class="lastDot dot">.</span></span></span>Seeing is Believing</h1><div class="level1"><p>Retro is for hackers, so here is the code.</p><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">1<span class="dot">.</span></span><span class="level1">1<span class="lastDot dot">.</span></span></span>The Telephone: A Basic Web Service</h2><div class="level2"><p>&lt;&lt;&lt; from railways import ajax, on, run, Component</p><p>class Telephone(Component):</p><blockquote><div class='content'><p>def _<span class='term'>init</span><span class='term'>( self ): Component.</span><span class='term'>init</span>_(self) self.tube = []</p></div></blockquote><p>@ajax(GET="/listen") def listen( self ): if self.tube: m = self.tube[0] ; del self.tube[0] return m</p><p>@ajax(GET="/say/{something:rest}") def say( self, something ): self.tube.append(something)</p><p>run(components=<a href="#TELEPHONE()" class="internal">Telephone()</a>) &gt;&gt;&gt;</p><p>run this script with <code>python</code>:</p><p>&lt;&lt;&lt; $ python telephone.py Dispatcher: @on GET /listen Dispatcher: @on POST /channels:burst Dispatcher: @on GET /say/{something:rest} Retro embedded server listening on 0.0.0.0:8000 &gt;&gt;&gt;</p><p>and then interact with your new web service using curl</p><pre>curl http://localhost:8000/say/hello
+null
+curl http://localhost:8000/say/world
+null
+curl http://localhost:8000/listen
+"hello"
+curl http://localhost:8000/listen
+"world"</pre></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">1<span class="dot">.</span></span><span class="level1">2<span class="lastDot dot">.</span></span></span>The Watch: A less basic Web Service</h2><div class="level2"><p>Now "The Telephone" was rather trivial. Let's do something more impressive : a web page that displays the time.</p><p>from railways import ajax, on, run, Component import time</p><p>&lt;&lt;&lt; class Watch(Component):</p><blockquote><div class='content'><p>@on(GET="/time") def getTime( self, request ): def stream(): while True: yield "<html><body><pre>%s</pre></body></html>" % (time.ctime()) time.sleep(1) return request.respondMultiple(stream())</p></div></blockquote><p>run(components=<a href="#WATCH()" class="internal">Watch()</a>) &gt;&gt;&gt;</p><p>Now start firefox and go to <a href="http://localhost:8000/time" target="_blank">http://localhost:8000/time</a> (you won't be able to open two tabs with it, if you want to test concurrency, use another browser or another machine).</p></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">1<span class="dot">.</span></span><span class="level1">3<span class="lastDot dot">.</span></span></span>The Chat: A less basic Web Service</h2><div class="level2"><p>The Watch was pretty interesting, but the <code>time.sleep(1)</code> in the middle of the generator doesn't really help performance. Let's do some more fancy stuff.</p></div></div></div></div><div class="section" level="1"><h1 class="heading"><span class="number"><span class="level0">2<span class="lastDot dot">.</span></span></span>Reference</h1><div class="level1"><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">2<span class="dot">.</span></span><span class="level1">1<span class="lastDot dot">.</span></span></span>Features</h2><div class="level2"><ul><li>Based on WSGI </li><li>Embedded reactor-based WSGI server </li><li>Flup for FCGI/SCGI/AJP connection </li><li>Plain old CGI mode </li><li>"Comet"/HTTP streaming support </li><li>Decorators for declarative web services </li><li>Lightweight</li></ul></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">2<span class="dot">.</span></span><span class="level1">2<span class="lastDot dot">.</span></span></span>Architecture</h2><div class="level2"><p><pre>               APPLICATION  ----------------- COMPONENT
+               -----------           -------- COMPONENT
+</pre> &gt;</p></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">2<span class="dot">.</span></span><span class="level1">3<span class="lastDot dot">.</span></span></span>Dispatcher</h2><div class="level2"><p>To be able to server pages and content in your application, you have to express a mapping between URL and actual methods of your components.</p><p>In Retro, you define a mapping by <span class='term'>exposing</span> a method of your component using the <code>@on</code> decorator:</p><pre>class Main(Component):
+	...
+	@on(GET="/index")
+	def index( self, request ):
+		return request.respond("Hello, world !")</pre><p>Here, we've defined the 'index' method (the name is not important), and <span class='term'>exposed</span> to react to a <code>GET</code> HTTP method sent to the <code>/index</code> URL. Restarting your server and going to <a href="http://localhost:8080/index" target="_blank">http://localhost:8080/index</a> will give you this text:</p><pre>Hello, world !</pre><p>The <code>@on</code> decorator parameters are made of the following elements:</p><ul><li>a <span class='term'>parameter name</span> (like <code>GET</code>, <code>POST</code>, <code>GET_POST</code>), where the HTTP methods are uppercase and joined by underscores</li></ul><ul><li>a <span class='term'>parameter value</span>, which is an expression that defines matching URLs.</li></ul><ul><li>an optional <code>priority</code>, which allows one mapping with higher priority to be used in preference when more than one mapping matches the URL.</li></ul><p>The parameter value expression can contain specific parts that will be matched and given as arguments to the decorated method:</p><pre>	@on(GET="/int/{i:integer}")
+	def getInteger(self, request, i):
+		return request.respond("Here is number %d" % (i))</pre><p>Now, if you go to <a href="http://localhost:8080/int/0" target="_blank">http://localhost:8080/int/0</a>, or <a href="http://localhost:8080/int/1" target="_blank">http://localhost:8080/int/1</a>, <a href="http://localhost:8080/int/2" target="_blank">http://localhost:8080/int/2</a>, you will see these numbers printed out.</p><p>Generally speaking, anything between <code>{</code> and <code>}</code> in parameter expressions will be interpreted as a <span class='term'>matching argument</span>. The format is like that:</p><pre>{ NAME : EXPRESSION }</pre><p>where <code>NAME</code> must match an argument of the decorated method, and where <code>EXPRESSION</code> is either a regular expression (as of Python <code>re</code> module), or one of the following values:</p><ul><li><code>word</code>, <code>alpha</code>: any sequence of alphabetical chars </li><li><code>string</code>: everything that is not a <code>/</code> </li><li><code>digits</code>: a sequence of digits, cast to an <code>int</code> </li><li><code>number</code>: a floating point or an int, negative or positive </li><li><code>int</code>, <code>integer</code>: an int, negative or positive </li><li><code>float</code>: an float, negative or positive </li><li><code>file</code>: two alphanumeric words joined by a dot </li><li><code>chunk</code>: everything which is neither a <code>/</code> nor a <code>.</code> </li><li><code>rest</code>, <code>any</code> : the rest of the URL </li><li><code>range</code>: two integers joined by <code>:</code> (Python-style)</li></ul><p>Once you have your mapping right, you may want to do more complicated things with your exposed methods&hellip; and we'll see in the next section what we can do with the mysterious 'request' parameter.</p></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">2<span class="dot">.</span></span><span class="level1">4<span class="lastDot dot">.</span></span></span>The Request object</h2><div class="level2"><p>The <code>railways.core.Request</code> class defines a class that represents an HTTP request. The <code>request</code> parameter we've seen in the previous section is an instance of this class, that represents the request sent by the client browser and received by the Retro server.</p><p>The request object offers different kind of functionalities:</p><ul><li>Accessing the request parameters, cookies and data: whether <code>POST</code> or <code>GET</code>, whether url-encoded or form-encoded, parameters and attachments are retrievable using the <code>param</code>, <code>cookies</code> and <code>data</code> methods.</li></ul><ul><li>Accessing request method, headers and various information: TODO</li></ul><ul><li>Creating a response: the request object contains methods to create specific responses, whether it is serving a local file, returning JSON data, redirecting, returning an error, or simply returning specific content. These methods are mainly <code>respond</code>, <code>returns</code>, <code>redirect</code>, <code>bounce</code>, <code>notFound</code>, <code>localFile</code>.</li></ul><p>In practice, you need only to know a few things. First, how to get access to parameters.</p><p>Say you have a request to that URL:</p><pre>http://localhost:8080/api/doThis?a=1&amp;b=2</pre><p>and that you have a handler bound to <code>/api/doThis</code>, here is how you would get access to a and b:</p><pre>@on(GET_POST='/api/doThis')
+def doThis( self, request ):
+	a = request.get('a')
+	b = request.get('b')
+	if a is None or b is None:
+		return request.respond(
+			"You must give proper 'a' and 'b' parameters",
+			status=400
+		)
+	else:
+		return request.respond(
+			"Here a:%s and here is b:%s" % (a,b)
+		)</pre><p>This is the simplest, and most common case. Now if you want to receive a file that was <code>POST</code>ed by the client, by a form like this one:</p><pre>&lt;form action="/api/postThis" method="POST"&gt;
+	&lt;input type="text" name="name" value="File name" /&gt;
+	&lt;input type="file" name="file" value="Upload file" /&gt;
+&lt;/form&gt;</pre><p>you would do the following:</p><pre>@on(POST='/api/postThis')
+def postThis( self, request ):
+	file_name = request.get('name')
+	file_data = request.get('file')
+	file_info = request.file('file')
+	return request.respond(
+		"Received file %s, of %s bytes, with content type:%s" %
+		(file_info.get("filename"),len(file_data),file_info.get("contentType"))
+	)</pre><p>we see here that the file data is available as any other parameter, but that we can use the <code>request.file</code> method to get more information about the file, like its content type and original filename.</p><div class='annNote'><div class='title'>note</div><div class='content'>
+    It is important to note that <em>you must return the result</em> of the
+    <code>request.[respond, returns, redirect, bounce, ...]</code> methods. These methods
+    actually return a generator that will be used by Retro to produce the
+    content of the response.</div></div></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">2<span class="dot">.</span></span><span class="level1">5<span class="lastDot dot">.</span></span></span>Sessions</h2><div class="level2"><p>Session management is another important aspect of web applications. Retro session manage is provided by Alan Saddi's <a href="#FLUP" class="internal">FLUP</a> session middleware or by the <a href="#BEAKER" class="internal">Beaker</a> library.</p></div></div></div></div><div class="section" level="1"><h1 class="heading"><span class="number"><span class="level0">3<span class="lastDot dot">.</span></span></span>Deployment</h1><div class="level1"><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">3<span class="dot">.</span></span><span class="level1">1<span class="lastDot dot">.</span></span></span>Standalone</h2><div class="level2"><p>Retro comes with its own WSGI server, which is the more well-tested solution for deploying applications that make use of advanced WSGI features (such as request streaming using <code>yield</code>.</p><p>Usually, a standalone Retro application ends with code similiar to this one (here we have an application composed of two <code>FileServer</code> and <code>PageServer</code> custom components).</p><pre>  def createApp():
+    return Application(components=(
+      FileServer(),
+      PageServer(),
+    ))
+
+  def start( app=None, options=None ):
+    if app is None: app = createApp()
+    name = "My application"
+    run(
+      app=app, name=name, method=STANDALONE, port=options.get("port") or 8888, sessions=False,
+    )
+
+  if __name__ == "__main__":
+    options = {}
+    for a in sys.argv[1:]:
+        a=a.split("=",1)
+        if len(a) == 1: v=True
+        else: v=a[1];a=a[0]
+        options[a.lower()] = v
+    start(options=options)</pre><p>If your main server script is <code>server.py</code>, you can simply start it like this:</p><pre>python server.py PORT=8888
+Dispatcher: @on  GET /crossdomain.xml
+Dispatcher: @on  GET /lib/css/{css:[\w\-_]+\.css}
+Dispatcher: @on  GET /lib/swf/{script:\w+\.swf}
+Dispatcher: @on  GET /lib/images/{image:[\w\-_]+\.(png|gif|jpg)}
+...
+Retro embedded server listening on 0.0.0.0:8888</pre><p>The next thing is to make this application available to your website, meaning you have to map it to port <code>80</code>. You can bind it directly to port <code>80</code>, but it's a better idea to use proxying.</p><p>Here is how to do it with Apache:</p><pre>ProxyPass        /myapp http://localhost:8888/
+ProxyPassReverse /myapp http://localhost:8888/
+ProxyPreserveHost  On</pre><p>You can also use something like <a href="POUND" class="external" target="_blank">Pound</a>, where a configuration would look like this:</p><pre>  ListenHTTP
+      Address localhost
+      Port    80
+      
+      # Your Retro application
+      Service
+          URL "/myapp/.*"
+          BackEnd
+              Address 0.0.0.0
+              Port    8888 
+          End
+      End
+  End</pre><p>Pound is definitely cooler, as the configuration is easy and it's a very fast reverse proxy. What you can do is use Apache, Lighttpd or Nginx to serve static files (like '/lib/.*'), overriding your Retro application default server for static files.</p></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">3<span class="dot">.</span></span><span class="level1">2<span class="lastDot dot">.</span></span></span>With FastCGI</h2><div class="level2"><p>Retro can be connected to an FCGI (FastCGI) enabled server thanks to the Python <a href="FLUP" class="external" target="_blank">FLUP</a> module. Here is how to do it using Lighttpd:</p><p>First create a <code>myapp.fcgi</code> script:</p><pre>#!/usr/bin/env python
+from railways import *
+from railways.contrib.localfiles import LocalFiles
+from myapp import server
+print "Retro: Starting FCGI"
+run(
+    app        = server.createApp()
+    name       = os.path.splitext(os.path.basename(__file__))[1],
+    method     = FCGI,
+    sessions   = False
+)
+# EOF</pre><p>The above script expects you to have a <code>myapp.server.createApp()</code> function that returns the railways application.</p><p>Second, create a <code>myapp.lighttpd.conf</code> script:</p><pre>server.modules += ( "mod_fastcgi" )
+server.document-root = "."
+server.port     = 8888
+fastcgi.debug   = 1
+fastcgi.server  = (
+    ".fcgi" =&gt; ( 
+        "localhost" =&gt; (
+            "min-procs" =&gt; 2,
+            "socket"    =&gt; "/tmp/railways-fastcgi.socket",
+            "bin-path"  =&gt; "/full/path/to/myapp.fcgi",
+        )
+    )
+)</pre><p>Notice that you have to give the <em>full absolute path</em> to <code>myapp.fcgi</code> in your <code>bin-path</code> field of the lighttpd configuration file.</p><p>Now type the following command:</p><pre>$ lighttpd -D myapp.lighttpd.conf
+2009-04-02 14:29:02: (log.c.75) server started 
+2009-04-02 14:29:02: (mod_fastcgi.c.1325) --- fastcgi spawning local 
+  proc: /home/sebastien/Projects/Public/Retro/Examples/FCGI/myapp.fcgi 
+  port:0
+  socket /tmp/railways-fastcgi.socket 
+  min-procs: 4 
+  max-procs: 4 
+2009-04-02 14:29:02: (mod_fastcgi.c.1350) --- fastcgi spawning 
+  port: 0 
+  socket /tmp/railways-fastcgi.socket 
+  current: 0 / 4 
+  ...</pre><p>And now open your browser and go to <a href="http://localhost:8888/myapp.fcgi/" target="_blank">http://localhost:8888/myapp.fcgi/</a>. You can now play with Ligghttpd configuration options to change the root URL for your application.</p><p>Note that Lighttpd FCGI configuration is quite painful, as it's very hard to know what doesn't work when things don't work. I'd recommend to use Apache's modwsgi or a combination of Retro standalone and 'pound' load balancer.</p></div></div><div class="section" level="2"><h2 class="heading"><span class="number"><span class="level0">3<span class="dot">.</span></span><span class="level1">3<span class="lastDot dot">.</span></span></span>With modwsgi</h2><div class="level2"><p>Using <a href="#MODWSGI" class="internal">modwsgi</a>for Apache is by far the easiest solution to get a Retro application up and running:</p><pre>WSGIScriptAlias /altitude /home/sebastien/Servers/Datalicious.ca/altitude.wsgi</pre><pre>#!/usr/bin/python
+import sys, os
+sys.stdout = sys.stderr
+
+import myapplication.server
+application = myapplication.server.createApp()
+# EOF</pre><p>And some tips:</p><ul><li>In your startup script extend and manipulate sys.path to make sure you control the environment properly.</li></ul><ul><li>In your startup script, change the current working directory to make sure you run at the proper location</li></ul><ul><li>WSGI is by default very similiar to CGI (one process per request), but with more work in configuration you can get it work like FCGI.</li></ul></div></div></div></div><div class="section" level="1"><h1 class="heading"><span class="number"><span class="level0">4<span class="lastDot dot">.</span></span></span>References</h1><div class="level1"></div></div></div></div>
+<div class="kiwiReferences"><div class="entry"><div class="name"><a name="FLUP">FLUP</a></div><div class="content">    FLUP, random WSGI stuff, Alan Saddi, <a href="http://trac.saddi.com/flup" target="_blank">http://trac.saddi.com/flup</a></div></div><div class="entry"><div class="name"><a name="BEAKER">BEAKER</a></div><div class="content">  BEAKER</div></div><div class="entry"><div class="name"><a name="MODWSGI">MODWSGI</a></div><div class="content"> modwsgi, <a href="http://code.google.com/p/modwsgi/" target="_blank">http://code.google.com/p/modwsgi/</a></div></div><div class="entry"><div class="name"><a name="POUND">POUND</a></div><div class="content">   Pound proxy, <a href="http://www.apsis.ch/pound/" target="_blank">http://www.apsis.ch/pound/</a></div></div></div>
+</body>
+</html>

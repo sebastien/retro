@@ -1,7 +1,7 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + "../Sources"))
-from railways import *
-from railways.web import Dispatcher
+from retro import *
+from retro.web import Dispatcher
 
 def Dispatcher_syntaxTest():
 	EXPRESSIONS = (

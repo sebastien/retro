@@ -1,4 +1,4 @@
-# Railways makefile
+# Retro makefile
 # -----------------
 #
 # Revision 1.5.1 (24-Mar-2006)
@@ -24,8 +24,8 @@
 # Project variables___________________________________________________________
 
 # Project name. Do not put spaces.
-PROJECT         = railways
-PROJECT_VERSION = $(shell grep __version__ Sources/railways/__init__.py | head -n1 | cut -d'"' -f2)
+PROJECT         = retro
+PROJECT_VERSION = $(shell grep __version__ Sources/retro/__init__.py | head -n1 | cut -d'"' -f2)
 PROJECT_STATUS  = DEVELOPMENT
 
 DOCUMENTATION   = Documentation
@@ -35,15 +35,15 @@ SCRIPTS         =
 LIBRARY         = Library
 RESOURCES       =
 DISTRIBUTION    = Distribution
-API             = $(DOCUMENTATION)/railways-api.html
+API             = $(DOCUMENTATION)/retro-api.html
 DISTROCONTENT   = $(DOCUMENTATION) $(SOURCES) $(SCRIPTS) $(TESTS) $(RESOURCES) \
                   Makefile README setup.py
 
 # Project files_______________________________________________________________
 
-PACKAGE         = railways
+PACKAGE         = retro
 MAIN            = __init__.py
-MODULES         = railways railways.core railways.web
+MODULES         = retro retro.core retro.web
 
 TEST_MAIN       = 
 SOURCE_FILES    = $(shell find $(SOURCES) -name "*.py")
@@ -131,9 +131,9 @@ libs:
 						 $(LIBRARY)/prototype/eip.js  \
 						 $(LIBRARY)/prototype/effects.js \
 						 $(LIBRARY)/prototype/validation.js > $(LIBRARY)/prototype.js
-	@$(JSJOIN) $(LIBRARY)/railways/railways.js \
-						$(LIBRARY)/railways/html.js \
-						$(LIBRARY)/railways/ui.js > $(LIBRARY)/railways.js
+	@$(JSJOIN) $(LIBRARY)/retro/retro.js \
+						$(LIBRARY)/retro/html.js \
+						$(LIBRARY)/retro/ui.js > $(LIBRARY)/retro.js
 	@$(JSJOIN) $(LIBRARY)/narrativejs/narcissus_jsdefs.js \
 						$(LIBRARY)/narrativejs/narcissus_jsparse.js \
 						$(LIBRARY)/narrativejs/NjsCompiler.js \
