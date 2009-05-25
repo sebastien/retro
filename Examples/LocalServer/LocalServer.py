@@ -2,7 +2,7 @@
 # Encoding: iso-8859-1
 # vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
-# Project   : Railways - Declarative Python Web Framework
+# Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # License   : Revised BSD License
@@ -12,12 +12,12 @@
 # -----------------------------------------------------------------------------
 
 __doc__ = """
-This script starts a Railways/Py web server that acts as a local proxy to the
+This script starts a Retro/Py web server that acts as a local proxy to the
 current filesystem or given directory ."""
 
 import os, sys, StringIO
-from railways import *
-from railways.contrib.localfiles import LocalFiles
+from retro import *
+from retro.contrib.localfiles import LocalFiles
 
 PORT               = 8080
 

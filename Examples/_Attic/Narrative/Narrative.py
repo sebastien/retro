@@ -12,12 +12,12 @@
 # -----------------------------------------------------------------------------
 
 import time
-from railways import *
+from retro import *
 from prevail import *
 from prevail.web import expose
 
 __doc__ = """\
-This example shows how to do use Narrative JavaScript within Railways"""
+This example shows how to do use Narrative JavaScript within Retro"""
 
 # ------------------------------------------------------------------------------
 #

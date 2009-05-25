@@ -2,7 +2,7 @@
 # Encoding: iso-8859-1
 # vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
-# Project   : Railways Test Suite
+# Project   : Retro Test Suite
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # -----------------------------------------------------------------------------
@@ -60,6 +60,6 @@ class Main(Component):
 if __name__ == "__main__":
 	# We update the settings module
 	app = Application(components=[Main()]).configure(templates=TEMPLATES)
-	run(app,name="Railways test",method=STANDALONE, port=PORT, root=ROOT)
+	run(app,name="Retro test",method=STANDALONE, port=PORT, root=ROOT)
 
 # EOF

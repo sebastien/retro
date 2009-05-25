@@ -8,8 +8,8 @@ function display(text, future) {
 
 function test() {
 	alert("Narrative JavaScript test")
-	Railways.POST('values','name=pouet&value=pouetvalue')
-	var channel = new Railways.AsyncChannel()
+	Retro.POST('values','name=pouet&value=pouetvalue')
+	var channel = new Retro.AsyncChannel()
 	// Here we have the interesting thing about using NJS : we ask the display
 	// of the channel value, but the first call to `delayedvalues` will take one
 	// second (the server will take one second to generate the response).

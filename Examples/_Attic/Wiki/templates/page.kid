@@ -1,7 +1,7 @@
 <html xmlns:py="http://purl.org/kid/ns#">
 
 <head>
-  <title>Railways - Wiki example</title>
+  <title>Retro - Wiki example</title>
   <script type="text/javascript" src="/lib/prototype/prototype.js"></script>
   <script type="text/javascript" src="/lib/prototype/eip.js"></script>
   <link rel="stylesheet" media="screen" type="text/css" href="/lib/screen.css" />

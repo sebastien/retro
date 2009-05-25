@@ -2,7 +2,7 @@
 # Encoding: iso-8859-1
 # vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
-# Project   : Railways
+# Project   : Retro
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # License   : Revised BSD License
@@ -12,10 +12,10 @@
 # -----------------------------------------------------------------------------
 
 import os, time
-from railways import *
+from retro import *
 
 __doc__ = """\
-This example shows how to do a server push with Railways. 
+This example shows how to do a server push with Retro. 
 """
 # ------------------------------------------------------------------------------
 #

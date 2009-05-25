@@ -10,7 +10,7 @@
 # Last mod  : 06-Mar-2008
 # -----------------------------------------------------------------------------
 
-from railways import *
+from retro import *
 
 __doc__ = """\
 This example shows how to do manage sessions
@@ -20,12 +20,12 @@ HTML_TEMPLATE = """\
 <html xmlns:py="http://purl.org/kid/ns#">
 <head>
     <script language="javascript" type="text/javascript" src="/lib/prototype.js"></script>
-    <script language="javascript" type="text/javascript" src="/lib/railways.js"></script>
+    <script language="javascript" type="text/javascript" src="/lib/retro.js"></script>
     <link rel="stylesheet" media="screen" type="text/css" href="/lib/screen.css" />
   </head>
   <body>
     <div id="title">
-      <h1>Railways</h1>
+      <h1>Retro</h1>
       <h2>Session example</h2>
     </div>
      %s

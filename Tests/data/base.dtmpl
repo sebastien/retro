@@ -22,7 +22,7 @@
 	</head>
 
 	<body>
-		<div id="header">Railways Django template</div>
+		<div id="header">Retro Django template</div>
 		<div id="content">
 			{% block content %} {% endblock %}
 		</div>

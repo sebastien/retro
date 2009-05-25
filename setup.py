@@ -2,7 +2,7 @@
 # Encoding: ISO-8859-1
 # vim: tw=80 ts=4 sw=4 fenc=latin-1 noet
 # -----------------------------------------------------------------------------
-# Project           :   Railways                   <http://www.ivy.fr/railways>
+# Project           :   Retro                   <http://www.ivy.fr/retro>
 # -----------------------------------------------------------------------------
 # Author            :   Sebastien Pierre                     <sebastien@ivy.fr>
 # License           :   Revised BSD License
@@ -14,11 +14,11 @@
 import sys, os
 from distutils.core import setup
 
-VERSION     = os.popen("""grep __version__ Sources/railways/__init__.py | head -n1 | cut -d'"' -f2""").read().split("\n")[0]
+VERSION     = os.popen("""grep __version__ Sources/retro/__init__.py | head -n1 | cut -d'"' -f2""").read().split("\n")[0]
 SUMMARY     = "Lightweight Declarative Web Toolkit"
 DESCRIPTION = """\
-Railways is a lightweight declarative web toolkit designed to make it easier to
-develop web services and Web applications in Python. Railways uses WSGI and
+Retro is a lightweight declarative web toolkit designed to make it easier to
+develop web services and Web applications in Python. Retro uses WSGI and
 provide a set of decorators that make it very easy to turn your existing code
 into a web application or to write new ones.
 """
@@ -30,16 +30,16 @@ into a web application or to write new ones.
 # ------------------------------------------------------------------------------
 
 setup(
-    name        = "Railways",
+    name        = "Retro",
     version     = VERSION,
     author      = "Sebastien Pierre", author_email = "sebastien@type-z.org",
     description = SUMMARY, long_description = DESCRIPTION,
     license     = "Revised BSD License",
     keywords    = "web, lightweight, framework, http, ajax, declarative",
-    url         = "http://www.ivy.fr/railways",
-    download_url= "http://www.ivy.fr/railways/railways-%s.tar.gz" % (VERSION) ,
+    url         = "http://www.ivy.fr/retro",
+    download_url= "http://www.ivy.fr/retro/retro-%s.tar.gz" % (VERSION) ,
     package_dir = { "": "Sources" },
-    packages    = ["railways"],
+    packages    = ["retro"],
     classifiers = [
       "Development Status :: 4 - Beta",
       "Environment :: Web Environment",

@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 
 import time
-from railways import *
+from retro import *
 
 __doc__ = """\
 This example shows how to do a file upload with a progress bar. A source of

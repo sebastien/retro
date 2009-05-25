@@ -6,7 +6,7 @@
   <head>
     <script language="javascript" type="text/javascript" src="/lib/prototype.js"></script>
     <script language="javascript" type="text/javascript" src="/lib/narrative.js"></script>
-    <script language="javascript" type="text/javascript" src="/lib/railways.js"></script>
+    <script language="javascript" type="text/javascript" src="/lib/retro.js"></script>
     <script language="javascript" type="text/javascript" src="/lib/prevail.js"></script>
     <link rel="stylesheet" media="screen" type="text/css" href="/lib/screen.css" />
   </head>
@@ -14,7 +14,7 @@
   <body >
 
     <div id="title">
-      <h1>Railways</h1>
+      <h1>Retro</h1>
       <h2>Narrative JavaScript example</h2>
     </div>
 
@@ -26,11 +26,11 @@
     // This is particularily useful because the requests will be aggregated, and then will be fired
     // at once when the timeout (500ms) expires. At that moment, the futures will be triggered.
     
-    eval(Railways.compileNJS({url:'lib/example.js'}))
+    eval(Retro.compileNJS({url:'lib/example.js'}))
     test()
 
     /*
-    var burst_channel = new Railways.BurstChannel("/")
+    var burst_channel = new Retro.BurstChannel("/")
     burst_channel.get("/api/pr:collections").onSet(function(v){
       alert("Available collections:" + v)
     })

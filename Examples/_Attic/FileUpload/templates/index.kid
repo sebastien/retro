@@ -5,7 +5,7 @@
 
   <head>
     <script language="javascript" type="text/javascript" src="/lib/prototype.js"></script>
-    <script language="javascript" type="text/javascript" src="/lib/railways.js"></script>
+    <script language="javascript" type="text/javascript" src="/lib/retro.js"></script>
     <link rel="stylesheet" media="screen" type="text/css" href="/lib/screen.css" />
     <style>
     .progress {
@@ -34,7 +34,7 @@
   <body>
 
     <div id="title">
-      <h1>Railways</h1>
+      <h1>Retro</h1>
       <h2>AJAX file-upload example</h2>
     </div>
     

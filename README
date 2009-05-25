@@ -1,20 +1,20 @@
-== Railways
+== Retro
 == Featherweight Web Development
 -- Author: Sebastien Pierre <sebastien@ivy.fr>
 -- Revision: 0.9.1 (02-Apr-2009)
 
-_Railways_ is a lightweight Python Web WSGI-based toolkit that is designed for
+_Retro_ is a lightweight Python Web WSGI-based toolkit that is designed for
 easy prototyping and development of Web services and Web apps.
 
 Some facts:
 
-  - Railways is notably one of the very few web toolkit able to do *HTTP
+  - Retro is notably one of the very few web toolkit able to do *HTTP
     streaming* (aka. Comet) out of the box.
 
-  - Railways comes with batteries included and features a simple, fast,
+  - Retro comes with batteries included and features a simple, fast,
     *reactor-based WSGI server*.
 
-  - Railways makes use of Python decorators for declarative web development.
+  - Retro makes use of Python decorators for declarative web development.
 
 Core concept: web services are "just" message-passing over HTTP. Regular Python
 classes (and their methods) methods can be turned into web services using only
@@ -23,7 +23,7 @@ decorators.
 Seeing is Believing
 ===================
 
-  Railways is for hackers, so here is the code.
+  Retro is for hackers, so here is the code.
 
   The Telephone: A Basic Web Service
   ----------------------------------
@@ -57,7 +57,7 @@ Seeing is Believing
   Dispatcher: @on  GET /listen
   Dispatcher: @on POST /channels:burst
   Dispatcher: @on  GET /say/{something:rest}
-  Railways embedded server listening on 0.0.0.0:8000
+  Retro embedded server listening on 0.0.0.0:8000
   >>>
 
   and then interact with your new web service using curl
@@ -132,7 +132,7 @@ Reference
   To be able to server pages and content in your application, you have to express
   a mapping between URL and actual methods of your components.
 
-  In Railways, you define a mapping by _exposing_ a method of your component using
+  In Retro, you define a mapping by _exposing_ a method of your component using
   the '@on' decorator:
 
   >	class Main(Component):
@@ -198,7 +198,7 @@ Reference
   The 'railways.core.Request' class defines a class that represents an HTTP
   request. The 'request' parameter we've seen in the previous section is an
   instance of this class, that represents the request sent by the client browser
-  and received by the Railways server.
+  and received by the Retro server.
 
   The request object offers different kind of functionalities:
 
@@ -265,14 +265,14 @@ Reference
     Note _____________________________________________________________________________
     It is important to note that *you must return the result* of the
     'request.[respond, returns, redirect, bounce, ...]' methods. These methods
-    actually return a generator that will be used by Railways to produce the
+    actually return a generator that will be used by Retro to produce the
     content of the response.
 
 
   Sessions
   --------
 
-  Session management is another important aspect of web applications. Railways
+  Session management is another important aspect of web applications. Retro
   session manage is provided by Alan Saddi's [FLUP][FLUP] session middleware or by
   the [Beaker][BEAKER] library.
 
@@ -283,11 +283,11 @@ Deployment
   Standalone
   ----------
 
-  Railways comes with its own WSGI server, which is the more well-tested solution for
+  Retro comes with its own WSGI server, which is the more well-tested solution for
   deploying applications that make use of advanced WSGI features (such as request
   streaming using 'yield'.
 
-  Usually, a standalone Railways application ends with code similiar to this one (here
+  Usually, a standalone Retro application ends with code similiar to this one (here
   we have an application composed of two 'FileServer' and 'PageServer' custom
   components).
 
@@ -321,7 +321,7 @@ Deployment
   >   Dispatcher: @on  GET /lib/swf/{script:\w+\.swf}
   >   Dispatcher: @on  GET /lib/images/{image:[\w\-_]+\.(png|gif|jpg)}
   >   ...
-  >   Railways embedded server listening on 0.0.0.0:8888
+  >   Retro embedded server listening on 0.0.0.0:8888
 
   The next thing is to make this application available to your website, meaning you
   have to map it to port '80'. You can bind it directly to port '80', but it's a 
@@ -340,7 +340,7 @@ Deployment
   >         Address localhost
   >         Port    80
   >         
-  >         # Your Railways application
+  >         # Your Retro application
   >         Service
   >             URL "/myapp/.*"
   >             BackEnd
@@ -352,13 +352,13 @@ Deployment
 
   Pound is definitely cooler, as the configuration is easy and it's a very fast
   reverse proxy. What you can do is use Apache, Lighttpd or Nginx to serve
-  static files (like '/lib/.*'), overriding your Railways application default
+  static files (like '/lib/.*'), overriding your Retro application default
   server for static files.
 
   With FastCGI
   ------------
 
-  Railways can be connected to an FCGI (FastCGI) enabled server thanks to the
+  Retro can be connected to an FCGI (FastCGI) enabled server thanks to the
   Python [FLUP](FLUP) module. Here is how to do it using Lighttpd:
 
   First create a 'myapp.fcgi' script:
@@ -367,7 +367,7 @@ Deployment
   >   from railways import *
   >   from railways.contrib.localfiles import LocalFiles
   >   from myapp import server
-  >   print "Railways: Starting FCGI"
+  >   print "Retro: Starting FCGI"
   >   run(
   >       app        = server.createApp()
   >       name       = os.path.splitext(os.path.basename(__file__))[1],
@@ -403,7 +403,7 @@ Deployment
   >   $ lighttpd -D myapp.lighttpd.conf
   >   2009-04-02 14:29:02: (log.c.75) server started 
   >   2009-04-02 14:29:02: (mod_fastcgi.c.1325) --- fastcgi spawning local 
-  >     proc: /home/sebastien/Projects/Public/Railways/Examples/FCGI/myapp.fcgi 
+  >     proc: /home/sebastien/Projects/Public/Retro/Examples/FCGI/myapp.fcgi 
   >     port:0
   >     socket /tmp/railways-fastcgi.socket 
   >     min-procs: 4 
@@ -419,12 +419,12 @@ Deployment
 
   Note that Lighttpd FCGI configuration is quite painful, as it's very hard to know
   what doesn't work when things don't work. I'd recommend to use Apache's modwsgi or
-  a combination of Railways standalone and 'pound' load balancer.
+  a combination of Retro standalone and 'pound' load balancer.
 
   With modwsgi
   ------------
 
-  Using [modwsgi] for Apache is by far the easiest solution to get a Railways
+  Using [modwsgi] for Apache is by far the easiest solution to get a Retro
   application up and running:
 
   >   WSGIScriptAlias /altitude /home/sebastien/Servers/Datalicious.ca/altitude.wsgi

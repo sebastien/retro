@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Encoding: iso-8859-1
 # -----------------------------------------------------------------------------
-# Project   : Railways - Stream Example
+# Project   : Retro - Stream Example
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # License   : Revised BSD License
@@ -11,16 +11,16 @@
 # -----------------------------------------------------------------------------
 
 import os, time, threading
-from railways import *
+from retro import *
 
 __doc__ = """\
-This example shows how to do implement a Comet service  with Railways. 
+This example shows how to do implement a Comet service  with Retro. 
 """
 
 PAGE = """
 <html>
 	<head>
-		<title>Railways | Comet Example</title>
+		<title>Retro | Comet Example</title>
 	</head>
 	<body>
 		<h3>Stream Reading</h3>
