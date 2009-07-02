@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 02-Feb-2009
+# Last mod  : 02-Jul-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -70,13 +70,14 @@ class LocalFiles(Component):
 
 	LIST_DIR = True
 
-	def __init__( self, root="", name = None, processors={} ):
+	def __init__( self, root="", name = None, processors={}, optsuffix=() ):
 		"""Creates a new LocalFiles, with the optional root, name and
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
 		Component.__init__(self, name="LocalFiles")
-		self._localRoot = root
+		self._localRoot   = root
 		self._processors  = {}
+		self._optSuffixes = optsuffix
 		for key, value in processors.items():
 			self._processors[key] = value
 
@@ -100,8 +101,12 @@ class LocalFiles(Component):
 	def resolvePath( self, path ):
 		"""Resolves the given path and returns an absolute file system
 		location for the given path (which is supposed to be relative)."""
-		resolved = self.app().localPath(os.path.join(self._localRoot, path))
-		return resolved
+		real_path = self.app().localPath(os.path.join(self._localRoot, path))
+		if not os.path.exists(real_path):
+			for s in self._optSuffixes:
+				if os.path.exists(real_path + s):
+					return real_path + s
+		return real_path
 
 	def getContentType( self, path ):
 		"""A function that returns the mime type from the given file
@@ -130,8 +135,8 @@ class LocalFiles(Component):
 	@on(GET_POST="/{path:any}")
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
-		resolved_path = self.app().localPath(os.path.join(self._localRoot, path))
-		processor = self.processorFor(path)
+		resolved_path = self.resolvePath(os.path.join(self._localRoot, path))
+		processor     = self.processorFor(resolved_path)
 		if not os.path.exists(resolved_path):
 			return request.respond("File not found: %s" % (resolved_path), status=404)
 		elif os.path.isdir(resolved_path):
