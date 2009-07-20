@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 02-Apr-2009
+# Last mod  : 20-Jul-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
@@ -741,6 +741,10 @@ class Application(Component):
 				map(self.register, component)
 			else:
 				self.register(component)
+		self.init()
+
+	def init( self ):
+		pass
 
 	def notFound(self, request):
 		return Response("404 Not Found", [], 404)
