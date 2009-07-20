@@ -736,12 +736,12 @@ class Application(Component):
 		# each other at 'init()' phase, it will still work.
 		for component in components:
 			self._components.append(component)
+		self.init()
 		for component in components:
 			if type(component) in (list, tuple):
 				map(self.register, component)
 			else:
 				self.register(component)
-		self.init()
 
 	def init( self ):
 		pass
@@ -766,7 +766,7 @@ class Application(Component):
 		for key, value in kwargs.items():
 			self._config.set(key, value)
 		return self
-	
+
 	def dispatcher( self ):
 		"""The dispatcher is the main interface between the RW app and the
 		webserver. This returns the dispatcher currently bound to the
@@ -1074,7 +1074,7 @@ class Configuration:
 	def items( self ):
 		"""Returns the key/values pairs of this configuration."""
 		return self._properties.items()
-	
+
 	def _abspath( self, path ):
 		"""Ensures that the given path is absolute. It will be made relative to
 		the root if it is not already absolute."""
