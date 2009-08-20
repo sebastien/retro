@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 10-Fev-2009
+# Last mod  : 20-Aug-2009
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -649,6 +649,14 @@ class Response:
 				self.headers[i] = (name, value)
 				return
 		self.headers.append((name, value))
+
+	def setCookie( self, name, value ):
+		"""Sets the cookie with the given name and value."""
+		self.headers.append((
+			'Set-Cookie',
+			'%s=%s; path=/' % (name,value)
+		))
+		return self
 
 	def setContentType( self, mimeType ):
 		self.headers.append(("Content-Type", mimeType))
