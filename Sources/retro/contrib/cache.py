@@ -8,10 +8,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 07-Nov-2007
+# Last mod  : 29-Aug-2009
 # -----------------------------------------------------------------------------
 
-import os, stat
+import os, stat, threading
 
 # ------------------------------------------------------------------------------
 #
@@ -19,7 +19,88 @@ import os, stat
 #
 # ------------------------------------------------------------------------------
 
-class Cache:
+class MemoryCache:
+	"""A simple cache system using a weighted LRU style dictionary."""
+
+	def __init__( self, limit=100 ):
+		self.data   = {}
+		self.weight = 0
+		self.limit  = 100
+		self.lock   = threading.Lock()
+
+	def get( self, key ):
+		d = self.data.get(key)
+		if d:
+			# We increase the hit count
+			d[1] += 1
+			return d[2]
+		else:
+			return None
+
+	def has( self, key ):
+		res = self.data.get(key)
+		return res and True
+
+	def set( self, key, data, weight=1 ):
+		self.lock.acquire()
+		if self.data.has_key(key):
+			# We update the data if it's already there
+			previous       = self.data[key]
+			self.weight   -= previous[0]
+			previous[0]    = weight
+			previous[2]    = data
+			self.data[key] = previous
+		else:
+			self.data[key] = [weight, 0, data]
+			self.weight   += weight
+		self.lock.release()
+		if self.weight > self.limit:
+			self.cleanup()
+
+	def cleanup( self ):
+		self.lock.acquire()
+		items = self.items()
+		# FIXME: This is slooooow
+		# We compare the hits
+		items.sort(lambda a,b:cmp(a[1][1], b[1][1]))
+		i = 0
+		while self.weight > self.limit and i < len(items):
+			del self.data[items[i][0]]
+			self.weight -= items[i][1][0]
+			i += 1
+		self.lock.release()
+
+class FileCache:
+	"""A simplistic filesystem-based cache"""
+
+	def __init__( self, path ):
+		self.path = path
+		assert os.path.exists(path)
+		assert os.path.isdir(path)
+
+	def get( self, key ):
+		if self.has(key):
+			f = file(key + ".cache", 'r')
+			c = f.read()
+			f.close()
+			return c
+		else:
+			return None
+
+	def set( self, key, data ):
+		f = file(key + ".cache", 'w')
+		f.write(data)
+		f.close()
+
+	def remove( self, key):
+		if self.has(key):
+			os.unlink(key + ".cache")
+
+	def has( self, key ):
+		return os.path.exists(key + ".cache")
+
+class SignatureCache:
+	"""A specific type of cache that takes a signature."""
 
 	def __init__( self ):
 		# TODO: Add cache clearing functions
@@ -43,7 +124,7 @@ class Cache:
 					result = ielf._cachedData[function_tag]
 					return result
 
-	def get( self, tag, sig ):
+	def get( self, tag, sig=0 ):
 		if self._cachedSig.get(tag) != sig:
 			return True, None
 		else:

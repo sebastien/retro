@@ -8,13 +8,14 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 02-Apr-2009
+# Last mod  : 29-Aug-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
 from wsgi import WSGIServer, REACTOR
 from core import asJSON
-from web  import on, ajax, expose, display, predicate, when,Component, Application, \
+from web  import on, ajax, expose, display, predicate, when, cache, \
+Component, Application, \
 Dispatcher, Configuration, ValidationError, Event, RendezVous, \
 KID, CHEETAH, DJANGO
 
