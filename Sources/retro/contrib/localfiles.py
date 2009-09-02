@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 02-Jul-2009
+# Last mod  : 02-Sep-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -198,10 +198,19 @@ class FileServer(Component):
 		)
 
 	@on(GET="lib/css/{css:[\w\-_\.]+\.css}")
-	def getCss( self, request, css ):
+	def getCSS( self, request, css ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "css", css))
 
-	@on(GET="lib/images/{image:[\w\-_]+\.(png|gif|jpg)}")
+	@on(GET="lib/css/{css:[\w\-_\.]+\.ccss}")
+	def getCCSS( self, request, css ):
+		import clevercss
+		root = self.DIR_LIBRARY
+		if request.environ("PATH_INFO").find("lib/altitude") != -1: root = self.DIR_ALTITUDE_LIBRARY
+		text = self.app().load(join(root, "css", css))
+		text = clevercss.convert(text)
+		return request.respond(text, contentType="text/css")
+
+	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg)}")
 	def getImage( self, request, image ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "images", image))
 
