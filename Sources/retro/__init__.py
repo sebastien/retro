@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 29-Aug-2009
+# Last mod  : 07-Sep-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -51,6 +51,8 @@ CGI  = True
 STANDALONE = "STANDALONE"
 
 try:
+	FLUP_FCGIServer = None
+	FLUP_SCGIServer = None
 	from flup.server.fcgi import WSGIServer as FLUP_FCGIServer
 	from flup.server.scgi import WSGIServer as FLUP_SCGIServer
 	FLUP = "FLUP"
@@ -191,7 +193,7 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 		else:
 			environ["PATH_INFO"]  = "/"
 		if sessions:
-			environ["com.saddi.service.session"] = session_service
+			environ["com.saddi.service.session"] = sessions
 		def start_response( status, headers, executionInfo=None ):
 			for key, value in headers:
 				print "%s: %s" % (key, value)
@@ -200,23 +202,23 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 		res = "".join(tuple(self.dispatcher(environ, start_response)))
 		print res
 		if sessions:
-			session_service.close()
+			sessions.close()
 	#
 	# == STANDALONE (WSGIREF)
 	#
-	elif method == STANDALONE_WSGIREF:
-		server_address     = (
-			address or app.config("address") or DEFAULT_ADDRESS,
-			port or app.config("port") or DEFAULT_PORT
-		)
-		server = WSGIServer(server_address, WSGIRequestHandler)
-		server.set_app(stack)
-		socket = server.socket.getsockname()
-		print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
-		try:
-			while runCondition: server.handle_request() 
-		except KeyboardInterrupt:
-			print "done"
+	# elif method == STANDALONE_WSGIREF:
+	# 	server_address     = (
+	# 		address or app.config("address") or DEFAULT_ADDRESS,
+	# 		port or app.config("port") or DEFAULT_PORT
+	# 	)
+	# 	server = WSGIServer(server_address, WSGIRequestHandler)
+	# 	server.set_app(stack)
+	# 	socket = server.socket.getsockname()
+	# 	print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
+	# 	try:
+	# 		while runCondition: server.handle_request() 
+	# 	except KeyboardInterrupt:
+	# 		print "done"
 	#
 	# == STANDALONE (Retro WSGI server)
 	#

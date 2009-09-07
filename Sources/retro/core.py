@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 20-Aug-2009
+# Last mod  : 07-Sep-2009
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie

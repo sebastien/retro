@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 02-Sep-2009
+# Last mod  : 07-Sep-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -205,8 +205,7 @@ class FileServer(Component):
 	def getCCSS( self, request, css ):
 		import clevercss
 		root = self.DIR_LIBRARY
-		if request.environ("PATH_INFO").find("lib/altitude") != -1: root = self.DIR_ALTITUDE_LIBRARY
-		text = self.app().load(join(root, "css", css))
+		text = self.app().load(os.path.join(root, "css", css))
 		text = clevercss.convert(text)
 		return request.respond(text, contentType="text/css")
 
@@ -229,14 +228,14 @@ class FileServer(Component):
 				# FIXME: Cache this
 				path = path.replace("/js", "/sjs")
 				if self.CACHE:
-					timestamp         = CACHE.filemod(path)
-					has_changed, data = CACHE.get(path,timestamp)
+					timestamp         = self.CACHE.filemod(path)
+					has_changed, data = self.CACHE.get(path,timestamp)
 				else:
 					has_changed = True
 				if has_changed:
 					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (self.DIR_LIBRARY + "/sjs"))
 					if self.CACHE:
-						CACHE.put(path,timestamp,data)
+						self.CACHE.put(path,timestamp,data)
 				return request.respond(data,contentType="text/javascript")
 			else:
 				return request.respondFile(path)

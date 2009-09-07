@@ -59,7 +59,7 @@ class MemoryCache:
 
 	def cleanup( self ):
 		self.lock.acquire()
-		items = self.items()
+		items = self.data.items()
 		# FIXME: This is slooooow
 		# We compare the hits
 		items.sort(lambda a,b:cmp(a[1][1], b[1][1]))

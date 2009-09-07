@@ -8,13 +8,14 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 20-Jul-2009
+# Last mod  : 07-Sep-2009
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time
 from core import Request, Response, BeakerSession, Event, \
 RendezVous, asJSON, json, unjson
 
+DEFAULT_LOGFILE  = "retro.log"
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
 
@@ -51,6 +52,7 @@ except ImportError:
 	DJANGO = None
 
 try:
+	Cheetah = None
 	import Cheetah, Cheetah.Template
 	CHEETAH = "CHEETAH"
 	TEMPLATE_ENGINES.append(CHEETAH)
@@ -490,9 +492,10 @@ class Component:
 	the decorators provided by Retro and register the component into the
 	application."""
 
-	PREFIX = ""
+	PREFIX    = ""
+	PRIORITY  = 0
 	fromRetro = True
-	
+
 	@staticmethod
 	def introspect( component ):
 		"""Returns a list of (name, method, {on:...,priority:...,template:...,ajax:...})
@@ -556,7 +559,7 @@ class Component:
 				handlers[method.upper()] = handler
 				prefix = self.PREFIX
 				if prefix and prefix[0] != "/": self.PREFIX = prefix = "/" + prefix
-				if hasattr(self, "PRIORITY"): priority += self.PRIORITY
+				priority += self.PRIORITY
 				self._app.dispatcher().on(path, prefix=prefix, handlers=handlers, priority=priority)
 
 	def location( self ):
@@ -967,9 +970,9 @@ class Application(Component):
 		res   = None
 		templ_type, templ_path = self.ensureTemplate(name, engine)
 		# FIXME: Add a proper message handler for that
-		if templ_type is -1:
-			return "Template not found:" + name
-		if templ_type is None:
+		#if templ_type is 1:
+		#	return "Template not found:" + name
+		if not templ_type:
 			raise Exception("No matching template engine for template: " + name)
 		if templ_type == KID:
 			t =  kid.Template(file=templ_path, **kwargs)
@@ -1062,7 +1065,7 @@ class Configuration:
 		args = " ".join(map(str, args))
 		# Creates the logfile if necessary
 		if not self._logfile:
-			self._logfile = file(self.logfile(), 'a')
+			self._logfile = file(self.get("logfile") or DEFAULT_LOGFILE, 'a')
 		# Logs the data
 		self._logfile.write(">>> ")
 		if type(args) in (tuple,list):
@@ -1098,7 +1101,7 @@ class Configuration:
 		if type(path) in (tuple,list): return map(self._abspath, path)
 		abspath = os.path.abspath(path)
 		if path != abspath:
-			return os.path.abspath(os.path.join(self.root(), path))
+			return os.path.abspath(os.path.join(self.get("root") or ".", path))
 		else: return path
 
 	def __repr__( self ):
