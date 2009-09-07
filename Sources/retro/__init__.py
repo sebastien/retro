@@ -38,6 +38,8 @@ This is the main Retro module. You can generally do the following:
 All important classes, functions and decorators are made available through this
 module, so you should not have to bother with anything else."""
 
+__pychecker__ = "unusednames=executionInfo,status"
+
 # ------------------------------------------------------------------------------
 #
 # DEPENDENCIES

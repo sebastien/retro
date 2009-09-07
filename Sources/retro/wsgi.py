@@ -451,10 +451,10 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 	components can be used at the same time by different thread. This allows
 	interleaving of handling of long processes, """
 
-	def __init__ (self, address, application, serveFiles=1):
+	def __init__ (self, address, application, serveFiles=0):
 		BaseHTTPServer.HTTPServer.__init__ (self, address, WSGIHandler)
 		self.application        = application
-		self.serveFiles         = 0
+		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

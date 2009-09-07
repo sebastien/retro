@@ -11,6 +11,8 @@
 # Last mod  : 07-Sep-2009
 # -----------------------------------------------------------------------------
 
+__pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
+
 import os, re, sys, time
 from core import Request, Response, BeakerSession, Event, \
 RendezVous, asJSON, json, unjson
@@ -18,6 +20,7 @@ RendezVous, asJSON, json, unjson
 DEFAULT_LOGFILE  = "retro.log"
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
+
 
 try:
 	import kid
@@ -505,7 +508,6 @@ class Component:
 			value = getattr(component, slot)
 			# We look for components with the "@on" decorator
 			if hasattr(value, _RAILW_ON):
-				has_rw_slot = True
 				methods  = getattr(value, _RAILW_ON)
 				priority = getattr(value, _RAILW_ON_PRIORITY) or 0
 				if hasattr(value, _RAILW_TEMPLATE):
@@ -625,7 +627,7 @@ class Component:
 		boundary       = request.header("X-Channel-Boundary") or "8<-----BURST-CHANNEL-REQUEST-------"
 		channel_type   = request.header("X-Channel-Type")
 		requests_count = request.header("X-Channel-Requests")
-		requests      = request.body().split(boundary + "\n")
+		requests       = request.body().split(boundary + "\n")
 		# We create a fake start response that will simply yield the results
 		# The iterate method is a generator that will produce the result
 		response_boundary = "8<-----BURST-CHANNEL-RESPONSE-------"
