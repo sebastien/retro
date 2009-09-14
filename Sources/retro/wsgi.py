@@ -293,14 +293,20 @@ Use request methods to create a response (request.respond, request.returns, ...)
 				def resume_on_rdv(*args,**kwargs):
 					handler._state = handler.PROCESSING
 					getReactor().register(handler, application)
+				# When the timeout is reached, we just end the request
+				def resume_on_timeout(*args,**kwargs):
+					handler._state = handler.ENDED
+					self._processEnd()
+					return False
 				self._rendezvous.onMeet(resume_on_rdv)
-				return False
+				self._rendezvous.onTimeout(resume_on_timeout)
 			# If we are in a process/threaded mode, we create an Event object
 			# that will be set to true when the event is met
 			else:
 				# FIXME: Implement this
 				raise "NOT IMPLEMENTED"
 				pass
+			res = False
 		elif self._state != self.ENDED:
 			self._processEnd()
 			res = False

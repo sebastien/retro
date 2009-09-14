@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 07-Sep-2009
+# Last mod  : 14-Sep-2009
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -161,12 +161,21 @@ class Event:
 
 class RendezVous:
 
-	def __init__( self, expect=1 ):
-		self.count   = 0
-		self.goal    = expect
-		self._events = None
-		self._onMeet = None
-
+	def __init__( self, expect=1, timeout=-1 ):
+		self.count      = 0
+		self.goal       = expect
+		self._events    = None
+		self._onMeet    = None
+		self._onTimeout = None
+		self._timeout   = timeout
+		self._created   = time.time()
+		# FIXME: The best would be to use a schedule/reactor instead of that
+		# like 'call me back in XXXms'
+		if timeout > 0:
+			def run():
+				time.sleep(timeout)
+				self.timeout()
+			threading.Thread(target=run).start()
 	def joinEvent( self, event ):
 		if self._events is None: self._events = []
 		self._events.append(event)
@@ -181,6 +190,10 @@ class RendezVous:
 		if self._onMeet is None: self._onMeet = []
 		self._onMeet.append(callback)
 
+	def onTimeout( self, callback ):
+		if self._onTimeout is None: self._onTimeout = []
+		self._onTimeout.append(callback)
+
 	def meet( self ):
 		self.count += 1
 		if self.count == self.goal:
@@ -189,6 +202,15 @@ class RendezVous:
 				for c in self._onMeet:
 					c(self,c,self.count)
 				self._onMeet = None
+		return self
+
+	def timeout( self ):
+		# When the goal is reached, we call the callbacks
+		self._onMeet = None
+		if self._onTimeout:
+			for c in self._onTimeout:
+				c(self,c,self.count)
+				self._onTimeout = None
 		return self
 
 # ------------------------------------------------------------------------------
