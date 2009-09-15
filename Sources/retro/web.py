@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 07-Sep-2009
+# Last mod  : 14-Sep-2009
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -527,12 +527,14 @@ class Component:
 				}))
 		return res
 
-	def __init__( self, name = None ):
+	def __init__( self, name = None, prefix = None ):
 		if name == None: name = self.__class__.__name__
 		self._name      = name
 		self._app       = None
 		self._context   = {}
 		self._priority  = 0
+		if prefix:
+			self.PREFIX = prefix
 
 	def setPriority( self, level ):
 		"""Sets the priority level for this component. The component
