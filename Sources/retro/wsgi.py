@@ -6,10 +6,11 @@
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 #             Colin Stewart                           <http://www.owlfish.com/>
 #             Fabien Moritz                           <fabien.moritz@gmail.com>
+# -----------------------------------------------------------------------------
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 19-May-2009
+# Last mod  : 17-Sep-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -144,7 +145,6 @@ class WSGIReactor:
 
 	def shutdown( self, *args ):
 		self.stop()
-		sys.exit()
 
 	def run( self ):
 		"""The Reactor runs by iterating on each handler, one at a time.
@@ -175,11 +175,18 @@ class WSGIReactor:
 
 USE_REACTOR = False
 REACTOR     = None
+ON_SHUTDOWN = []
 
 def shutdown(*args):
 	if REACTOR:
 		REACTOR.shutdown()
+	for callback in ON_SHUTDOWN:
+		callback()
 	sys.exit()
+
+def onShutdown( callback ):
+	global ON_SHUTDOWN
+	ON_SHUTDOWN.append(callback)
 
 def createReactor():
 	global REACTOR

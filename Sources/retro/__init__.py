@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
-from wsgi import WSGIServer, REACTOR
+from wsgi import WSGIServer, REACTOR, onShutdown
 from core import asJSON
 from web  import on, ajax, expose, display, predicate, when, cache, \
 Component, Application, \

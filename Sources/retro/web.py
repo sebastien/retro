@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 14-Sep-2009
+# Last mod  : 15-Sep-2009
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
