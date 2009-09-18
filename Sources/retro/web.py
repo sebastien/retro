@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 15-Sep-2009
+# Last mod  : 18-Sep-2009
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -620,6 +620,14 @@ class Component:
 		"""Returns the name for the component."""
 		return self._name
 
+	def shutdown( self ):
+		"""This will trigger 'onShutdown' in this application and in all the
+		registered components."""
+		self.onShutdown()
+
+	def onShutdown( self ):
+		"""A stub to be overriden by subclasses."""
+
 	@on(POST="/channels:burst", priority=0)
 	def processBurstChannel( self, request ):
 		"""The `postRequest` method implements a mechanism that allows the
@@ -876,6 +884,15 @@ class Application(Component):
 			# We initialize the component (if it is one)
 			component.init()
 
+	def shutdown( self ):
+		"""This will trigger 'onShutdown' in this application and in all the
+		registered components."""
+		self.onShutdown()
+		for component in self._components:
+			component.shutdown()
+
+	def onShutdown( self ):
+		"""A stub to be overriden by subclasses."""
 
 	def component( self, nameOrClass ):
 		"""Returns the component with the given class name (not case sensitive)
