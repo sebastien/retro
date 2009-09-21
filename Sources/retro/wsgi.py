@@ -10,7 +10,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 17-Sep-2009
+# Last mod  : 21-Sep-2009
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -176,6 +176,7 @@ class WSGIReactor:
 USE_REACTOR = False
 REACTOR     = None
 ON_SHUTDOWN = []
+ON_ERROR    = []
 
 def shutdown(*args):
 	if REACTOR:
@@ -187,6 +188,15 @@ def shutdown(*args):
 def onShutdown( callback ):
 	global ON_SHUTDOWN
 	ON_SHUTDOWN.append(callback)
+
+def error(message):
+	for callback in ON_ERROR:
+		callback(message)
+
+	sys.exit()
+def onError( callback ):
+	global ON_ERROR
+	ON_ERROR.append(callback)
 
 def createReactor():
 	global REACTOR
@@ -442,6 +452,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
 		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
+		error(error_msg)
 		self._processEnd()
 
 # ------------------------------------------------------------------------------

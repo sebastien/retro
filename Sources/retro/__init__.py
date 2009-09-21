@@ -8,11 +8,12 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 07-Sep-2009
+# Last mod  : 21-Sep-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
-from wsgi import WSGIServer, REACTOR, onShutdown
+import wsgi
+from wsgi import REACTOR, onShutdown, onError
 from core import asJSON
 from web  import on, ajax, expose, display, predicate, when, cache, \
 Component, Application, \
@@ -21,7 +22,7 @@ KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
 
-__version__ = "0.4.3"
+__version__ = "0.4.5"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
@@ -110,7 +111,8 @@ def command( args, **extra ):
 
 def run( app=None, components=(), method=STANDALONE, name="retro",
 root = ".", resetlog=False, address="", port=None, prefix='', async=False,
-sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
+sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True,
+onError=None ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
@@ -231,7 +233,8 @@ sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True ):
 		)
 		stack.fromRetro = True
 		stack.app          = lambda: app
-		server = WSGIServer(server_address, stack)
+		server = wsgi.WSGIServer(server_address, stack)
+		wsgi.onError(onError)
 		socket = server.socket.getsockname()
 		print "Retro embedded server listening on %s:%s" % ( socket[0], socket[1])
 		try:
