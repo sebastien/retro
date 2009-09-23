@@ -111,7 +111,7 @@ def command( args, **extra ):
 
 def run( app=None, components=(), method=STANDALONE, name="retro",
 root = ".", resetlog=False, address="", port=None, prefix='', async=False,
-sessions=False, withReactor=None, processStack=lambda x:x, runCondition=True,
+sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda x:True,
 onError=None ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
@@ -238,8 +238,8 @@ onError=None ):
 		socket = server.socket.getsockname()
 		print "Retro embedded server listening on %s:%s" % ( socket[0], socket[1])
 		try:
-			while runCondition:
-				server.handle_request() 
+			while runCondition():
+				server.handle_request()
 		except KeyboardInterrupt:
 			print "done"
 # EOF

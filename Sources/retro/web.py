@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 18-Sep-2009
+# Last mod  : 23-Sep-2009
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -20,7 +20,6 @@ RendezVous, asJSON, json, unjson
 DEFAULT_LOGFILE  = "retro.log"
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
-
 
 try:
 	import kid
@@ -533,6 +532,7 @@ class Component:
 		self._app       = None
 		self._context   = {}
 		self._priority  = 0
+		self._isRunning = True
 		if prefix:
 			self.PREFIX = prefix
 
@@ -623,10 +623,15 @@ class Component:
 	def shutdown( self ):
 		"""This will trigger 'onShutdown' in this application and in all the
 		registered components."""
+		self._isRunning = False
 		self.onShutdown()
 
 	def onShutdown( self ):
 		"""A stub to be overriden by subclasses."""
+	
+	def isRunning( self ):
+		"""Tells if the component is running."""
+		return self._isRunning
 
 	@on(POST="/channels:burst", priority=0)
 	def processBurstChannel( self, request ):
@@ -887,12 +892,9 @@ class Application(Component):
 	def shutdown( self ):
 		"""This will trigger 'onShutdown' in this application and in all the
 		registered components."""
-		self.onShutdown()
+		Component.shutdown(self)
 		for component in self._components:
 			component.shutdown()
-
-	def onShutdown( self ):
-		"""A stub to be overriden by subclasses."""
 
 	def component( self, nameOrClass ):
 		"""Returns the component with the given class name (not case sensitive)
