@@ -182,21 +182,28 @@ def shutdown(*args):
 	if REACTOR:
 		REACTOR.shutdown()
 	for callback in ON_SHUTDOWN:
-		callback()
+		try:
+			callback()
+		except:
+			pass
 	sys.exit()
 
 def onShutdown( callback ):
 	global ON_SHUTDOWN
-	ON_SHUTDOWN.append(callback)
+	if callback:
+		ON_SHUTDOWN.append(callback)
 
 def error(message):
 	for callback in ON_ERROR:
-		callback(message)
+		try:
+			callback(message)
+		except:
+			pass
 
-	sys.exit()
 def onError( callback ):
 	global ON_ERROR
-	ON_ERROR.append(callback)
+	if callback:
+		ON_ERROR.append(callback)
 
 def createReactor():
 	global REACTOR

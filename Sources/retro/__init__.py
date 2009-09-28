@@ -111,7 +111,7 @@ def command( args, **extra ):
 
 def run( app=None, components=(), method=STANDALONE, name="retro",
 root = ".", resetlog=False, address="", port=None, prefix='', async=False,
-sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda x:True,
+sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda:True,
 onError=None ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
