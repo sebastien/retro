@@ -209,7 +209,7 @@ class FileServer(Component):
 		text = clevercss.convert(text)
 		return request.respond(text, contentType="text/css")
 
-	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg)}")
+	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
 	def getImage( self, request, image ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "images", image))
 
