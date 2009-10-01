@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -8,7 +7,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 29-Aug-2009
+# Last mod  : 01-Oct-2009
 # -----------------------------------------------------------------------------
 
 import os, stat, threading
@@ -27,6 +26,13 @@ class MemoryCache:
 		self.weight = 0
 		self.limit  = 100
 		self.lock   = threading.Lock()
+		self.enabled = True
+
+	def enable( self ):
+		self.enabled = True
+
+	def disable( self ):
+		self.enabled = False
 
 	def get( self, key ):
 		d = self.data.get(key)
@@ -75,6 +81,7 @@ class FileCache:
 
 	def __init__( self, path ):
 		self.path = path
+		self.enabled = True
 		assert os.path.exists(path)
 		assert os.path.isdir(path)
 
@@ -106,6 +113,7 @@ class SignatureCache:
 		# TODO: Add cache clearing functions
 		self._cachedSig  = {}
 		self._cachedData = {}
+		self.enabled = True
 
 	def cache( self, signatureFunction  ):
 		"""A decorator that will memoize the result of the function as long as
@@ -137,4 +145,4 @@ class SignatureCache:
 	def filemod( self, path, *args ):
 		return  os.stat(path)[stat.ST_MTIME]
 
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet

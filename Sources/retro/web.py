@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Sep-2009
+# Last mod  : 01-Oct-2009
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -224,12 +224,15 @@ def cache( store ):
 		handler_key = str(requestHandler)
 		def wrapper( self, request, *args, **kwargs ):
 			key = handler_key + str(args) + str(kwargs)
-			if store.has(key):
-				return store.get(key)
+			if store.enabled:
+				if store.has(key):
+					return store.get(key)
+				else:
+					response =  requestHandler(self, request, *args, **kwargs)
+					store.set(key, response)
+					return response
 			else:
 				response =  requestHandler(self, request, *args, **kwargs)
-				store.set(key, response)
-				return response
 		return wrapper
 	return decorator
 
