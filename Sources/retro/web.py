@@ -232,7 +232,7 @@ def cache( store ):
 					store.set(key, response)
 					return response
 			else:
-				response =  requestHandler(self, request, *args, **kwargs)
+				return requestHandler(self, request, *args, **kwargs)
 		return wrapper
 	return decorator
 
