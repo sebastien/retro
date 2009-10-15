@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 01-Oct-2009
+# Last mod  : 15-Oct-2009
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -549,8 +549,8 @@ class Component:
 		"""Returns the priority level for this component (usually 0)."""
 		return self._priority
 
-	def init( self ):
-		"""Init is called when the component is registered within its parent
+	def start( self ):
+		"""Start is called when the component is registered within its parent
 		application. You can redefine this method to make your custom
 		initialization."""
 		pass
@@ -773,18 +773,16 @@ class Application(Component):
 		self.PREFIX      = prefix
 		if type(components) not in (list, tuple): components = [components]
 		# We register the components first so that if component try to reference
-		# each other at 'init()' phase, it will still work.
-		for component in components:
-			self._components.append(component)
-		self.init()
+		# each other at 'start()' phase, it will still work.
 		for component in components:
 			if type(component) in (list, tuple):
 				map(self.register, component)
 			else:
 				self.register(component)
 
-	def init( self ):
-		pass
+	def start( self ):
+		for component in self._components:
+			component.start()
 
 	def notFound(self, request):
 		return Response("404 Not Found", [], 404)
@@ -889,8 +887,6 @@ class Application(Component):
 				)
 			if component not in self._components:
 				self._components.append(component)
-			# We initialize the component (if it is one)
-			component.init()
 
 	def shutdown( self ):
 		"""This will trigger 'onShutdown' in this application and in all the

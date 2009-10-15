@@ -81,7 +81,7 @@ class LocalFiles(Component):
 		for key, value in processors.items():
 			self._processors[key] = value
 
-	def init( self, root=None ):
+	def start( self, root=None ):
 		if not (root is None) :
 			root = os.path.abspath(root)
 			self.setRoot(root)
@@ -181,7 +181,7 @@ class LocalFiles(Component):
 class FileServer(Component):
 	"""Serves local files, should be replaced in production by another server."""
 
-	def init( self ):
+	def start( self ):
 		self.DIR_LIBRARY = self.app().config("library.path")
 		self.CACHE       = None
 

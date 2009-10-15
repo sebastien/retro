@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 21-Sep-2009
+# Last mod  : 15-Oct-2009
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -138,7 +138,10 @@ onError=None ):
 	config.setdefault("name",    name)
 	config.setdefault("logfile", name + ".log")
 	if resetlog: os.path.unlink(config.logfile())
+	# We set the configuration
 	app.config(config)
+	# And start the application
+	app.start()
 	# NOTE: Maybe we should always print it
 	#print app.config()
 	# We start the WSGI stack
