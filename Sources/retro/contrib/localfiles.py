@@ -215,8 +215,11 @@ class FileServer(Component):
 
 	@on(GET="lib/swf/{script:\w+\.swf}")
 	def getFlash( self, request, script ):
-		# TODO: Rewrite respondFile
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "swf", script))
+
+	@on(GET="lib/pdf/{css:[\w\-_\.]+\.pdf}")
+	def getPDF( self, request, script ):
+		return request.respondFile(os.path.join(self.DIR_LIBRARY, "pdf", script))
 
 	@on(GET="lib/js/{path:rest}")
 	@on(GET="lib/sjs/{path:rest}")
