@@ -217,7 +217,7 @@ class FileServer(Component):
 	def getFlash( self, request, script ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "swf", script))
 
-	@on(GET="lib/pdf/{css:[\w\-_\.]+\.pdf}")
+	@on(GET="lib/pdf/{script:[\w\-_\.]+\.pdf}")
 	def getPDF( self, request, script ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "pdf", script))
 
