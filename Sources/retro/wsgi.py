@@ -211,12 +211,12 @@ def createReactor():
 	if HAS_SIGNAL:
 		# Jython does not support all signals, so we only use
 		# the available ones
-		signals = map(
-			lambda sig: getattr(signal, sig, None),
-			['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM'])
-		map(
-			lambda sig: signal.signal(sig, shutdown),
-			filter(lambda sig: not sig is None, signals))
+		signals = ['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM']
+		for sig in signals:
+			try:
+				signal.signal(sig,shutdown)
+			except Exception, e:
+				print "[!] retro.wsgi.createReactor:", sig, e
 
 createReactor()
 

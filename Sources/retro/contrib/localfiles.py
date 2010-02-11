@@ -141,7 +141,10 @@ class LocalFiles(Component):
 			return request.respond("File not found: %s" % (resolved_path), status=404)
 		elif os.path.isdir(resolved_path):
 			if self.LIST_DIR:
-				return request.respond(self.directoryAsHtml(path, resolved_path))
+				if request.param("format") == "json":
+					return request.returns(self.directoryAsList(path, resolved_path))
+				else:
+					return request.respond(self.directoryAsHtml(path, resolved_path))
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		else:
@@ -171,6 +174,15 @@ class LocalFiles(Component):
 					ext, file_url, file_name
 				))
 		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files))
+
+	def directoryAsList( self, path, localPath ):
+		"""Returns a directory as JSON"""
+		dirs  = []
+		files = []
+		parent = os.path.dirname(path)
+		local_files = list(os.path.join(parent, p) for p in os.listdir(localPath))
+		local_files.sort()
+		return local_files
 
 # ------------------------------------------------------------------------------
 #

@@ -1,1 +1,1 @@
-- @expose(as="text/html","application/js") variant of @ajax- API to add/remove rules from components- @on(POST="/{o:oid}?{content:object}&{user:object}&{subject:string}...)- Add setCookie, clearCookie methods in response
+Add GEVENT support for better performancehttp://gevent.org/modindex.html- @expose(as="text/html","application/js") variant of @ajax- API to add/remove rules from components- @on(POST="/{o:oid}?{content:object}&{user:object}&{subject:string}...)- Add setCookie, clearCookie methods in response

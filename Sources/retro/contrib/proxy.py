@@ -11,7 +11,7 @@
 # Last mod  : 16-Apr-2009
 # -----------------------------------------------------------------------------
 
-import os, sys, time, webbrowser
+import os, sys, time
 from os.path import abspath, dirname, join
 from retro import *
 from retro.wsgi import SERVER_ERROR_CSS

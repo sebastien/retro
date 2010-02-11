@@ -243,7 +243,9 @@ Reference
 
   >	<form action="/api/postThis" method="POST">
   >		<input type="text" name="name" value="File name" />
-  >		<input type="file" name="file" value="Upload file" />
+  >   <!-- NOTE: You need the 'enctype=multipart/form-data' for this to
+  >        work properly with the following Retro snippet -->
+  >		<input type="file" enctype='multipart/form-data' name="file" value="Upload file" />
   >	</form>
 
   you would do the following:
