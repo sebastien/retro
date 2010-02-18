@@ -36,8 +36,8 @@ setup(
     description = SUMMARY, long_description = DESCRIPTION,
     license     = "Revised BSD License",
     keywords    = "web, lightweight, framework, http, ajax, declarative",
-    url         = "http://www.ivy.fr/retro",
-    download_url= "http://www.ivy.fr/retro/retro-%s.tar.gz" % (VERSION) ,
+    url         = "http://www.github.com/sebastien/retro",
+    download_url= "http://github.com/sebastien/retro/tarball/%s" % (VERSION) ,
     package_dir = { "": "Sources" },
     packages    = ["retro"],
     classifiers = [

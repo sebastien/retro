@@ -216,7 +216,7 @@ def createReactor():
 			try:
 				signal.signal(sig,shutdown)
 			except Exception, e:
-				print "[!] retro.wsgi.createReactor:", sig, e
+				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" % (sig, e))
 
 createReactor()
 

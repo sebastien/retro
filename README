@@ -1,7 +1,7 @@
 == Retro
 == Featherweight Web Development
 -- Author: Sebastien Pierre <sebastien@ivy.fr>
--- Revision: 0.9.1 (02-Apr-2009)
+-- Revision: 0.9.5 (12-Fev-2010)
 
 _Retro_ is a lightweight Python Web WSGI-based toolkit that is designed for
 easy prototyping and development of Web services and Web apps.
