@@ -7,7 +7,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 01-Oct-2009
+# Last mod  : 17-May-2010
 # -----------------------------------------------------------------------------
 
 import os, stat, threading
@@ -62,6 +62,10 @@ class MemoryCache:
 		self.lock.release()
 		if self.weight > self.limit:
 			self.cleanup()
+
+	def remove( self, key ):
+		if self.has(key):
+			del self.data[key]
 
 	def cleanup( self ):
 		self.lock.acquire()

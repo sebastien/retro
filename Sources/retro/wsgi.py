@@ -214,7 +214,7 @@ def createReactor():
 		signals = ['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM']
 		for sig in signals:
 			try:
-				signal.signal(sig,shutdown)
+				signal.signal(signal[sig],shutdown)
 			except Exception, e:
 				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" % (sig, e))
 
