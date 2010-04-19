@@ -788,7 +788,7 @@ class Application(Component):
 		return Response("404 Not Found", [], 404)
 
 	def notSupported(self, request):
-		return Response("405 Method Not Supported", [], 405)
+		return Response("404 No resource at the given URI", [], 404)
 
 	def location( self ):
 		"""Returns the location of this application. The location will not
