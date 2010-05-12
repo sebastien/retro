@@ -62,6 +62,7 @@ class MemoryCache:
 		self.lock.release()
 		if self.weight > self.limit:
 			self.cleanup()
+		return data
 
 	def remove( self, key ):
 		if self.has(key):

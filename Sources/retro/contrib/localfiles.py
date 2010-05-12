@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -8,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 07-Sep-2009
+# Last mod  : 12-May-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -111,7 +109,7 @@ class LocalFiles(Component):
 	def getContentType( self, path ):
 		"""A function that returns the mime type from the given file
 		path."""
-		return mimetypes.guess_type(path)[0] or "text/plain"
+		return mimetypes.guess_type(path)[0] or "text/html"
 
 	def getContent( self, path ):
 		"""Gets the content for this file."""
@@ -193,6 +191,8 @@ class LocalFiles(Component):
 class FileServer(Component):
 	"""Serves local files, should be replaced in production by another server."""
 
+	PREFIX = "/lib"
+
 	def start( self ):
 		self.DIR_LIBRARY = self.app().config("library.path")
 		self.CACHE       = None
@@ -200,6 +200,13 @@ class FileServer(Component):
 	def setCache( self, cache ):
 		self.CACHE = cache
 		return self
+	
+	#def _respondFile( self, request, path, contentType= ):
+	#	if self.CACHE and self.CACHE.enabled:
+	#		if self.CACHE.has(path):
+	#			content, contentType = self.CACHE.get(path)
+	#		else:
+	#	return request.respondFile(
 
 	@on(GET="crossdomain.xml")
 	def getCrossDomain( self, request ):
@@ -209,11 +216,11 @@ class FileServer(Component):
 			+ '<cross-domain-policy><allow-access-from domain="*" /></cross-domain-policy>'
 		)
 
-	@on(GET="lib/css/{css:[\w\-_\.]+\.css}")
+	@on(GET="css/{css:[\w\-_\.]+\.css}")
 	def getCSS( self, request, css ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "css", css))
 
-	@on(GET="lib/css/{css:[\w\-_\.]+\.ccss}")
+	@on(GET="css/{css:[\w\-_\.]+\.ccss}")
 	def getCCSS( self, request, css ):
 		import clevercss
 		root = self.DIR_LIBRARY
@@ -221,20 +228,20 @@ class FileServer(Component):
 		text = clevercss.convert(text)
 		return request.respond(text, contentType="text/css")
 
-	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
+	@on(GET="images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
 	def getImage( self, request, image ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "images", image))
 
-	@on(GET="lib/swf/{script:\w+\.swf}")
+	@on(GET="swf/{script:\w+\.swf}")
 	def getFlash( self, request, script ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "swf", script))
 
-	@on(GET="lib/pdf/{script:[\w\-_\.]+\.pdf}")
+	@on(GET="pdf/{script:[\w\-_\.]+\.pdf}")
 	def getPDF( self, request, script ):
 		return request.respondFile(os.path.join(self.DIR_LIBRARY, "pdf", script))
 
-	@on(GET="lib/js/{path:rest}")
-	@on(GET="lib/sjs/{path:rest}")
+	@on(GET="js/{path:rest}")
+	@on(GET="sjs/{path:rest}")
 	def getJavaScript( self, request, path ):
 		path = os.path.abspath(os.path.join(self.DIR_LIBRARY, "js", path))
 		if path.startswith(self.DIR_LIBRARY):
@@ -259,4 +266,4 @@ class FileServer(Component):
 			# (the path is not the right path)
 			return request.returns(False)
 
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet
