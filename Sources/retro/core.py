@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 14-Sep-2009
+# Last mod  : 18-Jun-2010
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -612,7 +612,7 @@ class Request:
 			return self.notFound("File not found: %s" % (path))
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
-		f = file(path, 'r') ; r = f.read() ; f.close()
+		f = file(path, 'rb') ; r = f.read() ; f.close()
 		return Response(content=r, headers=[("Content-Type", contentType)], status=status)
 
 	def notFound( self, content="Resource not found", status=404 ):

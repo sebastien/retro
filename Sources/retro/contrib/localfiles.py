@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 12-May-2010
+# Last mod  : 18-Jun-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -113,7 +113,7 @@ class LocalFiles(Component):
 
 	def getContent( self, path ):
 		"""Gets the content for this file."""
-		f = file(path, 'r') ; c=f.read() ; f.close()
+		f = file(path, 'rb') ; c=f.read() ; f.close()
 		return c
 
 	def processorFor( self, path ):
