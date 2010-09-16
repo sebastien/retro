@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 15-Oct-2009
+# Last mod  : 17-Aug-2010
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -114,14 +114,14 @@ class ApplicationError(Exception):
 #
 # ------------------------------------------------------------------------------
 
-_RAILW_ON              = "_retro_on"
-_RAILW_ON_PRIORITY     = "_retro_on_priority"
-_RAILW_AJAX            = "_retro_ajax"
-_RAILW_AJAX_JSON       = "_retro_ajax_json"
-_RAILW_WHEN            = "_retro_when"
-_RAILW_TEMPLATE        = "_retro_template"
-_RAILW_TEMPLATE_ENGINE = "_retro_template_engine"
-_RAILW_IS_PREDICATE    = "_retro_isPredicate"
+_RETRO_ON              = "_retro_on"
+_RETRO_ON_PRIORITY     = "_retro_on_priority"
+_RETRO_AJAX            = "_retro_ajax"
+_RETRO_AJAX_JSON       = "_retro_ajax_json"
+_RETRO_WHEN            = "_retro_when"
+_RETRO_TEMPLATE        = "_retro_template"
+_RETRO_TEMPLATE_ENGINE = "_retro_template_engine"
+_RETRO_IS_PREDICATE    = "_retro_isPredicate"
 
 def on( priority=0, **methods ):
 	"""The @on decorator is one of the main important things you will use within
@@ -150,8 +150,8 @@ def on( priority=0, **methods ):
 
 	The @Request class offers many methods to create and send responses."""
 	def decorator(function):
-		v = function.__dict__.setdefault(_RAILW_ON, [])
-		function.__dict__.setdefault(_RAILW_ON_PRIORITY, priority)
+		v = function.__dict__.setdefault(_RETRO_ON, [])
+		function.__dict__.setdefault(_RETRO_ON_PRIORITY, priority)
 		for http_method, url in methods.items():
 			v.append((http_method, url))
 		return function
@@ -167,14 +167,14 @@ def ajax( priority=0, **methods ):
 	This is perfect if you have an existing python class and want to expose it
 	to the web."""
 	def decorator(function):
-		function.__dict__.setdefault(_RAILW_AJAX, True)
-		function.__dict__.setdefault(_RAILW_AJAX_JSON, None)
+		function.__dict__.setdefault(_RETRO_AJAX, True)
+		function.__dict__.setdefault(_RETRO_AJAX_JSON, None)
 		# This is copy and paste of the @on body
-		v = function.__dict__.setdefault(_RAILW_ON,   [])
-		function.__dict__.setdefault(_RAILW_ON_PRIORITY, int(priority))
+		v = function.__dict__.setdefault(_RETRO_ON,   [])
+		function.__dict__.setdefault(_RETRO_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
 			if http_method == "json":
-				function.__dict__[_RAILW_AJAX_JSON] = url
+				function.__dict__[_RETRO_AJAX_JSON] = url
 			else:
 				v.append((http_method, url))
 		return function
@@ -197,13 +197,13 @@ def display( template, engine=sys ):
 	elif not (engine in TEMPLATE_ENGINES):
 		raise Exception("Unknown template engine: %s" % (engine))
 	def decorator( function ):
-		setattr(function, _RAILW_TEMPLATE, template)
-		setattr(function, _RAILW_TEMPLATE_ENGINE, engine)
+		setattr(function, _RETRO_TEMPLATE, template)
+		setattr(function, _RETRO_TEMPLATE_ENGINE, engine)
 		return function
 	return decorator
 
 def predicate(function):
-	setattr(function, _RAILW_IS_PREDICATE, True)
+	setattr(function, _RETRO_IS_PREDICATE, True)
 	return function
 
 def when( *predicates ):
@@ -211,7 +211,7 @@ def when( *predicates ):
 	only be executed when the given predicate (decorated with `@on`)
 	succeeds."""
 	def decorator( function ):
-		v = function.__dict__.setdefault(_RAILW_WHEN, [])
+		v = function.__dict__.setdefault(_RETRO_WHEN, [])
 		v.extend(predicates)
 		return function
 	return decorator
@@ -475,8 +475,8 @@ class Dispatcher:
 			# parameters to it
 			if params_name:
 				variables[params_name] = request.params()
-			if hasattr(handler, _RAILW_WHEN):
-				for predicate in getattr(handler, _RAILW_WHEN):
+			if hasattr(handler, _RETRO_WHEN):
+				for predicate in getattr(handler, _RETRO_WHEN):
 					if not getattr(component, predicate)(request):
 						can_handle = False
 						break
@@ -509,16 +509,16 @@ class Component:
 		for slot in dir(component):
 			value = getattr(component, slot)
 			# We look for components with the "@on" decorator
-			if hasattr(value, _RAILW_ON):
-				methods  = getattr(value, _RAILW_ON)
-				priority = getattr(value, _RAILW_ON_PRIORITY) or 0
-				if hasattr(value, _RAILW_TEMPLATE):
-					template = getattr(value, _RAILW_TEMPLATE)
-					engine   = getattr(value, _RAILW_TEMPLATE_ENGINE)
+			if hasattr(value, _RETRO_ON):
+				methods  = getattr(value, _RETRO_ON)
+				priority = getattr(value, _RETRO_ON_PRIORITY) or 0
+				if hasattr(value, _RETRO_TEMPLATE):
+					template = getattr(value, _RETRO_TEMPLATE)
+					engine   = getattr(value, _RETRO_TEMPLATE_ENGINE)
 				else:
 					template = engine = None
-				if hasattr(value, _RAILW_AJAX):
-					ajax_value = getattr(value, _RAILW_AJAX)
+				if hasattr(value, _RETRO_AJAX):
+					ajax_value = getattr(value, _RETRO_AJAX)
 				else:
 					ajax_value = None
 				res.append((slot, value,{
@@ -762,7 +762,7 @@ class Application(Component):
 					e
 				)
 			# And now we return the response as JS
-			return request.returns(r, options=getattr(self.function,_RAILW_AJAX_JSON))
+			return request.returns(r, options=getattr(self.function,_RETRO_AJAX_JSON))
 
 	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)
@@ -846,8 +846,15 @@ class Application(Component):
 
 	def load( self, path ):
 		"""Loads the file at the given path and returns its content."""
-		f = file(path, 'r')
+		f = file(path, 'rb')
 		t = f.read()
+		f.close()
+		return t
+
+	def save( self, path, data ):
+		"""Saves the file at the given path and returns its content."""
+		f = file(path, 'wb')
+		t = f.write(data)
 		f.close()
 		return t
 

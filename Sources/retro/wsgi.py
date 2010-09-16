@@ -10,7 +10,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 21-Sep-2009
+# Last mod  : 17-Aug-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """\
@@ -274,7 +274,16 @@ Use request methods to create a response (request.respond, request.returns, ...)
 	def do_GET (self):
 		self.run(self.server.application)
 
+	def do_HEAD (self):
+		self.run(self.server.application)
+
 	def do_POST (self):
+		self.run(self.server.application)
+
+	def do_PUT (self):
+		self.run(self.server.application)
+
+	def do_DELETE (self):
 		self.run(self.server.application)
 
 	def finish( self ):

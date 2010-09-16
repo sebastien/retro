@@ -7,10 +7,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 17-May-2010
+# Last mod  : 27-Jul-2010
 # -----------------------------------------------------------------------------
 
-import os, stat, threading
+import os, stat, hashlib, threading
 
 # ------------------------------------------------------------------------------
 #
@@ -62,7 +62,9 @@ class MemoryCache:
 		self.lock.release()
 		if self.weight > self.limit:
 			self.cleanup()
-		return data
+
+	def clear( self, key ):
+		self.remove(key)
 
 	def remove( self, key ):
 		if self.has(key):
@@ -84,6 +86,8 @@ class MemoryCache:
 class FileCache:
 	"""A simplistic filesystem-based cache"""
 
+
+
 	def __init__( self, path ):
 		self.path = path
 		self.enabled = True
@@ -104,6 +108,9 @@ class FileCache:
 		f.write(data)
 		f.close()
 
+	def clear( self, key ):
+		self.remove(key)
+		
 	def remove( self, key):
 		if self.has(key):
 			os.unlink(key + ".cache")
@@ -114,11 +121,11 @@ class FileCache:
 class SignatureCache:
 	"""A specific type of cache that takes a signature."""
 
-	def __init__( self ):
+	def __init__( self, backend=None ):
 		# TODO: Add cache clearing functions
 		self._cachedSig  = {}
-		self._cachedData = {}
-		self.enabled = True
+		self._backend    = backend or MemoryCache()
+		self.enabled     = True
 
 	def cache( self, signatureFunction  ):
 		"""A decorator that will memoize the result of the function as long as
@@ -131,23 +138,41 @@ class SignatureCache:
 				if self._cachedSig.get(function_tag) != signatureFunction:
 					result = function(*args)
 					self._cachedSig [function_tag] = signature
-					self._cachedData[function_tag] = result
+					self._backend.set(function_tag, result)
 					return result
 				else:
-					result = ielf._cachedData[function_tag]
+					result = self._backend.get(function_tag)
 					return result
 
-	def get( self, tag, sig=0 ):
-		if self._cachedSig.get(tag) != sig:
-			return True, None
+	def has( self, key, sig=0 ):
+		"""Tells if this cache has the value for the given key and signature."""
+		return self._cachedSig.has_key(key) and (self._cachedSig.get(key) == sig)
+	
+	def get( self, key, sig=0 ):
+		"""Returns a couple (updaToDate, data) for the given key and
+		signature. If the signature is different, then (False, None) is returned
+		and the previous data is cleared from the cache."""
+		if self._cachedSig.get(key) != sig:
+			self._backend.clear(key)
+			return False, None
 		else:
-			return False, self._cachedData.get(tag)
+			return True, self._backend.get(key)
 
-	def put( self, tag, sig, data ):
-		self._cachedSig[tag]  = sig
-		self._cachedData[tag] = data
+	def set( self, key, sig, data ):
+		"""Associates the given data with the give key and signature."""
+		self._cachedSig[key]  = sig
+		self._backend.set(key, data)
+		return data
 
-	def filemod( self, path, *args ):
+	@staticmethod
+	def sha1(  path ):
+		f = file(path, 'rb')
+		t = f.read()
+		f.close()
+		return hashlib.sha1(t).hexdigest()
+
+	@staticmethod
+	def mtime( path):
 		return  os.stat(path)[stat.ST_MTIME]
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

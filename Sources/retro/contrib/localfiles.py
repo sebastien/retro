@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Encoding: iso-8859-1
+# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -6,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 18-Jun-2010
+# Last mod  : 29-Jul-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -16,6 +18,7 @@ any application to serve local files."""
 import os, sys, mimetypes
 from retro import *
 from retro.wsgi import SERVER_ERROR_CSS
+from retro.contrib.cache import SignatureCache
 
 LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 .directoryListing {
@@ -68,7 +71,7 @@ class LocalFiles(Component):
 
 	LIST_DIR = True
 
-	def __init__( self, root="", name = None, processors={}, optsuffix=() ):
+	def __init__( self, root="", name=None, processors={}, optsuffix=() ):
 		"""Creates a new LocalFiles, with the optional root, name and
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
@@ -109,7 +112,7 @@ class LocalFiles(Component):
 	def getContentType( self, path ):
 		"""A function that returns the mime type from the given file
 		path."""
-		return mimetypes.guess_type(path)[0] or "text/html"
+		return mimetypes.guess_type(path)[0] or "text/plain"
 
 	def getContent( self, path ):
 		"""Gets the content for this file."""
@@ -184,29 +187,72 @@ class LocalFiles(Component):
 
 # ------------------------------------------------------------------------------
 #
-# FILE SERVER COMPONENT
+# LIBRARY SERVER COMPONENT
 #
 # ------------------------------------------------------------------------------
 
-class FileServer(Component):
-	"""Serves local files, should be replaced in production by another server."""
+class LibraryServer(Component):
+	"""Servers files from a library directory and expose them as 'lib/'. The
+	library server supports the following file types:
 
-	PREFIX = "/lib"
+	- CSS        ('lib/css')
+	- CleverCSS  ('lib/ccss')
+	- JavaScript ('lib/js')
+	- Sugar      ('lib/sjs')
+	- Images     ('lib/images', of type 'png', 'gif', 'jpg', 'ico' and 'svg')
+	- Flash      ('lib/swf' and 'crossdomain.xml')
+	- PDF        ('lib/pdf')
+
+	The implementation is not that flexible, but it's a very good start
+	for most web applications. You can specialize this class later if you
+	want to change the behaviour."""
+
+
+	@staticmethod
+	def read( path ):
+		f = file(path, 'rb')
+		t = f.read()
+		f.close()
+		return t
+
+	def __init__( self, library="", name="LibraryServer", cache=None ):
+		Component.__init__(self, name=name)
+		self.library = library
+		self.cache   = cache
 
 	def start( self ):
-		self.DIR_LIBRARY = self.app().config("library.path")
-		self.CACHE       = None
+		self.library  = self.library or self.app().config("library.path")
 
 	def setCache( self, cache ):
-		self.CACHE = cache
+		self.cache = cache
 		return self
-	
-	#def _respondFile( self, request, path, contentType= ):
-	#	if self.CACHE and self.CACHE.enabled:
-	#		if self.CACHE.has(path):
-	#			content, contentType = self.CACHE.get(path)
-	#		else:
-	#	return request.respondFile(
+
+	def _inCache( self, path ):
+		path = os.path.abspath(path)
+		if self.cache:
+			if isinstance(self.cache, SignatureCache):
+				return self.cache.has(path, SignatureCache.mtime(path))
+			else:
+				return self.cache.has(path)
+		else:
+			return False
+
+	def _fromCache( self, path ):
+		path = os.path.abspath(path)
+		assert self.cache
+		if isinstance(self.cache, SignatureCache):
+			return self.cache.get(path, SignatureCache.mtime(path))[1]
+		else:
+			return self.cache.get(path)
+
+	def _toCache( self, path, data ):
+		path = os.path.abspath(path)
+		if self.cache:
+			if isinstance(self.cache, SignatureCache):
+				return self.cache.set(path, SignatureCache.mtime(path), data)
+			else:
+				return self.cache.set(path, data)
+		return data
 
 	@on(GET="crossdomain.xml")
 	def getCrossDomain( self, request ):
@@ -216,48 +262,55 @@ class FileServer(Component):
 			+ '<cross-domain-policy><allow-access-from domain="*" /></cross-domain-policy>'
 		)
 
-	@on(GET="css/{css:[\w\-_\.]+\.css}")
+	@on(GET="lib/css/{css:[\w\-_\.]+\.css}")
 	def getCSS( self, request, css ):
-		return request.respondFile(os.path.join(self.DIR_LIBRARY, "css", css))
+		return request.respondFile(os.path.join(self.library, "css", css))
 
-	@on(GET="css/{css:[\w\-_\.]+\.ccss}")
+	@on(GET="lib/css/{css:[\w\-_\.]+\.ccss}")
+	@on(GET="lib/ccss/{css:[\w\-_\.]+\.ccss}")
 	def getCCSS( self, request, css ):
 		import clevercss
-		root = self.DIR_LIBRARY
-		text = self.app().load(os.path.join(root, "css", css))
-		text = clevercss.convert(text)
+		root = self.library
+		if os.path.exists(os.path.join(root, "ccss", css)):
+			path = os.path.join(root, "ccss", css)
+		else:
+			path = os.path.join(root, "css", css)
+		if not self._inCache(path):
+			text = self.app().load(path)
+			text = self._toCache(path, clevercss.convert(text))
+		else:
+			text = self._fromCache(path)
 		return request.respond(text, contentType="text/css")
 
-	@on(GET="images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
+	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
 	def getImage( self, request, image ):
-		return request.respondFile(os.path.join(self.DIR_LIBRARY, "images", image))
+		return request.respondFile(os.path.join(self.library, "images", image))
 
-	@on(GET="swf/{script:\w+\.swf}")
+	@on(GET="lib/swf/{script:\w+\.swf}")
 	def getFlash( self, request, script ):
-		return request.respondFile(os.path.join(self.DIR_LIBRARY, "swf", script))
+		return request.respondFile(os.path.join(self.library, "swf", script))
 
-	@on(GET="pdf/{script:[\w\-_\.]+\.pdf}")
+	@on(GET="lib/pdf/{script:[\w\-_\.]+\.pdf}")
 	def getPDF( self, request, script ):
-		return request.respondFile(os.path.join(self.DIR_LIBRARY, "pdf", script))
+		return request.respondFile(os.path.join(self.library, "pdf", script))
 
-	@on(GET="js/{path:rest}")
-	@on(GET="sjs/{path:rest}")
+	@on(GET="lib/js/{path:rest}")
+	@on(GET="lib/sjs/{path:rest}")
 	def getJavaScript( self, request, path ):
-		path = os.path.abspath(os.path.join(self.DIR_LIBRARY, "js", path))
-		if path.startswith(self.DIR_LIBRARY):
+		if os.path.exists(os.path.join(self.library, "sjs", path)):
+			path = os.path.abspath(os.path.join(self.library, "sjs", path))
+		else:
+			path = os.path.abspath(os.path.join(self.library, "js", path))
+		if path.startswith(os.path.abspath(self.library)):
 			if path.endswith(".sjs"):
 				from sugar import main as sugar
-				# FIXME: Cache this
 				path = path.replace("/js", "/sjs")
-				if self.CACHE:
-					timestamp         = self.CACHE.filemod(path)
-					has_changed, data = self.CACHE.get(path,timestamp)
+				data = None
+				if not self._inCache(path):
+					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (self.library + "/sjs"))
+					self._toCache(path, data)
 				else:
-					has_changed = True
-				if has_changed:
-					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (self.DIR_LIBRARY + "/sjs"))
-					if self.CACHE:
-						self.CACHE.put(path,timestamp,data)
+					data = self._fromCache(path)
 				return request.respond(data,contentType="text/javascript")
 			else:
 				return request.respondFile(path)
@@ -266,4 +319,4 @@ class FileServer(Component):
 			# (the path is not the right path)
 			return request.returns(False)
 
-# EOF - vim: tw=80 ts=4 sw=4 noet
+# EOF

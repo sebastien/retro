@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 18-Jun-2010
+# Last mod  : 16-Sep-2010
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -536,7 +536,7 @@ class Request:
 	def respondMultiple( self, bodies='', contentType="text/html", headers=None, status=200):
 		"""Response with multiple bodies returned by the given sequence or
 		iterator. This allows to implement 'server push' very easily."""
-		BOUNDARY  = "RAILWAYS-Multiple-content-response"
+		BOUNDARY  = "RETRO-Multiple-content-response"
 		bodies    = iter(bodies)
 		if not headers: headers = []
 		headers.append(("Content-Type", "multipart/x-mixed-replace; " 
@@ -758,8 +758,8 @@ class BeakerSession(Session):
 		if session is None:
 			session = request.environ()['beaker.session']
 		self._session = session
-		if not session.get("RAILWAYS_SESSION"):
-			session["RAILWAYS_SESSION"] = time.time()
+		if not session.get("RETRO_SESSION"):
+			session["RETRO_SESSION"] = time.time()
 			session.save()
 			self._isNew = True
 		else:
