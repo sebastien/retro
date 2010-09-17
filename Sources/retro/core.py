@@ -15,7 +15,7 @@ import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, 
 import threading
 
 try:
-	import simplejson
+	import json as simplejson
 	HAS_JSON = True
 except:
 	HAS_JSON = False
@@ -64,16 +64,13 @@ def asJSON( value, **options ):
 	else:
 		options["currentDepth"] = 0
 	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
-		if HAS_JSON:
-			res = json(value)
-		else:
-			res = repr(value)
+		res = json(value)
 	elif type(value) in (list, tuple, set):
 		res = "[%s]" % (",".join(map(lambda x:asJSON(x,**options), value)))
 	elif type(value) == dict:
 		r = []
 		for k in value.keys():
-			r.append('%s:%s' % (repr(str(k)), asJSON(value[k], **options)))
+			r.append('%s:%s' % (json(k), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
 	elif hasattr(value, "__class__") and value.__class__.__name__ == "datetime":
 		res = asJSON(tuple(value.timetuple()), **options)
@@ -570,8 +567,11 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200)
 
-	def returns( self, value=None, js=None, contentType="text/javascript", status=200, headers=None, options=None ):
+	def returns( self, value=None, js=None, contentType="application/json", status=200, headers=None, options=None ):
+		print "GOT", type(value), repr(value)
+		print "RESULT", json(value)
 		if js == None: js = asJSON(value, **(options or {}))
+		print "RESULT/2", js
 		h = [("Content-Type", contentType)]
 		if headers: h.extend(headers)
 		return Response(js, headers=h, status=status)

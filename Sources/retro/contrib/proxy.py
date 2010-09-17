@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Aug-2010
+# Last mod  : 17-Sep-2010
 # -----------------------------------------------------------------------------
 
 import os, sys, time
@@ -64,7 +64,7 @@ class Proxy:
 	
 	def httpRequest( self, server, port, method, url, body="", headers=None ):
 		import httplib
-		conn = httplib.HTTPConnection(server, port)
+		conn = httplib.HTTPConnection(server, int(port))
 		conn.request(method, url, body, headers or {})
 		resp = conn.getresponse()
 		res  = resp.read()
@@ -81,85 +81,35 @@ class ProxyService(Component, Proxy):
 		"""Creates a new proxy that will proxy to the URL indicated by
 		'proxyTo'."""
 		Component.__init__(self, name="Proxy")
-		self._proxyTo = proxyTo
-		self.PREFIX   = prefix
-		self.user     = user
+		host, port = proxyTo.split(":", 1)
+		port, uri  = port.split("/",    1)
+		self._host  = host
+		self._port  = port
+		self._uri   = "/" + uri
+		self.PREFIX = prefix
+		self.user   = user
 		if user and password: self.user += ":" + password
-
-	def start( self ):
-		"""Starts the component, checking if the 'curl' utility is available."""
-		if not self.hasCurl():
-			raise Exception("Curl is required.")
-
-	def _proxy( self, request, method, rest, parameters ):
-		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
-		result, ctype, code = self._curl(self._proxyTo, "GET", uri)
-		# TODO: Add headers processing here
-		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
-
 
 	@on(GET="/{rest:rest}?{parameters}", priority="10")
 	def proxyGet( self, request, rest, parameters ):
 		return self._proxy(request, "GET", rest, parameters)
 
-	@on(POST="/{rest:rest}", priority="10")
+	@on(POST="/{rest:rest}?{parameters}", priority="10")
 	def proxyPost( self, request, rest ):
 		return self._proxy(request, "POST", rest, parameters)
 
-	@on(PUT="/{rest:rest}", priority="10")
+	@on(PUT="/{rest:rest}?{parameters}", priority="10")
 	def proxyPut( self, request, rest ):
 		return self._proxy(request, "PUT", rest, parameters)
 
-	@on(DELETE="/{rest:rest}", priority="10")
+	@on(DELETE="/{rest:rest}?{parameters}", priority="10")
 	def proxyDelete( self, request, rest ):
 		return self._proxy(request, "DELETE", rest, parameters)
-
-	# CURL WRAPPER
-	# ____________________________________________________________________________
-
-	def hasCurl( self ):
-		return True
 	
-	def _curl( self, server, method, url, body="", headers=None, port=80 ):
-		import httplib
-		conn = httplib.Connection(server, port)
-		conn.connect()
-		conn.request(method, url, body, headers or {})
-		resp = conn.getresponse()
-		res  = resp.read()
-		conn.close()
-		print resp.getheaders()
-		return res, None, resp.status
-
-
-	#def hasCurl( self ):
-	#	"""Tells if the 'curl' command-line utility is avialable."""
-	#	result = os.popen("curl --version").read() or ""
-	#	return result.startswith("curl") and result.find("http") != -1
-
-	#def _curlCommand( self ):
-	#	base = "curl "
-	#	if self.user: base += " --anyauth -u%s " % (self.user)
-	#	base += " -s -w"
-	#	return base
-
-	#def _curl( self, server, method, url, body="" ):
-	#	"""This function uses os.popen to communicate with the 'curl'
-	#	command-line client and to GET or POST requests to the given server."""
-	#	c = self._curlCommand()
-	#	if method == "GET":
-	#		command = c + "'\n\n%{content_type}\n\n%{http_code}'" + " '%s/%s'" % (server, url)
-	#		result = os.popen(command).read()
-	#	else:
-	#		command = c + "'\n\n%{content_type}\n\n%{http_code}'" + " '%s/%s' -d '%s'" % (server, url, body)
-	#		result = os.popen(command).read()
-	#	code_start  = result.rfind("\n\n")
-	#	code        = result[code_start+2:]
-	#	result      = result[:code_start]
-	#	ctype_start = result.rfind("\n\n")
-	#	ctype       = result[ctype_start+2:]
-	#	result      = result[:ctype_start]
-	#	return result, ctype, code
+	def _proxy( self, request, method, rest, parameters ):
+		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
+		status, headers, body = self.httpRequest(self._host, self._port, method, self._uri + uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		return request.respond(content=body,headers=headers,status=status)
 
 # ------------------------------------------------------------------------------
 #
@@ -243,7 +193,7 @@ def createProxies( args ):
 		else:
 			user, passwd = None, None
 			print "Proxying %s as %s" % (prefix, url)
-		components.append(Proxy(url, prefix, user=user, password=passwd))
+		components.append(ProxyService(url, prefix, user=user, password=passwd))
 	return components
 
 
