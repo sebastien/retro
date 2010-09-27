@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 29-Jul-2010
+# Last mod  : 26-Sep-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -76,9 +76,10 @@ class LocalFiles(Component):
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
 		Component.__init__(self, name="LocalFiles")
-		self._localRoot   = root
+		self._localRoot   = None
 		self._processors  = {}
 		self._optSuffixes = optsuffix
+		self.setRoot(root)
 		for key, value in processors.items():
 			self._processors[key] = value
 
@@ -136,7 +137,7 @@ class LocalFiles(Component):
 	@on(GET_POST="/{path:any}")
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
-		resolved_path = self.resolvePath(os.path.join(self._localRoot, path))
+		resolved_path = self.resolvePath(path)
 		processor     = self.processorFor(resolved_path)
 		if not os.path.exists(resolved_path):
 			return request.respond("File not found: %s" % (resolved_path), status=404)
@@ -149,7 +150,7 @@ class LocalFiles(Component):
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		else:
-			content, content_type = processor(self.getContent(resolved_path), path)
+			content, content_type = processor(self.getContent(resolved_path), resolved_path)
 			return request.respond(content=content, contentType=content_type)
 
 	def directoryAsHtml( self, path, localPath ):
