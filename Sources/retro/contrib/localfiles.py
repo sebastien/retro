@@ -8,7 +8,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 26-Sep-2010
+# Last mod  : 27-Sep-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """
@@ -79,14 +79,14 @@ class LocalFiles(Component):
 		self._localRoot   = None
 		self._processors  = {}
 		self._optSuffixes = optsuffix
-		self.setRoot(root)
+		self.setRoot(root or ".")
 		for key, value in processors.items():
 			self._processors[key] = value
 
 	def start( self, root=None ):
 		if not (root is None) :
 			root = os.path.abspath(root)
-			self.setRoot(root)
+			self.setRoot(root or ".")
 		elif self._localRoot is None:
 			root = self.app().config("root")
 
@@ -113,7 +113,10 @@ class LocalFiles(Component):
 	def getContentType( self, path ):
 		"""A function that returns the mime type from the given file
 		path."""
-		return mimetypes.guess_type(path)[0] or "text/plain"
+		if path.endswith(".json"):
+			return "application/json"
+		else:
+			return mimetypes.guess_type(path)[0] or "text/plain"
 
 	def getContent( self, path ):
 		"""Gets the content for this file."""
