@@ -302,7 +302,7 @@ class Dispatcher:
 		be nested."""
 		offset   = 0
 		result   = ""
-		escape   = lambda s:s.replace("/", "\/").replace(".", "\.").replace("+","\+")
+		escape   = lambda s:s.replace("/", "\/").replace(".", "\\.").replace("+","\\+").replace("-","\\-").replace("*","\\*")
 		convert  = {}
 		params   = None
 		if isStart:

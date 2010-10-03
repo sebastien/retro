@@ -307,11 +307,10 @@ class LibraryServer(Component):
 			path = os.path.abspath(os.path.join(self.library, "js", path))
 		if path.startswith(os.path.abspath(self.library)):
 			if path.endswith(".sjs"):
-				from sugar import main as sugar
 				path = path.replace("/js", "/sjs")
 				data = None
 				if not self._inCache(path):
-					data = sugar.sourceFileToJavaScript(path, options="-L%s" % (self.library + "/sjs"))
+					data = os.popen("sugar -cljs -L%s %s" % ("-L%s" % (self.library + "/sjs"), path)).read()
 					self._toCache(path, data)
 				else:
 					data = self._fromCache(path)

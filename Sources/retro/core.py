@@ -568,10 +568,7 @@ class Request:
 			return Response("", [], 200)
 
 	def returns( self, value=None, js=None, contentType="application/json", status=200, headers=None, options=None ):
-		print "GOT", type(value), repr(value)
-		print "RESULT", json(value)
 		if js == None: js = asJSON(value, **(options or {}))
-		print "RESULT/2", js
 		h = [("Content-Type", contentType)]
 		if headers: h.extend(headers)
 		return Response(js, headers=h, status=status)
