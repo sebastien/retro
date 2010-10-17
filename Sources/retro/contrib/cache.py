@@ -7,7 +7,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 27-Jul-2010
+# Last mod  : 05-Oct-2010
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading
@@ -62,6 +62,7 @@ class MemoryCache:
 		self.lock.release()
 		if self.weight > self.limit:
 			self.cleanup()
+		return data
 
 	def clear( self, key ):
 		self.remove(key)
@@ -107,6 +108,7 @@ class FileCache:
 		f = file(key + ".cache", 'w')
 		f.write(data)
 		f.close()
+		return data
 
 	def clear( self, key ):
 		self.remove(key)

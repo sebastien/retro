@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -8,14 +6,14 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 27-Sep-2010
+# Last mod  : 05-Oct-2010
 # -----------------------------------------------------------------------------
 
 __doc__ = """
 The 'localfiles' module defines a LocalFiles component that can be added to
 any application to serve local files."""
 
-import os, sys, mimetypes
+import os, sys, mimetypes, subprocess
 from retro import *
 from retro.wsgi import SERVER_ERROR_CSS
 from retro.contrib.cache import SignatureCache
@@ -219,10 +217,12 @@ class LibraryServer(Component):
 		f.close()
 		return t
 
-	def __init__( self, library="", name="LibraryServer", cache=None ):
+	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict() ):
 		Component.__init__(self, name=name)
-		self.library = library
-		self.cache   = cache
+		self.library  = library
+		self.cache    = cache
+		self.commands = dict(sugar="sugar")
+		self.commands.update(commands)
 
 	def start( self ):
 		self.library  = self.library or self.app().config("library.path")
@@ -310,7 +310,10 @@ class LibraryServer(Component):
 				path = path.replace("/js", "/sjs")
 				data = None
 				if not self._inCache(path):
-					data = os.popen("sugar -cljs -L%s %s" % ("-L%s" % (self.library + "/sjs"), path)).read()
+					command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
+					cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+					data    = cmd.stdout.read()
+					cmd.wait()
 					self._toCache(path, data)
 				else:
 					data = self._fromCache(path)
@@ -322,4 +325,4 @@ class LibraryServer(Component):
 			# (the path is not the right path)
 			return request.returns(False)
 
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet

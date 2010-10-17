@@ -95,20 +95,23 @@ class ProxyService(Component, Proxy):
 		return self._proxy(request, "GET", rest, parameters)
 
 	@on(POST="/{rest:rest}?{parameters}", priority="10")
-	def proxyPost( self, request, rest ):
+	def proxyPost( self, request, rest, parameters ):
 		return self._proxy(request, "POST", rest, parameters)
 
 	@on(PUT="/{rest:rest}?{parameters}", priority="10")
-	def proxyPut( self, request, rest ):
+	def proxyPut( self, request, rest, parameters ):
 		return self._proxy(request, "PUT", rest, parameters)
 
 	@on(DELETE="/{rest:rest}?{parameters}", priority="10")
-	def proxyDelete( self, request, rest ):
+	def proxyDelete( self, request, rest, parameters ):
 		return self._proxy(request, "DELETE", rest, parameters)
 	
 	def _proxy( self, request, method, rest, parameters ):
 		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
 		status, headers, body = self.httpRequest(self._host, self._port, method, self._uri + uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		# TODO: We have a redirect, so we have to rewrite it
+		if status == 302:
+			pass
 		return request.respond(content=body,headers=headers,status=status)
 
 # ------------------------------------------------------------------------------
