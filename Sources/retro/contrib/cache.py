@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -7,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 05-Oct-2010
+# Last mod  : 04-Nov-2010
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading
@@ -84,10 +83,44 @@ class MemoryCache:
 			i += 1
 		self.lock.release()
 
+class TimeoutCache:
+
+	def __init__( self, cache, timeout=10 ):
+		self.cache   = cache
+		self.timeout = timeout
+	
+	def get( self, key ):
+		if self.cache.has(key):
+			value, insert_time = self.cache.get(key)
+			if (time.time() - insert_time)  < self.timeout:
+				return value
+			else:
+				return None
+		else:
+			return None
+	
+	def has( self, key )
+		if self.cache.has(key):
+			value, insert_time = self.cache.get(key)
+			if (time.time() - insert_time)  < self.timeout:
+				return True
+			else:
+				return False
+		else:
+			return False
+
+	def set( self, key, value ):
+		self.cache.set(key, (value, time.time())
+		return value
+	
+	def clear( self, key ):
+		self.cache.clear(key)
+
+	def remove( self, key ):
+		self.cache.remove(key)
+
 class FileCache:
 	"""A simplistic filesystem-based cache"""
-
-
 
 	def __init__( self, path ):
 		self.path = path

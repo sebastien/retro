@@ -400,8 +400,8 @@ class Dispatcher:
 			ex = prefix + ex
 			if LOG_DISPATCHER_ON:
 				log("Dispatcher: @on", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
-			regexp, converters, params = self._parseExpression(ex)
-			regexp = re.compile(regexp)
+			regexp_txt, converters, params = self._parseExpression(ex)
+			regexp = re.compile(regexp_txt)
 			self._handlers.insert(0, (priority, regexp, params, converters, handlers))
 
 	def dispatch(self, environ, path=None, method=None):

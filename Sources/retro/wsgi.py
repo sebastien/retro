@@ -13,6 +13,9 @@
 # Last mod  : 17-Aug-2010
 # -----------------------------------------------------------------------------
 
+# TODO: Use AsynCore
+# TODO: Test retro apps with another WSGI server
+
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is
 tailored to Retro specific needs. In this respect, you can only use it with

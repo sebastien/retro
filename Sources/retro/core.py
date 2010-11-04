@@ -362,12 +362,15 @@ class Request:
 	def session( self, name=NOTHING, value=NOTHING ):
 		"""Invokes this request component `session` method, and returns a couple
 		(session, sessionState)"""
+		session = self._component.session(self)
+		if session is None:
+			return None
 		if name == NOTHING:
-			return self._component.session(self)
+			return session
 		elif value == NOTHING:
-			return self._component.session(self).value(name)
+			return session.value(name)
 		else:
-			return self._component.session(self).value(name, value)
+			return session.value(name, value)
 
 	def data( self,data=re ):
 		"""Gets/sets the request data (it is an alias for body)"""
