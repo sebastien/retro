@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -245,4 +243,4 @@ onError=None ):
 				server.handle_request()
 		except KeyboardInterrupt:
 			print "done"
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet

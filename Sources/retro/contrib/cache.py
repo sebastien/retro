@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 04-Nov-2010
+# Last mod  : 05-Nov-2010
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading
@@ -17,7 +17,24 @@ import os, stat, hashlib, threading
 #
 # ------------------------------------------------------------------------------
 
-class MemoryCache:
+class Cache:
+
+	def get( self, key ):
+		raise NotImplementedError
+	
+	def has( self, key ):
+		raise NotImplementedError
+
+	def set( self, key, value ):
+		raise NotImplementedError
+	
+	def clear( self, key ):
+		raise NotImplementedError
+
+	def remove( self, key ):
+		raise NotImplementedError
+
+class MemoryCache(Cache):
 	"""A simple cache system using a weighted LRU style dictionary."""
 
 	def __init__( self, limit=100 ):
@@ -83,7 +100,7 @@ class MemoryCache:
 			i += 1
 		self.lock.release()
 
-class TimeoutCache:
+class TimeoutCache(Cache):
 
 	def __init__( self, cache, timeout=10 ):
 		self.cache   = cache
@@ -99,7 +116,7 @@ class TimeoutCache:
 		else:
 			return None
 	
-	def has( self, key )
+	def has( self, key ):
 		if self.cache.has(key):
 			value, insert_time = self.cache.get(key)
 			if (time.time() - insert_time)  < self.timeout:
@@ -110,7 +127,7 @@ class TimeoutCache:
 			return False
 
 	def set( self, key, value ):
-		self.cache.set(key, (value, time.time())
+		self.cache.set(key, (value, time.time()))
 		return value
 	
 	def clear( self, key ):
@@ -119,7 +136,7 @@ class TimeoutCache:
 	def remove( self, key ):
 		self.cache.remove(key)
 
-class FileCache:
+class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
 	def __init__( self, path ):
@@ -153,7 +170,7 @@ class FileCache:
 	def has( self, key ):
 		return os.path.exists(key + ".cache")
 
-class SignatureCache:
+class SignatureCache(Cache):
 	"""A specific type of cache that takes a signature."""
 
 	def __init__( self, backend=None ):

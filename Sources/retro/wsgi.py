@@ -293,7 +293,11 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		return
 
 	def _finish( self ):
-		SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
+		try:
+			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
+		except:
+			# This sometimes throws an 'error: [Errno 32] Broken pipe'
+			pass
 
 	def run(self, application, useReactor=True):
 		"""This is the main function that runs a Retro application and
