@@ -20,7 +20,7 @@ KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
 
-__version__ = "0.9.5"
+__version__ = "0.9.6"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 

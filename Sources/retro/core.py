@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - Declarative Python Web Framework
 # -----------------------------------------------------------------------------
@@ -783,4 +781,4 @@ class BeakerSession(Session):
 	def expire( self, time ):
 		raise Exception("Not implemented yet")
 
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet
