@@ -10,7 +10,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 17-Aug-2010
+# Last mod  : 15-Jun-2011
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore
@@ -474,7 +474,11 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
-		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
+		try:
+			# This might fail, so we just ignore if it does
+			self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
+		except:
+			pass
 		error(error_msg)
 		self._processEnd()
 
