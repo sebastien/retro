@@ -164,6 +164,7 @@ class RendezVous:
 		self._onTimeout = None
 		self._timeout   = timeout
 		self._created   = time.time()
+		self._meetSemaphore = threading.Event(expect == 0)
 		# FIXME: The best would be to use a schedule/reactor instead of that
 		# like 'call me back in XXXms'
 		if timeout > 0:
@@ -171,8 +172,10 @@ class RendezVous:
 				time.sleep(timeout)
 				self.timeout()
 			threading.Thread(target=run).start()
+
 	def joinEvent( self, event ):
 		if self._events is None: self._events = []
+		self._meetSemaphore.clear()
 		self._events.append(event)
 		event.observe(self._eventMet)
 		return self
@@ -193,11 +196,15 @@ class RendezVous:
 		self.count += 1
 		if self.count == self.goal:
 			# When the goal is reached, we call the callbacks
+			self._meetSemaphore.set()
 			if self._onMeet:
 				for c in self._onMeet:
 					c(self,c,self.count)
 				self._onMeet = None
 		return self
+	
+	def wait( self ):
+		self._meetSemaphore.wait()
 
 	def timeout( self ):
 		# When the goal is reached, we call the callbacks

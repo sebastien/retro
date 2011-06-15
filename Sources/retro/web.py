@@ -436,7 +436,7 @@ class Dispatcher:
 
 	def __call__(self, environ, start_response, request=None):
 		"""Delegate request to the appropriate Application. This is the main
-		method of the dispatcher."""
+		method of the dispatcher, which is WSGI-compatible."""
 		handlers = self.dispatch(environ)
 		def handle( handler, variables, start_response):
 			# FIXME: Add a charset option

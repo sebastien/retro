@@ -49,6 +49,7 @@ DEFAULT_PORT    = 8000
 DEFAULT_ADDRESS = "0.0.0.0"
 FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
+WSGI = "WSGI"
 STANDALONE = "STANDALONE"
 
 try:
@@ -227,7 +228,7 @@ onError=None ):
 	#
 	# == STANDALONE (Retro WSGI server)
 	#
-	else:
+	elif method == STANDALONE:
 		server_address     = (
 			address or app.config("address") or DEFAULT_ADDRESS,
 			port or app.config("port") or DEFAULT_PORT
@@ -243,4 +244,19 @@ onError=None ):
 				server.handle_request()
 		except KeyboardInterrupt:
 			print "done"
+	elif method == WSGI:
+		# When using standalone WSGI, we make sure to wrap RendezVous objects
+		# that might be returned by the handlers, and make sure we wait for
+		# them -- we could use a callback version instead for specific web
+		# servers.
+		def retro_rendezvous_wrapper( environ, start_response, request=None):
+			results = stack(environ, start_response, request)
+			for result in results:
+				if isinstance(result, RendezVous):
+					result.wait()
+					continue
+				yield result
+		return retro_rendezvous_wrapper
+	else:
+		raise Exception("Unknown setup method:" + method)
 # EOF - vim: tw=80 ts=4 sw=4 noet

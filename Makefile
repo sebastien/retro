@@ -176,6 +176,7 @@ else
 endif
 
 release:
+	python setup.py sdist
 	python setup.py register
 
 #EOF
