@@ -12,7 +12,7 @@ __doc__ = """
 To run this service under GUnicorn, cd into the directory that contains this
 file and type:
 
->	gunicorn GUnicornService
+>	gunicorn -kevenltet GUnicornService
 
 """
 
