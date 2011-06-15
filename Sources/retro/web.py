@@ -447,7 +447,8 @@ class Dispatcher:
 			# The app is expected to produce a response object
 			response = handler(request, **variables)
 			if isinstance(response, Response):
-				return response.asWSGI(start_response, self.app().config("charset"))
+				result = response.asWSGI(start_response, self.app().config("charset"))
+				return result
 			# TODO: Add an option to warn on None returned by handlers
 			elif response == None:
 				response = Response("",[],200)

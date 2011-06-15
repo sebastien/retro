@@ -15,6 +15,7 @@
 
 # TODO: Use AsynCore
 # TODO: Test retro apps with another WSGI server
+# FIXME: Reactor is broken (and probably unnecessary)
 
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is
@@ -314,6 +315,10 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		else:
 			while self.next(application): continue
 
+	def nextWithReactor( self, application ):
+		if self.next(application):
+			getReactor().register(self.nextWithReactor, application)
+
 	def next( self, application ):
 		"""This function should be called by the main thread, and allows to
 		process the request step by step (as opposed to one-shot processing).
@@ -328,6 +333,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		elif self._state == self.WAITING:
 			# If a reactor is used, we re-schedule the continuation of this
 			# process when the condition/rendez-vous is met
+			print "WAITING"
 			if usesReactor():
 				handler = self
 				def resume_on_rdv(*args,**kwargs):
@@ -354,7 +360,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def _processStart( self, application ):
 		"""First step called in the processing of a request. It creates the
-		WSGI-compatible environment and invokes passes the environment (which
+		WSGI-compatible environment and passes the environment (which
 		describes the request) and the function to output the response the
 		application request handler.
 		
@@ -456,13 +462,28 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			# Need to send header prior to data
 			statusCode = status [:status.find (' ')]
 			statusMsg = status [status.find (' ') + 1:]
-			self.send_response (int (statusCode), statusMsg)
-			for header, value in headers:
-				self.send_header (header, value)
-			self.end_headers()
-			self._sentHeaders = 1
+			success   = False
+			try:
+				self.send_response (int (statusCode), statusMsg)
+				success = True
+			except socket.error, socketErr:
+				logging.debug ("Cannot send response caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+			if success:
+				try:
+					for header, value in headers:
+						self.send_header (header, value)
+				except socket.error, socketErr:
+					logging.debug ("Cannot send headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+			try:
+				self.end_headers()
+				self._sentHeaders = 1
+			except socket.error, socketErr:
+				logging.debug ("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 		# Send the data
-		self.wfile.write (data)
+		try:
+			self.wfile.write (data)
+		except socket.error, socketErr:
+			logging.debug ("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 
 	def _showError( self ):
 		"""Generates a response that contains a formatted error message."""
@@ -474,11 +495,8 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
-		try:
-			# This might fail, so we just ignore if it does
-			self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
-		except:
-			pass
+		# This might fail, so we just ignore if it does
+		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
 		error(error_msg)
 		self._processEnd()
 
