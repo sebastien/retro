@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 05-Nov-2010
+# Last mod  : 01-Jul-2011
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading
@@ -80,11 +80,11 @@ class MemoryCache(Cache):
 			self.cleanup()
 		return data
 
-	def clear( self, key ):
-		self.remove(key)
+	def clear( self ):
+		self.data = {}
 
 	def remove( self, key ):
-		if self.has(key):
+		if self.data.has(key):
 			del self.data[key]
 
 	def cleanup( self ):
@@ -130,8 +130,8 @@ class TimeoutCache(Cache):
 		self.cache.set(key, (value, time.time()))
 		return value
 	
-	def clear( self, key ):
-		self.cache.clear(key)
+	def clear( self ):
+		self.cache.clear()
 
 	def remove( self, key ):
 		self.cache.remove(key)
@@ -140,12 +140,13 @@ class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
 	def __init__( self, path ):
-		self.path = path
+		self.path = path or "."
 		self.enabled = True
 		assert os.path.exists(path)
 		assert os.path.isdir(path)
 
 	def get( self, key ):
+		key = self.path + "/" + key
 		if self.has(key):
 			f = file(key + ".cache", 'r')
 			c = f.read()
@@ -155,19 +156,22 @@ class FileCache(Cache):
 			return None
 
 	def set( self, key, data ):
+		key = self.path + "/" + key
 		f = file(key + ".cache", 'w')
 		f.write(data)
 		f.close()
 		return data
 
-	def clear( self, key ):
-		self.remove(key)
+	def clear( self ):
+		assert False, "Not implemented"
 		
 	def remove( self, key):
 		if self.has(key):
+			key = self.path + "/" + key
 			os.unlink(key + ".cache")
 
 	def has( self, key ):
+		key = self.path + "/" + key
 		return os.path.exists(key + ".cache")
 
 class SignatureCache(Cache):
@@ -195,6 +199,10 @@ class SignatureCache(Cache):
 				else:
 					result = self._backend.get(function_tag)
 					return result
+
+	def clear( self ):
+		self._cachedSig = {}
+		self.backend.clear()
 
 	def has( self, key, sig=0 ):
 		"""Tells if this cache has the value for the given key and signature."""
