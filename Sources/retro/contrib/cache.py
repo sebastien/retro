@@ -84,7 +84,7 @@ class MemoryCache(Cache):
 		self.data = {}
 
 	def remove( self, key ):
-		if self.data.has(key):
+		if self.data.has_key(key):
 			del self.data[key]
 
 	def cleanup( self ):
@@ -213,7 +213,7 @@ class SignatureCache(Cache):
 		signature. If the signature is different, then (False, None) is returned
 		and the previous data is cleared from the cache."""
 		if self._cachedSig.get(key) != sig:
-			self._backend.clear(key)
+			self._backend.remove(key)
 			return False, None
 		else:
 			return True, self._backend.get(key)
