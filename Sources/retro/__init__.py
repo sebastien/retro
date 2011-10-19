@@ -231,7 +231,7 @@ onError=None ):
 	elif method == STANDALONE:
 		server_address     = (
 			address or app.config("address") or DEFAULT_ADDRESS,
-			port or app.config("port") or DEFAULT_PORT
+			int(port or app.config("port") or DEFAULT_PORT)
 		)
 		stack.fromRetro = True
 		stack.app          = lambda: app

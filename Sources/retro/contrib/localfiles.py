@@ -310,11 +310,19 @@ class LibraryServer(Component):
 				path = path.replace("/js", "/sjs")
 				data = None
 				if not self._inCache(path):
-					command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
-					cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-					data    = cmd.stdout.read()
-					cmd.wait()
-					self._toCache(path, data)
+					data    = ""
+					tries   = 0
+					# NOTE: For some reason, sugar sometimes fails, so we add a
+					# number of retries so that we increase the "chances" of the
+					# file to be properly loaded
+					while (not data) and tries < 3:
+						command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
+						cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+						data    = cmd.stdout.read()
+						tries  += 1
+						cmd.wait()
+					if data:
+						self._toCache(path, data)
 				else:
 					data = self._fromCache(path)
 				return request.respond(data,contentType="text/javascript")

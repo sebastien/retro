@@ -358,6 +358,7 @@ class Dispatcher:
 		if isStart: result = "^%s$" % (result)
 		return result, convert, params
 	
+	# FIXME: That's not used anymore, but I suspect this is useful for debugging
 	@staticmethod
 	def decomposeExpression( expression ):
 		"""Converts the given expression pattern into a list of 'chunks' that
@@ -399,6 +400,7 @@ class Dispatcher:
 			if LOG_DISPATCHER_ON:
 				log("Dispatcher: @on", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
 			regexp_txt, converters, params = self._parseExpression(ex)
+			# log("Dispatcher: regexp=", repr(regexp_txt))
 			regexp = re.compile(regexp_txt)
 			self._handlers.insert(0, (priority, regexp, params, converters, handlers))
 
