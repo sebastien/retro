@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 16-Sep-2010
+# Last mod  : 14-Nov-2011
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
@@ -627,6 +627,9 @@ class Request:
 	def fail( self, content=None,status=412, headers=None ):
 		"""Returns an Error 412 with the given content"""
 		return Response(content, status=status, headers=headers)
+	
+	def cacheID( self ):
+		return "%s:%s" % (self.method(), self.uri())
 
 # ------------------------------------------------------------------------------
 #

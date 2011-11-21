@@ -6,10 +6,16 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 01-Jul-2011
+# Last mod  : 14-Nov-2011
 # -----------------------------------------------------------------------------
 
-import os, stat, hashlib, threading
+import os, stat, hashlib, threading, urllib, pickle
+
+class CacheError(Exception):
+	pass
+
+class CacheMiss(Exception):
+	pass
 
 # ------------------------------------------------------------------------------
 #
@@ -18,6 +24,9 @@ import os, stat, hashlib, threading
 # ------------------------------------------------------------------------------
 
 class Cache:
+
+	def __init__( self ):
+		self.enabled = True
 
 	def get( self, key ):
 		raise NotImplementedError
@@ -34,10 +43,31 @@ class Cache:
 	def remove( self, key ):
 		raise NotImplementedError
 
+class NoCache(Cache):
+
+	def __init__( self ):
+		Cache.__init__(self)
+
+	def get( self, key ):
+		return False
+	
+	def has( self, key ):
+		return False
+
+	def set( self, key, value ):
+		return False
+	
+	def clear( self, key ):
+		return False
+
+	def remove( self, key ):
+		return False
+
 class MemoryCache(Cache):
 	"""A simple cache system using a weighted LRU style dictionary."""
 
 	def __init__( self, limit=100 ):
+		Cache.__init__(self)
 		self.data   = {}
 		self.weight = 0
 		self.limit  = 100
@@ -103,6 +133,7 @@ class MemoryCache(Cache):
 class TimeoutCache(Cache):
 
 	def __init__( self, cache, timeout=10 ):
+		Cache.__init__(self)
 		self.cache   = cache
 		self.timeout = timeout
 	
@@ -139,27 +170,27 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
-	def __init__( self, path ):
-		self.path = path or "."
+	def __init__( self, path=None ):
+		Cache.__init__(self)
+		self.setPath(path)
 		self.enabled = True
+	
+	def setPath( self, path ):
+		path = path or "."
 		assert os.path.exists(path)
 		assert os.path.isdir(path)
+		self.path = path
 
 	def get( self, key ):
-		key = self.path + "/" + key
 		if self.has(key):
-			f = file(key + ".cache", 'r')
-			c = f.read()
-			f.close()
-			return c
+			with file(self.path + "/" + self._normKey(key) + ".cache", 'r') as f:
+				return self._load(f)
 		else:
 			return None
 
 	def set( self, key, data ):
-		key = self.path + "/" + key
-		f = file(key + ".cache", 'w')
-		f.write(data)
-		f.close()
+		with file(self.path + "/" + self._normKey(key) + ".cache", 'w') as f:
+			self._save(data, f)
 		return data
 
 	def clear( self ):
@@ -167,17 +198,34 @@ class FileCache(Cache):
 		
 	def remove( self, key):
 		if self.has(key):
-			key = self.path + "/" + key
-			os.unlink(key + ".cache")
+			os.unlink(self.path + "/" + self._normKey(key) + ".cache")
 
 	def has( self, key ):
-		key = self.path + "/" + key
-		return os.path.exists(key + ".cache")
+		return os.path.exists(self.path + "/" + self._normKey(key) + ".cache")
+	
+	def _normKey( self, key ):
+		key = urllib.urlencode(dict(_=key))
+		return key[2:]
+	
+	def _save( self, data, fd ):
+		try:
+			return pickle.dump(data, fd)
+		except Exception, e:
+			print ("[!] FileCache._save:%s" % (e))
+			return None
+
+	def _load( self, fd ):
+		try:
+			return pickle.load(fd)
+		except Exception, e:
+			print ("[!] FileCache._load:%s" % (e))
+			return None
 
 class SignatureCache(Cache):
 	"""A specific type of cache that takes a signature."""
 
 	def __init__( self, backend=None ):
+		Cache.__init__(self)
 		# TODO: Add cache clearing functions
 		self._cachedSig  = {}
 		self._backend    = backend or MemoryCache()
