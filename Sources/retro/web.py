@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Aug-2010
+# Last mod  : 14-Nov-2011
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -218,17 +218,28 @@ def cache( store ):
 	"""The @cache(store) decorator can be used to decorate request handlers and
 	cache the response into the given cache object that must have 'has', 'get'
 	and 'set' methods, and should be able to store response objects."""
+	def get_cache_id(value):
+		try:
+			return getattr(value,"cacheID")()
+		except Exception:
+			return str(value)
+	
 	def decorator( requestHandler ):
-		handler_key = str(requestHandler)
-		def wrapper( self, request, *args, **kwargs ):
-			key = handler_key + str(args) + str(kwargs)
+		# FIXME: Cache should work with both @expose and @on
+		def wrapper( self, *args, **kwargs ):
 			if store.enabled:
+				base_key = ",".join(map(get_cache_id, args))
+				rest_key = ",".join(map(lambda kv:kv[0] + "=" + kv[1], map(get_cache_id, kwargs.items())))
+				key      = ",".join((base_key, rest_key))
+				result   = None
 				if store.has(key):
-					return store.get(key)
-				else:
-					response =  requestHandler(self, request, *args, **kwargs)
+					result = store.get(key)
+				if not result:
+					response =  requestHandler(self, *args, **kwargs)
 					store.set(key, response)
 					return response
+				else:
+					return result
 			else:
 				return requestHandler(self, request, *args, **kwargs)
 		return wrapper
@@ -745,14 +756,17 @@ class Application(Component):
 		registration."""
 
 		def __init__(self, component, function ):
-			self.component   = component
-			self.im_self     = component
-			self.function    = function
+			self.component     = component
+			self.im_self       = component
+			self.function      = function
+			defaults           = function.func_defaults
+			code               = function.func_code
+			self.functionArgs  = list(code.co_varnames[:code.co_argcount])
 
 		def __call__( self, request, **kwargs ):
 			# We try to invoke the function with the optional arguments
 			for key, value in request.params().items(): 
-				if key: kwargs.setdefault(key, value)
+				if key and (key in self.functionArgs): kwargs.setdefault(key, value)
 			r = self.function(**kwargs)
 			try:
 				pass
