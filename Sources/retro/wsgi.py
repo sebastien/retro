@@ -526,4 +526,8 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
 
+	def serve( self ):
+		while True:
+			self.handle_request()
+
 # EOF - vim: tw=80 ts=4 sw=4 noet
