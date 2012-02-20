@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 14-Nov-2011
+# Last mod  : 20-Jan-2012
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading, urllib, pickle
@@ -42,6 +42,19 @@ class Cache:
 
 	def remove( self, key ):
 		raise NotImplementedError
+
+	def wrap(self, keyExtractor):
+		def wrap_wrapper(function):
+			def operation(*args, **kwargs):
+				key = keyExtractor(*args, **kwargs)
+				if self.has(key):
+					return self.get(key)
+				else:
+					res = function(*args,**kwargs)
+					self.set(key, res)
+					return res
+			return operation
+		return wrap_wrapper
 
 class NoCache(Cache):
 
@@ -170,8 +183,10 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
-	def __init__( self, path=None ):
+	def __init__( self, path=None, serializer=lambda fd,data:pickle.save(data,fd), deserializer=pickle.load ):
 		Cache.__init__(self)
+		self.serializer   = serializer
+		self.deserializer = deserializer
 		self.setPath(path)
 		self.enabled = True
 	
@@ -190,7 +205,7 @@ class FileCache(Cache):
 
 	def set( self, key, data ):
 		with file(self.path + "/" + self._normKey(key) + ".cache", 'w') as f:
-			self._save(data, f)
+			self._save(f, data)
 		return data
 
 	def clear( self ):
@@ -207,16 +222,16 @@ class FileCache(Cache):
 		key = urllib.urlencode(dict(_=key))
 		return key[2:]
 	
-	def _save( self, data, fd ):
+	def _save( self, fd, data ):
 		try:
-			return pickle.dump(data, fd)
+			return self.serializer(fd, data)
 		except Exception, e:
 			print ("[!] FileCache._save:%s" % (e))
 			return None
 
 	def _load( self, fd ):
 		try:
-			return pickle.load(fd)
+			return self.deserializer(fd)
 		except Exception, e:
 			print ("[!] FileCache._load:%s" % (e))
 			return None

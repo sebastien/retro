@@ -311,8 +311,8 @@ class Request:
 		if not self._loaded: self.load()
 		for key, value in self._params.items():
 			if name == key:
-				if len(value) == 1: return value[0]
-				return value
+				if len(value) == 1: return urllib.unquote(value[0])
+				return urllib.unquote(value)
 		return None
 
 	def cookies( self ):
