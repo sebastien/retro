@@ -291,7 +291,7 @@ class LibraryServer(Component):
 					self._toCache(path,data)
 				result.append(self._fromCache(path))
 			self._toCache(paths, "\n".join(result))
-		return request.respond(self._fromCache(paths),contentType="text/css")
+		return request.respond(self._fromCache(paths),contentType="text/css").compress()
 
 	@on(GET="lib/ccss/{paths:rest}")
 	def getCCSS( self, request, paths ):
@@ -310,7 +310,7 @@ class LibraryServer(Component):
 					self._toCache(path, text)
 				result.append(self._fromCache(path))
 			self._toCache(paths, "\n".join(result))
-		return request.respond(self._fromCache(paths), contentType="text/css")
+		return request.respond(self._fromCache(paths), contentType="text/css").compress()
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
 	def getImage( self, request, image ):
@@ -368,6 +368,6 @@ class LibraryServer(Component):
 					# return false
 					return request.returns(False)
 			self._toCache(paths, "\n".join(result))
-		return request.respond(self._fromCache(paths), contentType="text/javascript")
+		return request.respond(self._fromCache(paths), contentType="text/javascript").compress()
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
