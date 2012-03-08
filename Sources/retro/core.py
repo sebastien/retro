@@ -6,10 +6,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 14-Nov-2011
+# Last mod  : 08-Mar-2012
 # -----------------------------------------------------------------------------
 
-import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie
+import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie, gzip, cStringIO
 import threading
 
 try:
@@ -91,6 +91,19 @@ def asJSON( value, **options ):
 	else:
 		res = asJSON(value.__dict__, **options)
 	return res
+
+# ------------------------------------------------------------------------------
+#
+# COMPRESSION
+#
+# ------------------------------------------------------------------------------
+ 
+def compress_gzip(data):
+	out = cStringIO.StringIO()
+	f   = gzip.GzipFile(fileobj=out, mode='w')
+	f.write(data)
+	f.close()
+	return out.getvalue()
 
 # ------------------------------------------------------------------------------
 #
@@ -532,11 +545,19 @@ class Request:
 		that was loaded."""
 		return self._percentageLoaded
 
+	def compression( self ):
+		"""Returns the best accepted compression format for this request"""
+		encodings = self._environ.get("HTTP_ACCEPT_ENCODING") or ""
+		if encodings.find("gzip") != -1:
+			return "gzip"
+		else:
+			return None
+
 	def respond( self, content="", contentType=None, headers=None, status=200):
 		"""Responds to this request."""
 		if headers == None: headers = []
 		if contentType: headers.append(["Content-Type",str(contentType)])
-		return Response(content, headers, status)
+		return Response(content, headers, status, compress=self.compression())
 
 	def respondMultiple( self, bodies='', contentType="text/html", headers=None, status=200):
 		"""Response with multiple bodies returned by the given sequence or
@@ -558,34 +579,34 @@ class Request:
 					yield res
 				else:
 					yield ""
-		return Response(bodygenerator(), headers, 200)
+		return Response(bodygenerator(), headers, 200, compress=self.compression())
 
 	def redirect( self, url, **kwargs ):
 		"""Responds to this request by a redirection to the following URL, with
 		the given keyword arguments as parameter."""
 		if kwargs: url += "?" + urllib.urlencode(kwargs)
-		return Response("", [("Location", url)], 302)
+		return Response("", [("Location", url)], 302, compress=self.compression())
 
 	def bounce( self, **kwargs ):
 		url = self._environ.get("HTTP_REFERER")
 		if url:
 			if kwargs: url += "?" + urllib.urlencode(kwargs)
-			return Response("", [("Location", url)], 302)
+			return Response("", [("Location", url)], 302, compress=self.compression())
 		else:
 			assert not kwargs
-			return Response("", [], 200)
+			return Response("", [], 200, compress=self.compression())
 
 	def returns( self, value=None, js=None, contentType="application/json", status=200, headers=None, options=None ):
 		if js == None: js = asJSON(value, **(options or {}))
 		h = [("Content-Type", contentType)]
 		if headers: h.extend(headers)
-		return Response(js, headers=h, status=status)
+		return Response(js, headers=h, status=status, compress=self.compression())
 
 	def display( self, template, engine=None, **kwargs ):
 		"""Returns a response built from the given template, applied with the
 		given arguments. The engine parameters (KID, CHEETAH, DJANGO, etc) tells
 		which engine should be used to apply the template."""
-		return Response(self._applyTemplate(template, engine, **kwargs), [], 200)
+		return Response(self._applyTemplate(template, engine, **kwargs), [], 200, compress=self.compression())
 
 	def _applyTemplate(self, template, engine=None, **kwargs):
 		"""Applies the given template with the given arguments, and returns a
@@ -618,15 +639,15 @@ class Request:
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'rb') ; r = f.read() ; f.close()
-		return Response(content=r, headers=[("Content-Type", contentType)], status=status)
+		return Response(content=r, headers=[("Content-Type", contentType)], status=status, compress=self.compression())
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
-		return Response(content, status=status)
+		return Response(content, status=status, compress=self.compression())
 
 	def fail( self, content=None,status=412, headers=None ):
 		"""Returns an Error 412 with the given content"""
-		return Response(content, status=status, headers=headers)
+		return Response(content, status=status, headers=headers, compress=self.compression())
 	
 	def cacheID( self ):
 		return "%s:%s" % (self.method(), self.uri())
@@ -644,7 +665,7 @@ class Response:
 	REASONS = BaseHTTPServer.BaseHTTPRequestHandler.responses
 
 	def __init__( self, content=None, headers=None, status=200, reason=None,
-	produceWhen=None):
+	produceWhen=None, compress=None):
 		if headers == None: headers = []
 		self.status  = status
 		self.reason  = reason
@@ -652,6 +673,7 @@ class Response:
 		self.headers = headers or []
 		self.content = content
 		self.produceEventGuard = None
+		self.compress = compress
 
 	def produceOn( self, event ):
 		"""Guards the production of the response by this event. This allows the
@@ -667,6 +689,9 @@ class Response:
 			if header[0].lower() == name:
 				return header[1]
 		return None
+
+	def getHeader( self, name ):
+		return self.hasHeader(name)
 
 	def setHeader( self, name, value, replace=True ):
 		"""Sets the given header with the given value. If there is already a
@@ -693,11 +718,23 @@ class Response:
 
 	def prepare( self ):
 		"""Sets default headers for the request before sending it."""
+		# FIXME: Ensure this is only called once
+		self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
+		if self.compress == "gzip":
+			encoding = self.getHeader("Content-Encoding")
+			# FIXME: How to supprot gzip when it's already encoded?
+			if not encoding:
+				old_size = len(self.content)
+				self.content = compress_gzip(self.content)
+				self.setHeader("Content-Length", str(len(self.content)), replace=True)
+				assert not encoding
+				self.setHeader("Content-Encoding", "gzip")
 		self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
 
 	def asWSGI( self, startResponse, charset=None ):
 		"""This is the main WSGI function handler. This is what generates the
 		actual request and produces the response from the attached 'content'."""
+		# FIXME: Ensure this is only called once
 		# TODO: Document this, and explain the use of yield
 		self.prepare()
 		# TODO: Take care of encoding
@@ -719,6 +756,7 @@ class Response:
 			yield encode(self.content)
 
 	def asString( self ):
+		# FIXME: Ensure this is only called once
 		self.prepare()
 		# TODO: Take care of encoding
 		reason = self.REASONS.get(int(self.status)) or self.REASONS[500]
