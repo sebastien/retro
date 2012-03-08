@@ -19,6 +19,7 @@ DEFAULT_LOGFILE  = "retro.log"
 TEMPLATE_ENGINES = []
 SESSION_ENGINES  = []
 
+# FIXME: Remove dependencies from template engines
 try:
 	import kid
 	kid_serializer = kid.HTMLSerializer()

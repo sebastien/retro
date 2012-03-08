@@ -183,7 +183,7 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
-	def __init__( self, path=None, serializer=lambda fd,data:pickle.save(data,fd), deserializer=pickle.load ):
+	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load ):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
@@ -296,6 +296,10 @@ class SignatureCache(Cache):
 
 	@staticmethod
 	def mtime( path):
-		return  os.stat(path)[stat.ST_MTIME]
+		try:
+			return  os.stat(path)[stat.ST_MTIME]
+		except Exception, e:
+			return None
+
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
