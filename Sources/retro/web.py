@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 14-Nov-2011
+# Last mod  : 08-Mar-l012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -117,6 +117,7 @@ _RETRO_ON              = "_retro_on"
 _RETRO_ON_PRIORITY     = "_retro_on_priority"
 _RETRO_AJAX            = "_retro_ajax"
 _RETRO_AJAX_JSON       = "_retro_ajax_json"
+_RETRO_AJAX_COMPRESS   = "_retro_ajax_compress"
 _RETRO_WHEN            = "_retro_when"
 _RETRO_TEMPLATE        = "_retro_template"
 _RETRO_TEMPLATE_ENGINE = "_retro_template_engine"
@@ -156,7 +157,7 @@ def on( priority=0, **methods ):
 		return function
 	return decorator
 
-def ajax( priority=0, **methods ):
+def expose( priority=0, compress=False, **methods ):
 	"""The @ajax decorator is a variation of the @on decorator. The @ajax
 	decorator allows you to _expose_ an existing Python function as a JavaScript
 	(or JSON) producing method.
@@ -168,18 +169,18 @@ def ajax( priority=0, **methods ):
 	def decorator(function):
 		function.__dict__.setdefault(_RETRO_AJAX, True)
 		function.__dict__.setdefault(_RETRO_AJAX_JSON, None)
+		function.__dict__.setdefault(_RETRO_AJAX_COMPRESS, compress)
 		# This is copy and paste of the @on body
 		v = function.__dict__.setdefault(_RETRO_ON,   [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
 			if http_method == "json":
 				function.__dict__[_RETRO_AJAX_JSON] = url
+				function.__dict__[_RETRO_AJAX_JSON] = url
 			else:
 				v.append((http_method, url))
 		return function
 	return decorator
-
-expose = ajax
 
 def display( template, engine=sys ):
 	"""The @display(template) decorator can be used to indicate that the
@@ -778,7 +779,7 @@ class Application(Component):
 					e
 				)
 			# And now we return the response as JS
-			return request.returns(r, options=getattr(self.function,_RETRO_AJAX_JSON))
+			return request.returns(r, options=getattr(self.function,_RETRO_AJAX_JSON)).compress(getattr(self.function,_RETRO_AJAX_COMPRESS))
 
 	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)

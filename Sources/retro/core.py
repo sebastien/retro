@@ -717,9 +717,9 @@ class Response:
 	def setContentType( self, mimeType ):
 		self.headers.append(("Content-Type", mimeType))
 
-	def compress( self ):
-		if not self.isCompressed:
-			if self.compress == "gzip":
+	def compress( self, compress=True ):
+		if compress and not self.isCompressed:
+			if self.compression == "gzip":
 				encoding = self.getHeader("Content-Encoding")
 				# FIXME: How to support gzip when it's already encoded?
 				if not encoding:

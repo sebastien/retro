@@ -9,6 +9,8 @@
 # Last mod  : 08-Mar-2012
 # -----------------------------------------------------------------------------
 
+# SEE:http://www.mnot.net/cache_docs/
+
 __doc__ = """
 The 'localfiles' module defines a LocalFiles component that can be added to
 any application to serve local files."""
