@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Mar-2012
+# Last mod  : 12-Mar-2012
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -231,13 +231,15 @@ class LibraryServer(Component):
 		f.close()
 		return t
 
-	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), compress=False ):
+	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), minify=False, compress=False, cacheAggregates=True ):
 		Component.__init__(self, name=name)
 		self.library  = library
 		self.cache    = cache
+		self.minify   = minify
 		self.compress = compress
 		self.commands = dict(sugar="sugar")
 		self.commands.update(commands)
+		self.cacheAggregates = cacheAggregates
 
 	def start( self ):
 		self.library  = self.library or self.app().config("library.path")
@@ -283,21 +285,28 @@ class LibraryServer(Component):
 
 	@on(GET="lib/css/{paths:rest}")
 	def getCSS( self, request, paths ):
-		if not self._inCache(paths):
+		response_data = ""
+		if not self.cacheAggregates or not self._inCache(paths):
 			result = []
 			for path in paths.split("+"):
 				if not self._inCache(path):
 					data = self.app().load(os.path.join(self.library, "css", path))
-					if self.compress and cssmin:
+					if self.minify and cssmin:
 						data = cssmin.cssmin(data)
 					self._toCache(path,data)
-				result.append(self._fromCache(path))
-			self._toCache(paths, "\n".join(result))
-		return request.respond(self._fromCache(paths),contentType="text/css").compress()
+				else:
+					data = self._fromCache(path)
+				result.append(data)
+			response_data = "\n".join(result)
+			self._toCache(paths, response_data)
+		else:
+			response_data = self._fromCache(paths)
+		return request.respond(response_data, contentType="text/css").compress(self.compress)
 
 	@on(GET="lib/ccss/{paths:rest}")
 	def getCCSS( self, request, paths ):
-		if not self._inCache(paths):
+		response_data = ""
+		if not self.cacheAggregates or not self._inCache(paths):
 			result = []
 			for path in paths.split("+"):
 				root = self.library
@@ -306,13 +315,18 @@ class LibraryServer(Component):
 				else:
 					path = os.path.join(root, "css", path)
 				if not self._inCache(path):
-					text = self.app().load(path)
-					text = clevercss.convert(text)
-					if self.compress and cssmin: text = cssmin.cssmin(text)
-					self._toCache(path, text)
-				result.append(self._fromCache(path))
-			self._toCache(paths, "\n".join(result))
-		return request.respond(self._fromCache(paths), contentType="text/css").compress()
+					data = self.app().load(path)
+					data = clevercss.convert(data)
+					if self.minify and cssmin: data = cssmin.cssmin(data)
+					self._toCache(path, data)
+				else:
+					data = self._fromCache(path)
+				result.append(data)
+			response_data = "\n".join(result)
+			self._toCache(paths, response_data)
+		else:
+			response_data = self._fromCache(paths)
+		return request.respond(response_data, contentType="text/css").compress(self.compress)
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
 	def getImage( self, request, image ):
@@ -329,7 +343,8 @@ class LibraryServer(Component):
 	@on(GET="lib/js/{paths:rest}")
 	@on(GET="lib/sjs/{paths:rest}")
 	def getJavaScript( self, request, paths ):
-		if not self._inCache(paths):
+		response_data = ""
+		if not self.cacheAggregates or not self._inCache(paths):
 			result = []
 			for path in paths.split("+"):
 				if os.path.exists(os.path.join(self.library, "sjs", path)):
@@ -353,23 +368,28 @@ class LibraryServer(Component):
 								tries  += 1
 								cmd.wait()
 							if data:
-								if self.compress and jsmin: data = jsmin.jsmin(data)
+								if self.minify and jsmin: data = jsmin.jsmin(data)
 								self._toCache(path, data)
-						data = self._fromCache(path)
+						else:
+							data = self._fromCache(path)
 						result.append(data)
 					else:
 						if not self._inCache(path):
 							data = self.app().load(path)
-							if self.compress and jsmin: data = jsmin.jsmin(data)
+							if self.minify and jsmin: data = jsmin.jsmin(data)
 							self._toCache(path, data)
-						data = self._fromCache(path)
+						else:
+							data = self._fromCache(path)
 						result.append(data)
 				else:
 					# NOTE: If we go here, someone is trying to hack our server
 					# and access files outside of the path. In this case, we just
 					# return false
 					return request.returns(False)
-			self._toCache(paths, "\n".join(result))
-		return request.respond(self._fromCache(paths), contentType="text/javascript").compress()
+			response_data = "\n".join(result)
+			self._toCache(paths, response_data)
+		else:
+			response_data = self._fromCache(paths)
+		return request.respond(response_data, contentType="text/javascript").compress(self.compress)
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
