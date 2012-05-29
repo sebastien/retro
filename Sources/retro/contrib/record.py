@@ -2,7 +2,7 @@
 # Encoding: iso-8859-1
 # vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
-# Project   : Retro - Declarative Python Web Framework
+# Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # License   : Revised BSD License

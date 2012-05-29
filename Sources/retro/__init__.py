@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -----------------------------------------------------------------------------
-# Project   : Retro - Declarative Python Web Framework
+# Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 # License   : Revised BSD License

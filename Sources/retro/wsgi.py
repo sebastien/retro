@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Encoding: iso-8859-1
 # -----------------------------------------------------------------------------
-# Project   : Retro - Declarative Python Web Framework
+# Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                               <sebastien@ivy.fr>
 #             Colin Stewart                           <http://www.owlfish.com/>

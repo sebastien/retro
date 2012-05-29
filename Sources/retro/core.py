@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -----------------------------------------------------------------------------
-# Project   : Retro - Declarative Python Web Framework
+# Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Mar-2012
+# Last mod  : 29-May-2012
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie, gzip, cStringIO
@@ -250,6 +250,7 @@ class Request:
 	PATH_INFO      = "PATH_INFO"
 	POST           = "POST"
 	GET            = "GET"
+	HEADER_SET_COOKIE = "Set-Cookie"
 
 	def __init__( self, environ, charset ):
 		"""This creates a new request."""
@@ -263,6 +264,7 @@ class Request:
 		self._component        = None
 		self._cookies          = None
 		self._files            = None
+		self._responseHeaders  = []
 
 	def headers( self ):
 		if self._headers is None:
@@ -337,11 +339,24 @@ class Request:
 		self._cookies = cookies
 		return self._cookies
 
-	def cookie( self, name ):
-		"""Returns the value of the given cookie or 'None'"""
-		c = self.cookies().get(name)
-		if c: return c.value
-		else: return None
+	def cookie( self, name, value=NOTHING, path="/" ):
+		"""Returns the value of the given cookie or 'None', if a value is set,
+		will make sure that any generated response will set the given cookie."""
+		if value is NOTHING:
+			c = self.cookies().get(name)
+			if c: return c.value
+			else: return None
+		else:
+			found = False
+			i     = 0
+			for header in self._responseHeaders:
+				if header[0] == self.HEADER_SET_COOKIE:
+					self._responseHeaders[i] = (header[0], "%s=%s; path=%s" % (name, value, path))
+					found = True
+				i += 1
+				break
+			if not found:
+				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s=%s; path=%s" % (name, value, path)))
 
 	def has(self, name):
 		"""Tells if the request has the given parameter."""
@@ -557,7 +572,7 @@ class Request:
 		"""Responds to this request."""
 		if headers == None: headers = []
 		if contentType: headers.append(["Content-Type",str(contentType)])
-		return Response(content, headers, status, compression=self.compression())
+		return Response(content, self._mergeHeaders(headers), status, compression=self.compression())
 
 	def respondMultiple( self, bodies='', contentType="text/html", headers=None, status=200):
 		"""Response with multiple bodies returned by the given sequence or
@@ -579,7 +594,7 @@ class Request:
 					yield res
 				else:
 					yield ""
-		return Response(bodygenerator(), headers, 200, compression=self.compression())
+		return Response(bodygenerator(), self._mergeHeaders(headers), 200, compression=self.compression())
 
 	def redirect( self, url, **kwargs ):
 		"""Responds to this request by a redirection to the following URL, with
@@ -600,7 +615,7 @@ class Request:
 		if js == None: js = asJSON(value, **(options or {}))
 		h = [("Content-Type", contentType)]
 		if headers: h.extend(headers)
-		return Response(js, headers=h, status=status, compression=self.compression())
+		return Response(js, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
 	def display( self, template, engine=None, **kwargs ):
 		"""Returns a response built from the given template, applied with the
@@ -639,7 +654,7 @@ class Request:
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'rb') ; r = f.read() ; f.close()
-		return Response(content=r, headers=[("Content-Type", contentType)], status=status, compression=self.compression())
+		return Response(content=r, headers=self._mergeHeaders([("Content-Type", contentType)]), status=status, compression=self.compression())
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
@@ -647,10 +662,21 @@ class Request:
 
 	def fail( self, content=None,status=412, headers=None ):
 		"""Returns an Error 412 with the given content"""
-		return Response(content, status=status, headers=headers, compression=self.compression())
+		return Response(content, status=status, headers=self._mergeHeaders(headers), compression=self.compression())
 	
 	def cacheID( self ):
 		return "%s:%s" % (self.method(), self.uri())
+
+	def _mergeHeaders( self, headersA, headersB=NOTHING ):
+		"""Returns headersB + headersA, where headersB is self._responseHeaders 
+		by default."""
+		if headersB is NOTHING: headersB = self._responseHeaders
+		if headersB:
+			keys     = map   (lambda _:_[0], headersA)
+			headersB = filter(lambda _:_[0] not in keys, headersB)
+			return headersB + headersA
+		else:
+			return headersA
 
 # ------------------------------------------------------------------------------
 #
