@@ -13,14 +13,14 @@ import sys, os, thread
 import wsgi
 from wsgi import REACTOR, onShutdown, onError
 from core import asJSON
-from web  import on, expose, display, predicate, when, cache, \
+from web  import on, expose, display, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, Event, RendezVous, \
 KID, CHEETAH, DJANGO
 
 # FIXME: Add support for stackable applications
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 

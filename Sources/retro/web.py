@@ -216,6 +216,10 @@ def when( *predicates ):
 		return function
 	return decorator
 
+def restrict( *predicates ):
+	"""An alias to `when`"""
+	return when(*predicates)
+
 def cache( store ):
 	"""The @cache(store) decorator can be used to decorate request handlers and
 	cache the response into the given cache object that must have 'has', 'get'
@@ -496,6 +500,9 @@ class Dispatcher:
 						break
 			if can_handle:
 				return handle(handler, variables, start_response)
+			else:
+				response = Response("Not authorized",[],401)
+				return response.asWSGI(start_response, self.app().config("charset"))
 		assert WebRuntimeError("No handler found")
 
 # ------------------------------------------------------------------------------
