@@ -183,13 +183,33 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
-	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load ):
+	@staticmethod
+	def SHA1_KEY(_):return hashlib.sha1(_).hexdigest()
+	@staticmethod
+	def MD5_KEY (_):return hashlib.md5(_).hexdigest()
+	@staticmethod
+	def SAME_KEY(_):return _
+
+	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
 		self.setPath(path)
-		self.enabled = True
+		self.keyProcessor = keys or self.SAME_KEY
+		self.enabled      = True
 	
+	def withSHA1Keys( self ):
+		self.setKeyProcessor(FileCache.SHA1_KEY)
+		return self
+
+	def withMD5Keys( self ):
+		self.setKeyProcessor(FileCache.SHA1_KEY)
+		return self
+	
+	def setKeyProcessor( self, keys ):
+		self.keyProcessor = keys
+		return self
+
 	def setPath( self, path ):
 		path = path or "."
 		assert os.path.exists(path)
@@ -219,6 +239,7 @@ class FileCache(Cache):
 		return os.path.exists(self.path + "/" + self._normKey(key) + ".cache")
 	
 	def _normKey( self, key ):
+		key = self.keyProcessor(key)
 		key = urllib.urlencode(dict(_=key))
 		return key[2:]
 	
