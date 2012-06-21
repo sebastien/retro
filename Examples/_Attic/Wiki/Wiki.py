@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 # Project   : Wiki Example
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Aug-2006
@@ -19,7 +19,7 @@ try:
 	import kiwi.kiwi2html
 except ImportError, e:
 	print "Kiwi is required for this example to run."
-	print "You can get kiwi at <http://www.ivy.fr/kiwi>"
+	print "You can get kiwi at <http://www.ffctn.com/kiwi>"
 	print
 	raise e
 

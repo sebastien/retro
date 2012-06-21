@@ -2,9 +2,9 @@
 # Encoding: ISO-8859-1
 # vim: tw=80 ts=4 sw=4 fenc=latin-1 noet
 # -----------------------------------------------------------------------------
-# Project           :   Retro                   <http://www.ivy.fr/retro>
+# Project           :   Retro             ttp://www.github.com/sebastien/retro>
 # -----------------------------------------------------------------------------
-# Author            :   Sebastien Pierre                     <sebastien@ivy.fr>
+# Author            :   Sebastien Pierre                  <sebastien@ffctn.com>
 # License           :   Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation date     :   20-Mar-2005

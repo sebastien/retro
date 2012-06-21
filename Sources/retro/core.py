@@ -617,31 +617,6 @@ class Request:
 		if headers: h.extend(headers)
 		return Response(js, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
-	def display( self, template, engine=None, **kwargs ):
-		"""Returns a response built from the given template, applied with the
-		given arguments. The engine parameters (KID, CHEETAH, DJANGO, etc) tells
-		which engine should be used to apply the template."""
-		return Response(self._applyTemplate(template, engine, **kwargs), [], 200, compression=self.compression())
-
-	def _applyTemplate(self, template, engine=None, **kwargs):
-		"""Applies the given template with the given arguments, and returns a
-		string with the serialized template. This hook is called by the
-		`display` method, so you should redefine it to suit your needs."""
-		if self._component:
-			# This is Retro.Web-specific code
-			context = {}
-			for key, value in self.environ("retro.variables").items(): context[key] = value
-			for key in kwargs.keys(): context[key] = kwargs[key]
-			context.setdefault('comp', self._component)
-			context.setdefault('component', self._component)
-			context.setdefault('app', self._component.app())
-			context.setdefault('application', self._component.app())
-			context.setdefault('req', self)
-			context.setdefault('request', self)
-			return self._component.app().applyTemplate(template, engine, **context)
-		else:
-			raise Exception("Apply template not available for this Request subclass.")
-
 	def respondFile( self, path, contentType=None, status=200 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local

@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
 #             Colin Stewart                           <http://www.owlfish.com/>
 #             Fabien Moritz                           <fabien.moritz@gmail.com>
 # -----------------------------------------------------------------------------

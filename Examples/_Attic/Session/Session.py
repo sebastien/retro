@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Project   : Sessions Example
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 08-Aug-2006

@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
@@ -183,6 +183,7 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
+	# FIXME: Should split paths when they exceed the file name limit (256 bytes)
 	@staticmethod
 	def SHA1_KEY(_):return hashlib.sha1(_).hexdigest()
 	@staticmethod

@@ -2,11 +2,11 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Mar-l012
+# Last mod  : 21-Jun-l012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -15,62 +15,8 @@ import os, re, sys, time
 from core import Request, Response, BeakerSession, Event, \
 RendezVous, asJSON, json, unjson
 
-DEFAULT_LOGFILE  = "retro.log"
-TEMPLATE_ENGINES = []
-SESSION_ENGINES  = []
-
-# FIXME: Remove dependencies from template engines
-try:
-	import kid
-	kid_serializer = kid.HTMLSerializer()
-	kid.enable_import()
-	KID = "KID"
-	TEMPLATE_ENGINES.append(KID)
-except ImportError:
-	KID = None
-
-try:
-	import genshi
-	GENSHI = "GENSHI"
-	TEMPLATE_ENGINES.append(GENSHI)
-except ImportError:
-	GENSHI = None
-
-try:
-	# Django support is inspired from the following code
-	# http://cavedoni.com/2007/02/venus/planet/shell/dj.py
-	try:
-		import django.conf, django.template, django.template.loader
-	except EnvironmentError:
-		# This is really a dirty hack, but I must say that Django
-		# really exaggerates when it requires a specific module to
-		# hold the configuration.
-		os.environ["DJANGO_SETTINGS_MODULE"] = "retro"
-		import django.conf, django.template, django.template.loader
-	DJANGO = "DJANGO"
-	TEMPLATE_ENGINES.append(DJANGO)
-except ImportError:
-	DJANGO = None
-
-try:
-	Cheetah = None
-	import Cheetah, Cheetah.Template
-	CHEETAH = "CHEETAH"
-	TEMPLATE_ENGINES.append(CHEETAH)
-except ImportError:
-	CHEETAH = None
-
-try:
-	from beaker.middleware import SessionMiddleware
-	BEAKER_SESSION = "BEAKER"
-	SESSION_ENGINES.append(BEAKER_SESSION)
-except ImportError:
-	BEAKER_SESSION = None
-	pass
-
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = True
-LOG_TEMPLATE_ON   = True
 
 def log(*args):
 	"""A log function that outputs information on stdout. It's a good
@@ -115,12 +61,10 @@ class ApplicationError(Exception):
 
 _RETRO_ON              = "_retro_on"
 _RETRO_ON_PRIORITY     = "_retro_on_priority"
-_RETRO_AJAX            = "_retro_ajax"
-_RETRO_AJAX_JSON       = "_retro_ajax_json"
-_RETRO_AJAX_COMPRESS   = "_retro_ajax_compress"
+_RETRO_EXPOSE            = "_retro_expose"
+_RETRO_EXPOSE_JSON       = "_retro_expose_json"
+_RETRO_EXPOSE_COMPRESS   = "_retro_expose_compress"
 _RETRO_WHEN            = "_retro_when"
-_RETRO_TEMPLATE        = "_retro_template"
-_RETRO_TEMPLATE_ENGINE = "_retro_template_engine"
 _RETRO_IS_PREDICATE    = "_retro_isPredicate"
 
 def on( priority=0, **methods ):
@@ -158,47 +102,27 @@ def on( priority=0, **methods ):
 	return decorator
 
 def expose( priority=0, compress=False, **methods ):
-	"""The @ajax decorator is a variation of the @on decorator. The @ajax
+	"""The @expose decorator is a variation of the @on decorator. The @expose
 	decorator allows you to _expose_ an existing Python function as a JavaScript
 	(or JSON) producing method.
 
-	Basically, the @ajax decorator allows you to automatically bind a method to
+	Basically, the @expose decorator allows you to automatically bind a method to
 	an URL and to ensure that the result will be JSON-ified before being sent.
 	This is perfect if you have an existing python class and want to expose it
 	to the web."""
 	def decorator(function):
-		function.__dict__.setdefault(_RETRO_AJAX, True)
-		function.__dict__.setdefault(_RETRO_AJAX_JSON, None)
-		function.__dict__.setdefault(_RETRO_AJAX_COMPRESS, compress)
+		function.__dict__.setdefault(_RETRO_EXPOSE, True)
+		function.__dict__.setdefault(_RETRO_EXPOSE_JSON, None)
+		function.__dict__.setdefault(_RETRO_EXPOSE_COMPRESS, compress)
 		# This is copy and paste of the @on body
 		v = function.__dict__.setdefault(_RETRO_ON,   [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
 			if http_method == "json":
-				function.__dict__[_RETRO_AJAX_JSON] = url
-				function.__dict__[_RETRO_AJAX_JSON] = url
+				function.__dict__[_RETRO_EXPOSE_JSON] = url
+				function.__dict__[_RETRO_EXPOSE_JSON] = url
 			else:
 				v.append((http_method, url))
-		return function
-	return decorator
-
-def display( template, engine=sys ):
-	"""The @display(template) decorator can be used to indicate that the
-	decorated  handler will display the given page (only when it returns
-	None).
-	
-	The first argument is the template name with or without the extension (
-	it can be guessed at runtime). The second argument is the engine (by
-	default, it will be guessed from the extension)"""
-	if engine is None:
-		raise Exception("Template engine not available")
-	elif engine is sys:
-		engine = None
-	elif not (engine in TEMPLATE_ENGINES):
-		raise Exception("Unknown template engine: %s" % (engine))
-	def decorator( function ):
-		setattr(function, _RETRO_TEMPLATE, template)
-		setattr(function, _RETRO_TEMPLATE_ENGINE, engine)
 		return function
 	return decorator
 
@@ -511,8 +435,6 @@ class Dispatcher:
 #
 # ------------------------------------------------------------------------------
 
-# TODO: Components should be accessible by keys so that they could be passed to
-# the Kid templates
 class Component:
 	"""A Component is a class that contains methods that can handle URLs. Use
 	the decorators provided by Retro and register the component into the
@@ -524,7 +446,7 @@ class Component:
 
 	@staticmethod
 	def introspect( component ):
-		"""Returns a list of (name, method, {on:...,priority:...,template:...,ajax:...})
+		"""Returns a list of (name, method, {on:...,priority:...,expose:...})
 		for each slot that was decorated by Retro decorators."""
 		res = []
 		for slot in dir(component):
@@ -533,20 +455,14 @@ class Component:
 			if hasattr(value, _RETRO_ON):
 				methods  = getattr(value, _RETRO_ON)
 				priority = getattr(value, _RETRO_ON_PRIORITY) or 0
-				if hasattr(value, _RETRO_TEMPLATE):
-					template = getattr(value, _RETRO_TEMPLATE)
-					engine   = getattr(value, _RETRO_TEMPLATE_ENGINE)
+				if hasattr(value, _RETRO_EXPOSE):
+					expose_value = getattr(value, _RETRO_EXPOSE)
 				else:
-					template = engine = None
-				if hasattr(value, _RETRO_AJAX):
-					ajax_value = getattr(value, _RETRO_AJAX)
-				else:
-					ajax_value = None
+					expose_value = None
 				res.append((slot, value,{
 					"on":methods,
 					"priority":priority,
-					"template":(template, engine),
-					"ajax": ajax_value
+					"expose": expose_value
 				}))
 		return res
 
@@ -725,42 +641,10 @@ class Component:
 
 class Application(Component):
 
-	class TemplateWrapper:
-		"""This class allows to wrap a function so that it will display the
-		resulting template. This should not be instanciated by the user, but it
-		may be good to know that is is created by the Application during the
-		@register phase."""
-
-		def __init__(self, component, function, template, engine):
-			self.component   = component
-			self.im_self     = component
-			self.function    = function
-			self.template    = template
-			self.engine      = engine
-
-		def __call__( self, request, **kwargs ):
-			# We try to invoke the function with the request and optional
-			# arguments
-			r = self.function(request, **kwargs)
-			# If it returns a response, then we skip the template processing and
-			# display the response
-			if r or isinstance(r, Response): return r
-			return request.display(self.template, self.engine, **self.component._context)
-			# Otherwise we invoke the template
-			#context = {'comp':self.component, 'app':self.component._app}
-			# Optimize this (context should be inherited, not copied)
-			# for key, value in self.component.context().items(): context[key] = value
-			#for key, value in request.environ("retro.variables").items(): context[key] = value
-			# body = self.component.app().applyTemplate(self.template, **context)
-			# return Response(body, [], 200)
-
-		def __str__( self ):
-			return "retro.web.TemplateWrapper:%s[%s]:%s" % (self.template, self.engine, self.function)
-
-	class AJAXWrapper:
+	class EXPOSEWrapper:
 		"""This class allows to wrap a function so that its result will be
-		returned as a JavaScript (JSON) object. As with the @TemplateWrapper.
-		this should be not instanciated directly by the user, as it is
+		returned as a JavaScript (JSON) object.
+		This class should be not instanciated directly by the user, as it is
 		automatically created by the @Application upon component
 		registration."""
 
@@ -786,7 +670,7 @@ class Application(Component):
 					e
 				)
 			# And now we return the response as JS
-			return request.returns(r, options=getattr(self.function,_RETRO_AJAX_JSON)).compress(getattr(self.function,_RETRO_AJAX_COMPRESS))
+			return request.returns(r, options=getattr(self.function,_RETRO_EXPOSE_JSON)).compress(getattr(self.function,_RETRO_AJAX_COMPRESS))
 
 	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)
@@ -868,19 +752,39 @@ class Application(Component):
 		if os.path.abspath(path) == path: return path
 		else: return os.path.abspath(os.path.join(self.rootPath(), path))
 
-	def load( self, path ):
+	def load( self, path, sync=True ):
 		"""Loads the file at the given path and returns its content."""
-		f = file(path, 'rb')
-		t = f.read()
-		f.close()
-		return t
+		flags = os.O_RDONLY
+		if sync: flags = flags | O_RSYNC
+		fd    = os.open(path, flags)
+		data  = None
+		try:
+			last_read = 1 
+			data      = []
+			while last_read > 0:
+				t = os.read(fd)
+				data.append(t)
+				last_read = len(t)
+			data = "".join(data)
+			os.close(fd)
+		except StandardError, e:
+			os.close(fd)
+			raise e
+		return data
 
-	def save( self, path, data ):
+	def save( self, path, data, sync=True, append=False ):
 		"""Saves the file at the given path and returns its content."""
-		f = file(path, 'wb')
-		t = f.write(data)
-		f.close()
-		return t
+		flags = os.O_WRONLY | os.O_CREAT
+		if sync:       flags = flags | O_DSYNC
+		if not append: flags = flags | O_TRUNC
+		fd    = os.open(path, flags)
+		try:
+			os.write(fd, data)
+			os.close(fd)
+		except StandardError, e:
+			os.close(fd)
+			raise e
+		return self
 
 	def register( self, *components ):
 		"""Registeres the given component into this Web application. The
@@ -900,16 +804,9 @@ class Application(Component):
 			component._app = self
 			# We iterate on the component slots
 			for slot, method, handlerinfo in self.introspect(component):
-				# We wrape around a template wrapper if necessary
-				template = handlerinfo.get("template")
-				if template and template != (None, None):
-					template, engine = handlerinfo.get("template")
-					if not self.ensureTemplate(template, engine):
-						raise ApplicationError("No corresponding template for: " + template)
-					method = Application.TemplateWrapper(component, method, template, engine)
-				# Or aroud an ajax wrapper
-				if handlerinfo.get("ajax"):
-					method = Application.AJAXWrapper(component, method)
+				# Or aroud an expose wrapper
+				if handlerinfo.get("expose"):
+					method = Application.EXPOSEWrapper(component, method)
 				# We register the handler within the selector
 				# FIXME: Handle exception when @on("someurl") instead of @on(GET="someurl")
 				component.registerHandler(method,
@@ -941,116 +838,6 @@ class Application(Component):
 		elif len(res) == 1: return res[0]
 		else: return res
 
-	def _compileCheetahTemplateDeps( self, path ):
-		# FIXME: This is really not optimal, we should optimize this
-		# like in debug mode, compile all the time, and in live mode
-		# compile at start only.
-		f = file(path, 'r')
-		i = 0
-		depends = []
-		for line in f:
-			if i == 10: break
-			line = line.strip()
-			if line.startswith("#extends"):
-				template = line[len("#extends"):].strip().replace(".", "/") + ".tmpl"
-				depends.append(self.ensureTemplate(template, CHEETAH)[1])
-			i += 0
-		f.close()
-		for template in depends:
-			dirname  = os.path.dirname(template)
-			filename = os.path.basename(os.path.splitext(template)[0])
-			temp = Cheetah.Compiler.Compiler(
-				file=template,
-				moduleName=filename,
-				mainClassName=filename
-			)
-			try:
-				temp = str(temp)
-			except Cheetah.Parser.ParseError, e:
-				raise e
-			if temp != None:
-				output = open(os.path.splitext(template)[0]+".py", "w")
-				output.write("# Encoding: ISO-8859-1\n" + str(temp))
-				output.close()
-			if not dirname in sys.path:sys.path.append(dirname)
-
-	def ensureTemplate( self, name, engine=None):
-		"""Ensures that the a template with the given name exists and returns
-		the corresponding path, or None if not found.
-
-		This method supports KID ('.kid'), Cheetah ('.tmpl') or 
-		Django('.djtml')."""
-		templates = self._config.get("templates")
-		if not type(templates) in (list,tuple): templates = [templates]
-		for template_dir in templates:
-			path        = "%s/%s" % (template_dir, name)
-			if os.path.isfile(path):
-				if engine:
-					return (engine, path)
-				elif path.endswith(".kid"):
-					return (KID, path)
-				elif path.endswith(".tmpl"):
-					self._compileCheetahTemplateDeps(path)
-					return (CHEETAH, path)
-				elif path.endswith(".djtmpl"):
-					return (DJANGO, path)
-				else:
-					raise Exception("Extension unknown and no engine given: %s" % (path))
-			kid_path    = "%s/%s.kid"    % (template_dir, name)
-			if os.path.isfile(kid_path):
-				return  (KID, kid_path)
-			tmpl_path   = "%s/%s.tmpl"   % (template_dir, name)
-			if os.path.isfile(tmpl_path):
-				self._compileCheetahTemplateDeps(path)
-				return (CHEETAH, tmpl_path)
-			djtmpl_path = "%s/%s.djtmpl" % (template_dir, name)
-			if os.path.isfile(tmpl_path):
-				return (DJANGO, tmpl_path)
-		return (-1, None)
-
-	def applyTemplate( self, name, engine=None, **kwargs ):
-		"""Applies the the given arguments to the template with
-		the given name. This returns a string with the expanded template. This
-		automatically uses the proper template engine, depending on the
-		extension:
-		
-		 - '.kid' for KID templates
-		 - '.tmpl' for Cheetah templates
-		 - '.dtmpl' for Django templates
-		
-		"""
-		start = time.time()
-		res   = None
-		templ_type, templ_path = self.ensureTemplate(name, engine)
-		# FIXME: Add a proper message handler for that
-		#if templ_type is 1:
-		#	return "Template not found:" + name
-		if not templ_type:
-			raise Exception("No matching template engine for template: " + name)
-		if templ_type == KID:
-			t =  kid.Template(file=templ_path, **kwargs)
-			res = t.serialize(output=kid_serializer)
-		elif templ_type == CHEETAH:
-			# And now we render the template
-			template = Cheetah.Template.Template(file=templ_path, searchList=[kwargs])
-			res = str(template)
-		elif templ_type == DJANGO:
-			# FIXME: There is some overhead here, that I think
-			# we could try to get rid of.
-			import django
-			django.conf.settings = django.conf.LazySettings()
-			django.conf.settings.configure(
-				DEBUG=True, TEMPLATE_DEBUG=True, 
-				TEMPLATE_DIRS=(os.path.dirname(templ_path),)
-			)
-			context = django.template.Context()
-			context.update(kwargs)
-			template = django.template.loader.get_template(templ_path)
-			res = template.render(context)
-		if LOG_TEMPLATE_ON:
-			log( "Template '%s'(%s) rendered in %ss" % ( templ_path, templ_type, time.time()-start) )
-		return res
-
 	def __call__(self, environ, start_response, request=None):
 		"""Just a proxy to 'Dispatcher.__call__' so that Application can be
 		directly used as an WSGI app"""
@@ -1068,7 +855,6 @@ class Configuration:
 
 	- `name`      is the application name
 	- `logfile`   is the path to the log file
-	- `templates` is the path to the templates directory
 	- `charset`   is the default charset for handling request/response data
 	- `root`      is the location of the server root (default '.')
 	- `session`   is the name of the session adapter (for now, 'FLUP' or 'BEAKER')
@@ -1112,21 +898,6 @@ class Configuration:
 		one."""
 		for key, value in config.items():
 			self.set(key,value)
-
-	def log( self, *args ):
-		"""A function to easily log data to the logfile."""
-		args = " ".join(map(str, args))
-		# Creates the logfile if necessary
-		if not self._logfile:
-			self._logfile = file(self.get("logfile") or DEFAULT_LOGFILE, 'a')
-		# Logs the data
-		self._logfile.write(">>> ")
-		if type(args) in (tuple,list):
-			for a in args: self._logfile.write(str(a) + " ")
-		else:
-			self._logfile.write(str(args))
-		self._logfile.write("\n")
-		self._logfile.flush()
 
 	def set( self, name, value ):
 		"""Sets the given property with the given value."""

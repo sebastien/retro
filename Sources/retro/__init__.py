@@ -2,25 +2,24 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ivy.fr>
+# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Mar-2009
+# Last mod  : 21-Jun-2012
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
 import wsgi
 from wsgi import REACTOR, onShutdown, onError
 from core import asJSON
-from web  import on, expose, display, predicate, when, restrict, cache, \
+from web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
-Dispatcher, Configuration, ValidationError, Event, RendezVous, \
-KID, CHEETAH, DJANGO
+Dispatcher, Configuration, ValidationError, Event, RendezVous
 
 # FIXME: Add support for stackable applications
 
-__version__ = "1.0.1"
+__version__ = "2.0.1"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
@@ -71,13 +70,12 @@ except ImportError:
 	WSGIREF = None
 	STANDALONE_WSGIREF = None
 
-FEATURES = filter(lambda x:x, (FLUP, FCGI, STANDALONE, WSGIREF, KID,))
+FEATURES = filter(lambda x:x, (FLUP, FCGI, STANDALONE, WSGIREF,))
 def has( feature ):
 	"""Tells if your Python installation has any of the following features:
 
 	- FLUP for FCGI, SCGI servers
 	- WSGIREF for standalone WSGI server
-	- KID for template processing
 
 	"""
 	return feature in FEATURES
