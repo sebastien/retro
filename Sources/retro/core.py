@@ -307,6 +307,10 @@ class Request:
 		"""Returns the method (GET, POST, etc) for this request."""
 		return self._environ.get(self.REQUEST_METHOD)
 
+	def path( self ):
+		"""Alias for `self.uri`"""
+		return self.uri()
+
 	def uri( self ):
 		"""Returns the URI for this method."""
 		uri = self._environ.get(self.REQUEST_URI) or self._environ.get(self.PATH_INFO)

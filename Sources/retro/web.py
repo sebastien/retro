@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 21-Jun-l012
+# Last mod  : 27-Jun-l012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -755,14 +755,14 @@ class Application(Component):
 	def load( self, path, sync=True ):
 		"""Loads the file at the given path and returns its content."""
 		flags = os.O_RDONLY
-		if sync: flags = flags | O_RSYNC
+		if sync: flags = flags | os.O_RSYNC
 		fd    = os.open(path, flags)
 		data  = None
 		try:
 			last_read = 1 
 			data      = []
 			while last_read > 0:
-				t = os.read(fd)
+				t = os.read(fd, 128000)
 				data.append(t)
 				last_read = len(t)
 			data = "".join(data)
@@ -775,8 +775,8 @@ class Application(Component):
 	def save( self, path, data, sync=True, append=False ):
 		"""Saves the file at the given path and returns its content."""
 		flags = os.O_WRONLY | os.O_CREAT
-		if sync:       flags = flags | O_DSYNC
-		if not append: flags = flags | O_TRUNC
+		if sync:       flags = flags | os.O_DSYNC
+		if not append: flags = flags | os.O_TRUNC
 		fd    = os.open(path, flags)
 		try:
 			os.write(fd, data)
