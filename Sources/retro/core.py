@@ -625,6 +625,8 @@ class Request:
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised."""
+		if not path:
+			return self.fail("No path given for image")
 		path = os.path.abspath(path)
 		if not contentType:
 			contentType, _ = mimetypes.guess_type(path)

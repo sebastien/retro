@@ -2,11 +2,11 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 12-Mar-2012
+# Last mod  : 28-Jun-2012
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -219,6 +219,7 @@ class LibraryServer(Component):
 	- Images     ('lib/images', of type 'png', 'gif', 'jpg', 'ico' and 'svg')
 	- Flash      ('lib/swf' and 'crossdomain.xml')
 	- PDF        ('lib/pdf')
+	- Fonts      ('lib/fonts')
 
 	The implementation is not that flexible, but it's a very good start
 	for most web applications. You can specialize this class later if you
@@ -283,6 +284,10 @@ class LibraryServer(Component):
 			+ '<cross-domain-policy><allow-access-from domain="*" /></cross-domain-policy>'
 		)
 
+	@on(GET="lib/fonts/{path:rest}")
+	def getFonts( self, request, path ):
+		return request.respondFile(os.path.join(self.library, "fonts", path))
+
 	@on(GET="lib/css/{paths:rest}")
 	def getCSS( self, request, paths ):
 		response_data = ""
@@ -328,9 +333,9 @@ class LibraryServer(Component):
 			response_data = self._fromCache(paths)
 		return request.respond(response_data, contentType="text/css").compress(self.compress)
 
-	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+\.(png|gif|jpg|ico|svg)}")
+	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
-		return request.respondFile(os.path.join(self.library, "images", image))
+		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg")))
 
 	@on(GET="lib/swf/{script:\w+\.swf}")
 	def getFlash( self, request, script ):
@@ -391,5 +396,17 @@ class LibraryServer(Component):
 		else:
 			response_data = self._fromCache(paths)
 		return request.respond(response_data, contentType="text/javascript").compress(self.compress)
+
+	def _guessPath( self, parent, filename, extensions ):
+		"""Tries to locate the file with the given `filename` in the `parent` directory of this
+		library, appending the given `extensions` if the file is not found."""
+		path = os.path.join(self.library, parent, filename)
+		if os.path.exists(path):
+			return path
+		for ext in extensions:
+			p = path + ext
+			if os.path.exists(p):
+				return p
+		return None
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

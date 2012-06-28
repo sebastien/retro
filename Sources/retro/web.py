@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 27-Jun-l012
+# Last mod  : 28-Jun-l012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -97,7 +97,9 @@ def on( priority=0, **methods ):
 		v = function.__dict__.setdefault(_RETRO_ON, [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, priority)
 		for http_method, url in methods.items():
-			v.append((http_method, url))
+			if type(url) not in (list, tuple): url = (url,)
+			for _ in url:
+				v.append((http_method, _))
 		return function
 	return decorator
 
@@ -118,11 +120,12 @@ def expose( priority=0, compress=False, **methods ):
 		v = function.__dict__.setdefault(_RETRO_ON,   [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, int(priority))
 		for http_method, url in methods.items():
-			if http_method == "json":
-				function.__dict__[_RETRO_EXPOSE_JSON] = url
-				function.__dict__[_RETRO_EXPOSE_JSON] = url
-			else:
-				v.append((http_method, url))
+			if type(url) not in (list, tuple): url = (url,)
+			for _ in url:
+				if http_method == "json":
+					function.__dict__[_RETRO_EXPOSE_JSON] = _
+				else:
+					v.append((http_method, _))
 		return function
 	return decorator
 
@@ -670,7 +673,7 @@ class Application(Component):
 					e
 				)
 			# And now we return the response as JS
-			return request.returns(r, options=getattr(self.function,_RETRO_EXPOSE_JSON)).compress(getattr(self.function,_RETRO_AJAX_COMPRESS))
+			return request.returns(r, options=getattr(self.function,_RETRO_EXPOSE_JSON)).compress(getattr(self.function,_RETRO_EXPOSE_COMPRESS))
 
 	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)
