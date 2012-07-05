@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 20-Jan-2012
+# Last mod  : 05-Jul-2012
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading, urllib, pickle
@@ -183,20 +183,29 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
+	EXTENSION = ".cache"
+
 	# FIXME: Should split paths when they exceed the file name limit (256 bytes)
 	@staticmethod
 	def SHA1_KEY(_):return hashlib.sha1(_).hexdigest()
 	@staticmethod
 	def MD5_KEY (_):return hashlib.md5(_).hexdigest()
-	@staticmethod
-	def SAME_KEY(_):return _
+	@classmethod
+	def NAME_KEY(self,key):
+		max_length = 100 - len(self.EXTENSION)
+		key = urllib.urlencode(dict(_=key))[2:]
+		if len(key) >= max_length:
+			suffix = hashlib.md5(key).hexdigest()
+			key    = key[:max_length - (len(suffix) + 2)] + "-" + suffix
+		assert len(key) < max_length, "Key is too long %d > %d" % (len(key), max_length)
+		return key
 
 	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
 		self.setPath(path)
-		self.keyProcessor = keys or self.SAME_KEY
+		self.keyProcessor = keys or self.NAME_KEY
 		self.enabled      = True
 	
 	def withSHA1Keys( self ):
@@ -213,19 +222,26 @@ class FileCache(Cache):
 
 	def setPath( self, path ):
 		path = path or "."
+		if len(path) > 1 and path[-1] == "/": path = path[:-1]
 		assert os.path.exists(path)
 		assert os.path.isdir(path)
 		self.path = path
 
+	def has( self, key ):
+		path = self.path + "/" + self._normKey(key) + self.EXTENSION
+		return os.path.exists(path)
+
 	def get( self, key ):
 		if self.has(key):
-			with file(self.path + "/" + self._normKey(key) + ".cache", 'r') as f:
+			path = self.path + "/" + self._normKey(key) + self.EXTENSION
+			with file(path, 'r') as f:
 				return self._load(f)
 		else:
 			return None
 
 	def set( self, key, data ):
-		with file(self.path + "/" + self._normKey(key) + ".cache", 'w') as f:
+		path = self.path + "/" + self._normKey(key) + self.EXTENSION
+		with file(path, 'w') as f:
 			self._save(f, data)
 		return data
 
@@ -234,28 +250,21 @@ class FileCache(Cache):
 		
 	def remove( self, key):
 		if self.has(key):
-			os.unlink(self.path + "/" + self._normKey(key) + ".cache")
+			os.unlink(self.path + "/" + self._normKey(key) + self.EXTENSION)
 
-	def has( self, key ):
-		return os.path.exists(self.path + "/" + self._normKey(key) + ".cache")
-	
 	def _normKey( self, key ):
-		key = self.keyProcessor(key)
-		key = urllib.urlencode(dict(_=key))
-		return key[2:]
+		return self.keyProcessor(key)
 	
 	def _save( self, fd, data ):
 		try:
 			return self.serializer(fd, data)
 		except Exception, e:
-			print ("[!] FileCache._save:%s" % (e))
 			return None
 
 	def _load( self, fd ):
 		try:
 			return self.deserializer(fd)
 		except Exception, e:
-			print ("[!] FileCache._load:%s" % (e))
 			return None
 
 class SignatureCache(Cache):
