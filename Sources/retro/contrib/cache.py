@@ -9,7 +9,7 @@
 # Last mod  : 05-Jul-2012
 # -----------------------------------------------------------------------------
 
-import os, stat, hashlib, threading, urllib, pickle
+import os, stat, hashlib, threading, urllib, pickle, time
 
 class CacheError(Exception):
 	pass
@@ -184,6 +184,7 @@ class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
 	EXTENSION = ".cache"
+	EXPIRES   = 60 * 60
 
 	# FIXME: Should split paths when they exceed the file name limit (256 bytes)
 	@staticmethod
@@ -229,7 +230,11 @@ class FileCache(Cache):
 
 	def has( self, key ):
 		path = self.path + "/" + self._normKey(key) + self.EXTENSION
-		return os.path.exists(path)
+		if os.path.exists(path):
+			s = os.stat(path)
+			return (time.time() - s[stat.ST_MTIME]) < self.EXPIRES
+		else:
+			return False
 
 	def get( self, key ):
 		if self.has(key):
