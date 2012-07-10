@@ -106,25 +106,31 @@ class ProxyService(Component, Proxy):
 		self.THROTTLING = int(throttling)
 		if user and password: self.user += ":" + password
 
-	@on(GET="/{rest:rest}?{parameters}", priority="10")
-	def proxyGet( self, request, rest, parameters ):
+	@on(GET="?{parameters}", priority="10")
+	@on(GET="{rest:rest}?{parameters}", priority="10")
+	def proxyGet( self, request, rest=None, parameters=None ):
 		return self._proxy(request, "GET", rest, parameters)
 
-	@on(POST="/{rest:rest}?{parameters}", priority="10")
-	def proxyPost( self, request, rest, parameters ):
+	@on(POST="?{parameters}", priority="10")
+	@on(POST="{rest:rest}?{parameters}", priority="10")
+	def proxyPost( self, request, rest=None, parameters=None ):
 		return self._proxy(request, "POST", rest, parameters)
 
-	@on(PUT="/{rest:rest}?{parameters}", priority="10")
-	def proxyPut( self, request, rest, parameters ):
+	@on(PUT="?{parameters}", priority="10")
+	@on(PUT="{rest:rest}?{parameters}", priority="10")
+	def proxyPut( self, request, rest=None, parameters=None ):
 		return self._proxy(request, "PUT", rest, parameters)
 
-	@on(DELETE="/{rest:rest}?{parameters}", priority="10")
-	def proxyDelete( self, request, rest, parameters ):
+	@on(DELETE="?{parameters}", priority="10")
+	@on(DELETE="{rest:rest}?{parameters}", priority="10")
+	def proxyDelete( self, request, rest=None, parameters=None):
 		return self._proxy(request, "DELETE", rest, parameters)
 	
 	def _proxy( self, request, method, rest, parameters ):
-		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
-		status, headers, body = self.httpRequest(self._host, self._port, method, self._uri + uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		rest     = rest or ""
+		dest_uri = self._uri + rest
+		while dest_uri.endswith("//"): dest_uri=dest_uri[:-1]
+		status, headers, body = self.httpRequest(self._host, self._port, method, dest_uri, body=request.body(), headers=self.filterHeaders(request.headers()))
 		# TODO: We have a redirect, so we have to rewrite it
 		if status == 302:
 			pass
