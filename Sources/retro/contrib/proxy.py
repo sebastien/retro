@@ -15,6 +15,8 @@ from os.path import abspath, dirname, join
 from retro import *
 from retro.wsgi import SERVER_ERROR_CSS
 
+DEFAULT_PORT = 8000
+
 # ------------------------------------------------------------------------------
 #
 # PROXY COMPONENT
@@ -209,7 +211,7 @@ def createProxies( args, options=None ):
 	"""
 	components = []
 	options    = options or {}
-	throttling = int(options.get("throttling"))
+	throttling = int(options.get("throttling") or DEFAULT_PORT)
 	for arg in args:
 		prefix, url = arg.split("=",1)
 		if url.find("@") != -1:
@@ -229,7 +231,7 @@ def run( args ):
 	# We create the parse and register the options
 	oparser = OptionParser(version="Retro[+proxy]")
 	oparser.add_option("-p", "--port", action="store", dest="port",
-		help=OPT_PORT, default="8000")
+		help=OPT_PORT, default=DEFAULT_PORT)
 	oparser.add_option("-f", "--files", action="store_true", dest="files",
 		help="Server local files", default=None)
 	oparser.add_option("-t", "--throttle", action="store", dest="throttling",
