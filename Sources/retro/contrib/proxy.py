@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # Encoding: iso-8859-1
-# vim: tw=80 ts=4 sw=4 noet
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Sep-2010
+# Last mod  : 10-Jul-2012
 # -----------------------------------------------------------------------------
 
 import os, sys, time
@@ -23,6 +22,10 @@ from retro.wsgi import SERVER_ERROR_CSS
 # ------------------------------------------------------------------------------
 
 class Proxy:
+	"""A basic (forwarding) proxy implementation that is used by the
+	ProxyService in this module."""
+
+	THROTTLING = 0
 
 	def requestAsString( self, method, server, port, uri, headers, body ):
 		headers = ("%s: %s" % (h[0], h[1]) for h in headers.items() if h[1] != None)
@@ -67,7 +70,19 @@ class Proxy:
 		conn = httplib.HTTPConnection(server, int(port))
 		conn.request(method, url, body, headers or {})
 		resp = conn.getresponse()
-		res  = resp.read()
+		data = resp.read()
+		res  = data
+		if self.THROTTLING > 0:
+			bytes_per_second = int(self.THROTTLING * 1000.0)
+			def throttling_wrapper():
+				i      = 0
+				while i < len(data):
+					if i > 0:
+						time.sleep(1)
+					j = min(len(data), i + bytes_per_second)
+					yield data[i:j]
+					i = j
+			res = throttling_wrapper()
 		return resp.status, resp.getheaders(), res
 
 # FIXME: Use Proxy properly
@@ -76,7 +91,7 @@ class ProxyService(Component, Proxy):
 	around the 'curl' command line application that allows basic proxying of
 	requests, and serving of local files."""
 
-	def __init__( self, proxyTo, prefix="/", user=None, password=None ):
+	def __init__( self, proxyTo, prefix="/", user=None, password=None, throttling=0):
 		# TODO: Add headers processing here
 		"""Creates a new proxy that will proxy to the URL indicated by
 		'proxyTo'."""
@@ -84,10 +99,11 @@ class ProxyService(Component, Proxy):
 		host, port = proxyTo.split(":", 1)
 		port, uri  = port.split("/",    1)
 		self._host  = host
-		self._port  = port
+		self._port  = port or 80
 		self._uri   = "/" + uri
 		self.PREFIX = prefix
 		self.user   = user
+		self.THROTTLING = int(throttling)
 		if user and password: self.user += ":" + password
 
 	@on(GET="/{rest:rest}?{parameters}", priority="10")
@@ -179,14 +195,15 @@ class WWWClientProxy(ProxyService):
 #
 # ------------------------------------------------------------------------------
 
-def createProxies( args ):
+def createProxies( args, options=None ):
 	"""Create proxy components from a list of arguments like
 	
 	>    {prefix}={url}
 	>    {prefix}={user}:{password}@{url}
 	"""
-
 	components = []
+	options    = options or {}
+	throttling = int(options.get("throttling"))
 	for arg in args:
 		prefix, url = arg.split("=",1)
 		if url.find("@") != -1:
@@ -196,7 +213,7 @@ def createProxies( args ):
 		else:
 			user, passwd = None, None
 			print "Proxying %s as %s" % (prefix, url)
-		components.append(ProxyService(url, prefix, user=user, password=passwd))
+		components.append(ProxyService(url, prefix, user=user, password=passwd, throttling=throttling))
 	return components
 
 
@@ -209,12 +226,14 @@ def run( args ):
 		help=OPT_PORT, default="8000")
 	oparser.add_option("-f", "--files", action="store_true", dest="files",
 		help="Server local files", default=None)
+	oparser.add_option("-t", "--throttle", action="store", dest="throttling",
+		help="Throttles connection speed (in Kbytes/second)", default=0)
 	# We parse the options and arguments
 	options, args = oparser.parse_args(args=args)
 	if len(args) == 0:
 		print "The URL to proxy is expected as first argument"
 		return False
-	components = self.createProxies(args)
+	components = createProxies(args, dict(port=options.port,throttling=options.throttling,files=options.files))
 	if options.files:
 		import retro.contrib.localfiles
 		print "Serving local files..."
@@ -232,4 +251,4 @@ def run( args ):
 if __name__ == "__main__":
 	run(sys.argv[1:])
 
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 noet

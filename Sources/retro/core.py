@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 29-May-2012
+# Last mod  : 10-Jul-2012
 # -----------------------------------------------------------------------------
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie, gzip, cStringIO
@@ -78,6 +78,12 @@ def asJSON( value, **options ):
 		res = asJSON(tuple(value), **options)
 	elif hasattr(value, "asJSON")  and callable(value.asJSON):
 		res = value.asJSON(asJSON, **options)
+	elif hasattr(value, "export") and callable(value.export):
+		try:
+			value = value.export(**options)
+		except:
+			value = value.export() 
+		res = asJSON(value)
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
 	# that there is a library implemented on the client side
 	elif hasattr(value, "asJS") and callable(value.asJS):
