@@ -259,9 +259,12 @@ class Request:
 	PATH_INFO      = "PATH_INFO"
 	POST           = "POST"
 	GET            = "GET"
-	HEADER_SET_COOKIE    = "Set-Cookie"
-	HEADER_CACHE_CONTROL = "Cache-Control"
-	HEADER_SET_COOKIE    = "Expires"
+	HEADER_SET_COOKIE        = "Set-Cookie"
+	HEADER_CACHE_CONTROL     = "Cache-Control"
+	HEADER_EXPIRES           = "Expires"
+	HEADER_CONTENT_TYPE      = "Content-Type"
+	HEADER_IF_NONE_MATCH     = "If-None-Match"
+	HEADER_IF_MODIFIED_SINCE = "If-Modified-Since"
 
 	def __init__( self, environ, charset ):
 		"""This creates a new request."""
@@ -281,20 +284,22 @@ class Request:
 		if self._headers is None:
 			e = self._environ
 			headers = {
-				"Accept": e.get("HTTP_ACCEPT"),
-				"Accept-Charset": e.get("HTTP_ACCEPT_CHARSET"),
-				"Accept-Encoding": e.get("HTTP_ACCEPT_ENCODING"),
-				"Accept-Language": e.get("HTTP_ACCEPT_LANGUAGE"),
-				self.HEADER_CACHE_CONTROL: e.get("HTTP_CACHE_CONTROL"),
-				"Connection": e.get("HTTP_CONNECTION"),
-				"Content-Length": e.get("HTTP_CONTENT_LENGTH"),
-				"Content-Type": e.get("HTTP_CONTENT_TYPE"),
-				"Cookie": e.get("HTTP_COOKIE"),
-				"Host": e.get("HTTP_HOST"),
-				"Keep-Alive": e.get("HTTP_KEEP_ALIVE"),
-				"Pragma": e.get("HTTP_PRAGMA"),
-				"Referer": e.get("HTTP_REFERER"),
-				"User-Agent": e.get("HTTP_USER_AGENT")
+				"Accept"                      : e.get("HTTP_ACCEPT"),
+				"Accept-Charset"              : e.get("HTTP_ACCEPT_CHARSET"),
+				"Accept-Encoding"             : e.get("HTTP_ACCEPT_ENCODING"),
+				"Accept-Language"             : e.get("HTTP_ACCEPT_LANGUAGE"),
+				"Connection"                  : e.get("HTTP_CONNECTION"),
+				"Content-Length"              : e.get("HTTP_CONTENT_LENGTH"),
+				self.HEADER_CONTENT_TYPE      : e.get("HTTP_CONTENT_TYPE"),
+				"Cookie"                      : e.get("HTTP_COOKIE"),
+				"Host"                        : e.get("HTTP_HOST"),
+				"Keep-Alive"                  : e.get("HTTP_KEEP_ALIVE"),
+				"Pragma"                      : e.get("HTTP_PRAGMA"),
+				"Referer"                     : e.get("HTTP_REFERER"),
+				"User-Agent"                  : e.get("HTTP_USER_AGENT"),
+				self.HEADER_CACHE_CONTROL      : e.get("HTTP_CACHE_CONTROL"),
+				self.HEADER_IF_MODIFIED_SINCE : e.get("HTTP_IF_MODIFIED_SINCE"),
+				self.HEADER_IF_NONE_MATCH     : e.get("HTTP_IF_NONE_MATCH"),
 			}
 			i = 0
 			c = True
@@ -635,7 +640,12 @@ class Request:
 	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
-		filesystem, and exception is raised."""
+		filesystem, and exception is raised.
+		
+		By default, this method supports caching and will serve both ETags
+		and Last-Modified headers, and will also return a 304 not changed
+		if necessary.
+		"""
 		if not path:
 			return self.fail("No path given for image")
 		path = os.path.abspath(path)
@@ -643,26 +653,52 @@ class Request:
 			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
 			return self.notFound("File not found: %s" % (path))
-		# FIXME: This could be improved by returning a generator if the
-		# file is too big
-		f = file(path, 'rb') ; r = f.read() ; f.close()
-		headers = [("Content-Type", contentType)]
-		# NOTE: These headers are useful for caching
-		if etag is True:
-			content_sig    = hashlib.sha1(r).hexdigest()
-			headers.append(("ETag",          content_sig))
-		if contentLength is True:
-			content_length = len(r)
-			headers.append(("Content-Length", str(content_length)))
+		# We start by looking at the file, if hasn't changed, we won't bother
+		# reading it from the filesystem
+		has_changed = True
+		headers     = []
 		if lastModified is True:
 			last_modified  = time.gmtime(os.path.getmtime(path))
-			last_modified  = time.strftime("%a, %d %b %Y %H:%M:%S GMT", last_modified)
-			headers.append(("Last-Modified", last_modified))
-		return Response(content=r, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
+			headers.append(("Last-Modified", time.strftime("%a, %d %b %Y %H:%M:%S GMT", last_modified)))
+			modified_since = self.header(self.HEADER_IF_MODIFIED_SINCE)
+			try:
+				modified_since = time.strptime(modified_since, "%a, %d %b %Y %H:%M:%S GMT")
+				if modified_since > last_modified:
+					has_changed = False
+			except Exception, e:
+				pass
+		# If the file has changed, then we'll load it and do the whoe she bang
+		if has_changed:
+			# FIXME: This could be improved by returning a generator if the
+			# file is too big
+			with file(path, 'rb') as f: r = f.read()
+			headers.append(("Content-Type", contentType))
+			content_sig = None
+			if etag is True:
+				content_sig    = '"' + hashlib.sha1(r).hexdigest() + '"'
+				headers.append(("ETag",          content_sig))
+			if contentLength is True:
+				content_length = len(r)
+				headers.append(("Content-Length", str(content_length)))
+		# File system modification date takes precendence
+		if   lastModified and not has_changed:
+			return self.notModified(contentType=contentType)
+		# Otherwise we test ETag
+		elif etag is True and content_sig and self.header(self.HEADER_IF_NONE_MATCH) == content_sig:
+			return self.notModified(contentType=contentType)
+		# and if nothing works, we'll return the response
+		else:
+			return Response(content=r, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
-		return Response(content, status=status, compression=self.compression())
+		return Response(content, status=status, compression=False)
+
+	def notModified( self, content="Not modified", status=304, contentType=None):
+		"""Returns an OK 304"""
+		headers = None
+		if contentType: headers = [(self.HEADER_CONTENT_TYPE, contentType)]
+		return Response(content, status=status, headers=headers, compression=False)
 
 	def fail( self, content=None,status=412, headers=None ):
 		"""Returns an Error 412 with the given content"""
@@ -709,13 +745,13 @@ class Response:
 	def cache( self, seconds=0,  minutes=0, hours=0, days=0, weeks=0, months=0, years=0, cacheControl=True, expires=True ):
 		duration     = seconds + minutes * 60 + hours * 3600 + days * 3600 * 24 + weeks * 3600 * 24 * 7 + months * 3600 * 24 * 31 + years * 3600 * 24 * 365
 		if duration > 0:
-			if cacheControl=True:
+			if cacheControl is True:
 				self.headers = [h for h in self.headers if h[0] != Request.HEADER_CACHE_CONTROL]
-				self.headers.append((Request.HEADER_CACHE_CONTROL, "maxage=%d,public" % (duration)))
+				self.headers.append((Request.HEADER_CACHE_CONTROL, "max-age=%d, public" % (duration)))
 			if expires is True:
 				expires      = time.gmtime(time.time() + duration)
 				expires      = time.strftime("%a, %d %b %Y %H:%M:%S GMT", expires)
-				self.headers.append((Request.HEADER_EXPIRES, expires)
+				self.headers.append((Request.HEADER_EXPIRES, expires))
 		return self
 
 	def produceOn( self, event ):
