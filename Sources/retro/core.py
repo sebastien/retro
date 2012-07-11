@@ -261,6 +261,7 @@ class Request:
 	GET            = "GET"
 	HEADER_SET_COOKIE    = "Set-Cookie"
 	HEADER_CACHE_CONTROL = "Cache-Control"
+	HEADER_SET_COOKIE    = "Expires"
 
 	def __init__( self, environ, charset ):
 		"""This creates a new request."""
@@ -705,11 +706,16 @@ class Response:
 		self.compression = compression
 		self.isCompressed = False
 
-	def cache( self, seconds=0,  minutes=0, hours=0, days=0, weeks=0, months=0, years=0 ):
+	def cache( self, seconds=0,  minutes=0, hours=0, days=0, weeks=0, months=0, years=0, cacheControl=True, expires=True ):
 		duration     = seconds + minutes * 60 + hours * 3600 + days * 3600 * 24 + weeks * 3600 * 24 * 7 + months * 3600 * 24 * 31 + years * 3600 * 24 * 365
 		if duration > 0:
-			self.headers = [h for h in self.headers if h[0] != Request.HEADER_CACHE_CONTROL]
-			self.headers.append((Request.HEADER_CACHE_CONTROL, "maxage=%d,public" % (duration)))
+			if cacheControl=True:
+				self.headers = [h for h in self.headers if h[0] != Request.HEADER_CACHE_CONTROL]
+				self.headers.append((Request.HEADER_CACHE_CONTROL, "maxage=%d,public" % (duration)))
+			if expires is True:
+				expires      = time.gmtime(time.time() + duration)
+				expires      = time.strftime("%a, %d %b %Y %H:%M:%S GMT", expires)
+				self.headers.append((Request.HEADER_EXPIRES, expires)
 		return self
 
 	def produceOn( self, event ):
