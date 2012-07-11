@@ -12,8 +12,8 @@
 # SEE:http://www.mnot.net/cache_docs/
 
 __doc__ = """
-The 'localfiles' module defines a LocalFiles component that can be added to
-any application to serve local files."""
+The 'localfiles' module defines `LocalFiles` and `Library` component that can
+be added to any application to serve local files and assets"""
 
 import os, sys, mimetypes, subprocess
 from retro import *
@@ -225,14 +225,7 @@ class LibraryServer(Component):
 	for most web applications. You can specialize this class later if you
 	want to change the behaviour."""
 
-	@staticmethod
-	def read( path ):
-		f = file(path, 'rb')
-		t = f.read()
-		f.close()
-		return t
-
-	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), minify=False, compress=False, cacheAggregates=True ):
+	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), minify=False, compress=False, cacheAggregates=True, cacheDuration=24*60*60 ):
 		Component.__init__(self, name=name)
 		self.library  = library
 		self.cache    = cache
@@ -241,6 +234,7 @@ class LibraryServer(Component):
 		self.commands = dict(sugar="sugar")
 		self.commands.update(commands)
 		self.cacheAggregates = cacheAggregates
+		self.cacheDuration   = cacheDuration
 
 	def start( self ):
 		self.library  = self.library or self.app().config("library.path")
@@ -282,11 +276,11 @@ class LibraryServer(Component):
 			'<?xml version="1.0"?>'
 			+ '<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">'
 			+ '<cross-domain-policy><allow-access-from domain="*" /></cross-domain-policy>'
-		)
+		).cache(years=1)
 
 	@on(GET="lib/fonts/{path:rest}")
 	def getFonts( self, request, path ):
-		return request.respondFile(os.path.join(self.library, "fonts", path))
+		return request.respondFile(os.path.join(self.library, "fonts", path)).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/css/{paths:rest}")
 	def getCSS( self, request, paths ):
@@ -306,7 +300,7 @@ class LibraryServer(Component):
 			self._toCache(paths, response_data)
 		else:
 			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/css").compress(self.compress)
+		return request.respond(response_data, contentType="text/css").compress(self.compress).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/ccss/{paths:rest}")
 	def getCCSS( self, request, paths ):
@@ -331,19 +325,19 @@ class LibraryServer(Component):
 			self._toCache(paths, response_data)
 		else:
 			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/css").compress(self.compress)
+		return request.respond(response_data, contentType="text/css").compress(self.compress).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
-		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg")))
+		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg"))).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/swf/{script:\w+\.swf}")
 	def getFlash( self, request, script ):
-		return request.respondFile(os.path.join(self.library, "swf", script))
+		return request.respondFile(os.path.join(self.library, "swf", script)).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/pdf/{script:[\w\-_\.]+\.pdf}")
 	def getPDF( self, request, script ):
-		return request.respondFile(os.path.join(self.library, "pdf", script))
+		return request.respondFile(os.path.join(self.library, "pdf", script)).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/js/{paths:rest}")
 	@on(GET="lib/sjs/{paths:rest}")
@@ -395,7 +389,7 @@ class LibraryServer(Component):
 			self._toCache(paths, response_data)
 		else:
 			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/javascript").compress(self.compress)
+		return request.respond(response_data, contentType="text/javascript").compress(self.compress).cache(seconds=self.cacheDuration)
 
 	def _guessPath( self, parent, filename, extensions ):
 		"""Tries to locate the file with the given `filename` in the `parent` directory of this

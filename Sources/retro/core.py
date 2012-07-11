@@ -6,10 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 10-Jul-2012
+# Last mod  : 11-Jul-2012
 # -----------------------------------------------------------------------------
 
-import os, sys, cgi, re, urllib, email, time, types, mimetypes, BaseHTTPServer, Cookie, gzip, cStringIO
+import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib
+import BaseHTTPServer, Cookie, gzip, cStringIO
 import threading
 
 try:
@@ -256,7 +257,8 @@ class Request:
 	PATH_INFO      = "PATH_INFO"
 	POST           = "POST"
 	GET            = "GET"
-	HEADER_SET_COOKIE = "Set-Cookie"
+	HEADER_SET_COOKIE    = "Set-Cookie"
+	HEADER_CACHE_CONTROL = "Cache-Control"
 
 	def __init__( self, environ, charset ):
 		"""This creates a new request."""
@@ -280,7 +282,7 @@ class Request:
 				"Accept-Charset": e.get("HTTP_ACCEPT_CHARSET"),
 				"Accept-Encoding": e.get("HTTP_ACCEPT_ENCODING"),
 				"Accept-Language": e.get("HTTP_ACCEPT_LANGUAGE"),
-				"Cache-Control": e.get("HTTP_CACHE_CONTROL"),
+				self.HEADER_CACHE_CONTROL: e.get("HTTP_CACHE_CONTROL"),
 				"Connection": e.get("HTTP_CONNECTION"),
 				"Content-Length": e.get("HTTP_CONTENT_LENGTH"),
 				"Content-Type": e.get("HTTP_CONTENT_TYPE"),
@@ -627,7 +629,7 @@ class Request:
 		if headers: h.extend(headers)
 		return Response(js, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
-	def respondFile( self, path, contentType=None, status=200 ):
+	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised."""
@@ -641,7 +643,19 @@ class Request:
 		# FIXME: This could be improved by returning a generator if the
 		# file is too big
 		f = file(path, 'rb') ; r = f.read() ; f.close()
-		return Response(content=r, headers=self._mergeHeaders([("Content-Type", contentType)]), status=status, compression=self.compression())
+		headers = [("Content-Type", contentType)]
+		# NOTE: These headers are useful for caching
+		if etag is True:
+			content_sig    = hashlib.sha1(r).hexdigest()
+			headers.append(("ETag",          content_sig))
+		if contentLength is True:
+			content_length = len(r)
+			headers.append(("Content-Length", str(content_length)))
+		if lastModified is True:
+			last_modified  = time.gmtime(os.path.getmtime(path))
+			last_modified  = time.strftime("%a, %d %b %Y %H:%M:%S GMT", last_modified)
+			headers.append(("Last-Modified", last_modified))
+		return Response(content=r, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
@@ -688,6 +702,13 @@ class Response:
 		self.produceEventGuard = None
 		self.compression = compression
 		self.isCompressed = False
+
+	def cache( self, seconds=0,  minutes=0, hours=0, days=0, weeks=0, months=0, years=0 ):
+		duration     = seconds + minutes * 60 + hours * 3600 + days * 3600 * 24 + weeks * 3600 * 24 * 7 + months * 3600 * 24 * 31 + years * 3600 * 24 * 365
+		if duration > 0:
+			self.headers = [h for h in self.headers if h[0] != Request.HEADER_CACHE_CONTROL]
+			self.headers.append((Request.HEADER_CACHE_CONTROL, "maxage=%d,public" % (duration)))
+		return self
 
 	def produceOn( self, event ):
 		"""Guards the production of the response by this event. This allows the
