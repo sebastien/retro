@@ -13,7 +13,7 @@
 # Last mod  : 15-Jun-2011
 # -----------------------------------------------------------------------------
 
-# TODO: Use AsynCore
+# TODO: Use AsynCore or (better), Thor!
 # TODO: Test retro apps with another WSGI server
 # FIXME: Reactor is broken (and probably unnecessary)
 

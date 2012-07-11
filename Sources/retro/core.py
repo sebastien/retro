@@ -9,6 +9,8 @@
 # Last mod  : 11-Jul-2012
 # -----------------------------------------------------------------------------
 
+# TODO: Decouple WSGI-specific code and allow binding to Thor
+
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib
 import BaseHTTPServer, Cookie, gzip, cStringIO
 import threading
