@@ -209,6 +209,10 @@ class FileCache(Cache):
 		self.keyProcessor = keys or self.NAME_KEY
 		self.enabled      = True
 	
+	def noExpire( self ):
+		"""Disables cache expiration."""
+		self.EXPIRES = 0
+
 	def withSHA1Keys( self ):
 		self.setKeyProcessor(FileCache.SHA1_KEY)
 		return self
@@ -232,7 +236,10 @@ class FileCache(Cache):
 		path = self.path + "/" + self._normKey(key) + self.EXTENSION
 		if os.path.exists(path):
 			s = os.stat(path)
-			return (time.time() - s[stat.ST_MTIME]) < self.EXPIRES
+			if self.EXPIRES > 0:
+				return (time.time() - s[stat.ST_MTIME]) < self.EXPIRES
+			else:
+				return True
 		else:
 			return False
 
