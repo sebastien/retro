@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 05-Jul-2012
+# Last mod  : 18-Jul-2012
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading, urllib, pickle, time
@@ -289,22 +289,6 @@ class SignatureCache(Cache):
 		self._backend    = backend or MemoryCache()
 		self.enabled     = True
 
-	def cache( self, signatureFunction  ):
-		"""A decorator that will memoize the result of the function as long as
-		the 'signatureFunction' returns the same result. The signatureFunction
-		takes the same arguments as the cached/decorated function."""
-		def decorator(function):
-			function_tag = repr(function)
-			def cache_wrapper(*args):
-				signature = signatureFunction(*args)
-				if self._cachedSig.get(function_tag) != signatureFunction:
-					result = function(*args)
-					self._cachedSig [function_tag] = signature
-					self._backend.set(function_tag, result)
-					return result
-				else:
-					result = self._backend.get(function_tag)
-					return result
 
 	def clear( self ):
 		self._cachedSig = {}

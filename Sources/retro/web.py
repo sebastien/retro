@@ -147,23 +147,31 @@ def restrict( *predicates ):
 	"""An alias to `when`"""
 	return when(*predicates)
 
-def cache( store ):
+def cache_id(value):
+	"""Returns a cache id for the given value"""
+	try:
+		return getattr(value,"cacheID")()
+	except Exception:
+		return str(value)
+
+def cache_signature( prefix, args, kwargs ):
+	"""Returns the cache signature for the given arguments and keyword arguments"""
+	base_key = ",".join(map(cache_id, args))
+	rest_key = ",".join(map(lambda kv:kv[0] + "=" + kv[1], map(cache_id, kwargs.items())))
+	key      = prefix + ":" + (",".join((base_key, rest_key)))
+	return key
+
+def cache( store, signature=None ):
 	"""The @cache(store) decorator can be used to decorate request handlers and
 	cache the response into the given cache object that must have 'has', 'get'
 	and 'set' methods, and should be able to store response objects."""
-	def get_cache_id(value):
-		try:
-			return getattr(value,"cacheID")()
-		except Exception:
-			return str(value)
-	
+
+	if signature is None: signature = cache_signature.__name__
 	def decorator( requestHandler ):
 		# FIXME: Cache should work with both @expose and @on
 		def wrapper( self, *args, **kwargs ):
+			key = cache_signature(requestHandler.__name__, args, kwargs)
 			if store.enabled:
-				base_key = ",".join(map(get_cache_id, args))
-				rest_key = ",".join(map(lambda kv:kv[0] + "=" + kv[1], map(get_cache_id, kwargs.items())))
-				key      = ",".join((base_key, rest_key))
 				result   = None
 				if store.has(key):
 					result = store.get(key)
