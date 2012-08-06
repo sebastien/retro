@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 11-Jul-2012
+# Last mod  : 08-Aug-2012
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -278,6 +278,7 @@ class Request:
 		self._component        = None
 		self._cookies          = None
 		self._files            = None
+		self._params           = None
 		self._responseHeaders  = []
 
 	def headers( self ):
@@ -341,10 +342,10 @@ class Request:
 		"""Returns the request content length (if any)"""
 		return self._environ.get(self.CONTENT_LENGTH)
 
-	def get( self, name ):
+	def get( self, name, load=False ):
 		"""Gets the parameter with the given name. It is an alias for param"""
-		if not self._loaded: self.load()
-		for key, value in self._params.items():
+		params = self.params(load=load)
+		for key, value in params.items():
 			if name == key:
 				if len(value) == 1: return urllib.unquote(value[0])
 				return urllib.unquote(value)
@@ -378,15 +379,10 @@ class Request:
 			if not found:
 				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s=%s; path=%s" % (name, value, path)))
 
-	def has(self, name):
+	def has(self, name, load=False):
 		"""Tells if the request has the given parameter."""
-		if not self._loaded: self.load()
-		return name in self._params.keys()
-
-	def params( self ):
-		"""Returns a dictionary with the request parameters"""
-		if not self._loaded: self.load()
-		return self._params
+		params = self.params(load=load)
+		return name in params
 
 	def file( self, name ):
 		"""Returns the file (as a 'cgi.FieldStorage') which was submitted
@@ -402,6 +398,33 @@ class Request:
 	def param( self, name ):
 		"""Gets the parameter with the given name. It is an alias for get"""
 		return self.get(name)
+
+	def params( self, load=False ):
+		"""Returns a dictionary with the request parameters. Unless you specify
+		load as True, this will only return the parameters containes in the
+		request URI, not the parameters contained in the form data, in the
+		case of a POST."""
+		# Otherwise, if the parameters are empty
+		if not self._params:
+			query = self._environ[self.QUERY_STRING]
+			if query:
+				# We try to parse the query string
+				query_params = cgi.parse_qs(query)
+				# TODO: Decode support
+				# if not self._charset is None:
+					# for key, value in d.iteritems():
+						# d[key] = [i.decode(self._charset, 'ignore') for i in value]
+				# In some cases we may only have a string as query, so we consider
+				# it as a key
+				if not query_params:
+					query        = urllib.unquote(query)
+					query_params = {query:'', '':query}
+				self._params = query_params
+			else:
+				self._params = {}
+			# We load if we haven't loaded yet and load is True
+			if load and not self._loaded: self.load()
+		return self._params
 
 	def environ( self, name=NOTHING, value=NOTHING ):
 		"""Gets or sets the environment attached to this request"""
@@ -438,7 +461,7 @@ class Request:
 			self._data = data
 			self._loaderIterator   = None
 			self._percentageLoaded = 100
-			self._loadPostProcess()
+			self._loadDecodeBody()
 			self._loaded = True
 
 	def body( self, body=re ):
@@ -459,26 +482,29 @@ class Request:
 		return self.environ("REMOTE_PORT")
 
 	def _loader( self, chunksize=None ):
-		"""Returns a generator that loads the data of this request."""
+		"""Returns a generator that loads the data of this request. This will
+		gradually update the `_data` attribute."""
 		content_length  = int(self._environ[self.CONTENT_LENGTH] or 0)
 		remaining_bytes = content_length
 		if chunksize == None: chunksize = content_length
 		while remaining_bytes > 0:
 			if remaining_bytes > chunksize: to_read = chunksize
-			else: to_read = remaining_bytes
+			else:                           to_read = remaining_bytes
 			self._data      += self._environ['wsgi.input'].read(to_read)
 			remaining_bytes -= to_read
 			self._percentageLoaded = int(100*float(content_length - remaining_bytes) / float(content_length))
 			yield to_read
-		self._loaderIterator = None
+		self._loaderIterator   = None
 		self._percentageLoaded = 100
-		self._loadPostProcess()
+		self._loadDecodeBody()
 		self._loaded = True
 
-	def _loadPostProcess( self ):
-		"""Post-processed the data loaded by the loader."""
+	def _loadDecodeBody( self ):
+		"""Post-processes the data loaded by the loader, this will basically
+		convert encoded data into an actual object"""
 		content_type   = self._environ[self.CONTENT_TYPE]
 		params         = self._params
+		# We handle the case of a multi-part body
 		if content_type.startswith('multipart'):
 			# TODO: Rewrite this, it fails with some requests
 			# Creates an email from the HTTP request body
@@ -507,15 +533,6 @@ class Request:
 					# TODO: decode if charset
 					# value = value.decode(self._charset, 'ignore')
 					params[names['name']] =  value
-		# Single content
-		else:
-			d = cgi.parse_qs(self._data)
-			# TODO: Decode support
-			# if not self._charset is None:
-				# for key, value in d.iteritems():
-					# d[key] = [i.decode(self._charset, 'ignore') for i in value]
-			for key in d.keys():
-				params[key] = d[key]
 
 	def load( self, chunksize=None ):
 		"""Loads the (POST) data of this request. The optional @chunksize
@@ -538,16 +555,7 @@ class Request:
 		if self._percentageLoaded == 0 and self._loaderIterator == None:
 			data   = ''
 			files  = self._files  = []
-			params = self._params = {}
-			query  = self._environ[self.QUERY_STRING]
-			if query:
-				# We try to parse the query string
-				params = cgi.parse_qs(query)
-				# In some cases we may only have a string as query, so we consider
-				# it as a key
-				if not params:
-					query = urllib.unquote(query)
-					params = { query:'', '':query}
+			params = self.params(load=False)
 			# If this is a post 
 			if self.method() == self.POST:
 				self._data           = ""
