@@ -107,7 +107,7 @@ class MemoryCache(Cache):
 
 	def __init__( self, limit=100, timeout=-1 ):
 		Cache.__init__(self)
-		# Data is key => [WEIGHT, HIT, TIMESTAMP VALUE]
+		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
 		self.data    = {}
 		self.weight  = 0
 		self.limit   = 100
@@ -178,7 +178,7 @@ class MemoryCache(Cache):
 		items = self.data.items()
 		# FIXME: This is slooooow
 		# We compare the hits
-		items.sort(lambda a,b:cmp(a[1][self.HIT], b[1][self.HIT]))
+		items.sort(lambda a,b:cmp(a[1][self.HITS], b[1][self.HITS]))
 		i = 0
 		while self.weight > self.limit and i < len(items):
 			key, value = items[i]
