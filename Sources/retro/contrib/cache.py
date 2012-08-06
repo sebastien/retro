@@ -17,11 +17,11 @@ class CacheError(Exception):
 class CacheMiss(Exception):
 	pass
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 # CACHE OBJECT
 #
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 class Cache:
 
@@ -43,6 +43,9 @@ class Cache:
 	def remove( self, key ):
 		raise NotImplementedError
 
+	def cleanup( self ):
+		raise NotImplementedError
+
 	def wrap(self, keyExtractor):
 		def wrap_wrapper(function):
 			def operation(*args, **kwargs):
@@ -55,6 +58,12 @@ class Cache:
 					return res
 			return operation
 		return wrap_wrapper
+
+# -----------------------------------------------------------------------------
+#
+# NO CACHE
+#
+# -----------------------------------------------------------------------------
 
 class NoCache(Cache):
 
@@ -76,15 +85,34 @@ class NoCache(Cache):
 	def remove( self, key ):
 		return False
 
-class MemoryCache(Cache):
-	"""A simple cache system using a weighted LRU style dictionary."""
+	def cleanup( self ):
+		pass
 
-	def __init__( self, limit=100 ):
+# -----------------------------------------------------------------------------
+#
+# MEMORY CACHE
+#
+# -----------------------------------------------------------------------------
+
+# FIXME: Should remove TIMESTAMP and use TimeoutCache instead
+
+class MemoryCache(Cache):
+	"""A simple in-memory cache using a weighted LRU style dictionary,
+	 with an optional timeout for kept values (in seconds)."""
+
+	WEIGHT     = 0
+	HITS       = 1
+	TIMESTAMP  = 2
+	VALUE      = 3
+
+	def __init__( self, limit=100, timeout=-1 ):
 		Cache.__init__(self)
-		self.data   = {}
-		self.weight = 0
-		self.limit  = 100
-		self.lock   = threading.Lock()
+		# Data is key => [WEIGHT, HIT, TIMESTAMP VALUE]
+		self.data    = {}
+		self.weight  = 0
+		self.limit   = 100
+		self.timeout = timeout
+		self.lock    = threading.RLock()
 		self.enabled = True
 
 	def enable( self ):
@@ -96,9 +124,13 @@ class MemoryCache(Cache):
 	def get( self, key ):
 		d = self.data.get(key)
 		if d:
-			# We increase the hit count
-			d[1] += 1
-			return d[2]
+			if self.timeout <= 0 or (time.time() - d[self.TIMESTAMP]) < self.timeout:
+				# We increase the hit count
+				d[self.HITS] += 1
+				return d[self.VALUE]
+			else:
+				self.remove(key)
+				return None
 		else:
 			return None
 
@@ -111,12 +143,13 @@ class MemoryCache(Cache):
 		if self.data.has_key(key):
 			# We update the data if it's already there
 			previous       = self.data[key]
-			self.weight   -= previous[0]
-			previous[0]    = weight
-			previous[2]    = data
+			self.weight   -= previous[self.WEIGHT]
+			previous[self.WEIGHT]    = weight
+			previous[self.TIMESTAMP] = time.time()
+			previous[self.VALUE]     = data
 			self.data[key] = previous
 		else:
-			self.data[key] = [weight, 0, data]
+			self.data[key] = [weight, 0, time.time(), data]
 			self.weight   += weight
 		self.lock.release()
 		if self.weight > self.limit:
@@ -127,22 +160,41 @@ class MemoryCache(Cache):
 		self.data = {}
 
 	def remove( self, key ):
+		self.lock.acquire()
 		if self.data.has_key(key):
+			# NOTEL This is the  same as in cleanuip
+			self.weight -= self.data[key][self.WEIGHT]
 			del self.data[key]
+		self.lock.release()
 
 	def cleanup( self ):
 		self.lock.acquire()
+		now   = time.time()
+		# We remove older items
+		if self.timeout > 0:
+			for key in self.data.keys():
+				if now - self.data[key][self.TIMESTAMP] > self.timeout:
+					del self.data[key]
 		items = self.data.items()
 		# FIXME: This is slooooow
 		# We compare the hits
-		items.sort(lambda a,b:cmp(a[1][1], b[1][1]))
+		items.sort(lambda a,b:cmp(a[1][self.HIT], b[1][self.HIT]))
 		i = 0
 		while self.weight > self.limit and i < len(items):
-			del self.data[items[i][0]]
-			self.weight -= items[i][1][0]
+			key, value = items[i]
+			# NOTE: This is the same as remove
+			self.weight -= value[self.WEIGHT]
+			del self.data[key]
 			i += 1
 		self.lock.release()
 
+# -----------------------------------------------------------------------------
+#
+# TIMEOUT CACHE
+#
+# -----------------------------------------------------------------------------
+
+# FIXME: Timeout is not useful unless it has cleanup -- we should refactor this
 class TimeoutCache(Cache):
 
 	def __init__( self, cache, timeout=10 ):
@@ -179,6 +231,33 @@ class TimeoutCache(Cache):
 
 	def remove( self, key ):
 		self.cache.remove(key)
+
+	def cleanup( self ):
+		self.lock.acquire()
+		now   = time.time()
+		# We remove older items
+		if self.timeout > 0:
+			for key in self.cache.keys():
+				if now - self.data[key][self.TIMESTAMP] > self.timeout:
+					del self.data[key]
+		items = self.data.items()
+		# FIXME: This is slooooow
+		# We compare the hits
+		items.sort(lambda a,b:cmp(a[1][self.HIT], b[1][self.HIT]))
+		i = 0
+		while self.weight > self.limit and i < len(items):
+			key, value = items[i]
+			# NOTE: This is the same as remove
+			self.weight -= value[self.WEIGHT]
+			del self.data[key]
+			i += 1
+		self.lock.release()
+
+# -----------------------------------------------------------------------------
+#
+# FILE CACHE
+#
+# -----------------------------------------------------------------------------
 
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
@@ -278,6 +357,12 @@ class FileCache(Cache):
 			return self.deserializer(fd)
 		except Exception, e:
 			return None
+
+# -----------------------------------------------------------------------------
+#
+# SIGNATURE CACHE
+#
+# -----------------------------------------------------------------------------
 
 class SignatureCache(Cache):
 	"""A specific type of cache that takes a signature."""
