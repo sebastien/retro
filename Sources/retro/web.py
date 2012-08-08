@@ -12,7 +12,7 @@
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
 
 import os, re, sys, time
-from core import Request, Response, BeakerSession, Event, \
+from core import Request, Response, Event, \
 RendezVous, asJSON, json, unjson
 
 LOG_ENABLED       = True
@@ -542,27 +542,16 @@ class Component:
 	def context( self ):
 		return self._context
 
-	def session( self, request, create=True ):
-		"""Tells if there is a session attached with this request, creating it
-		if `create` is true (by default).
-		
-		This will required either Flup session middleware or Beaker session
-		middleware to be available. The application configuration 'session'
-		option will be used to determine which session middleware should be
-		used. Beaker is the recommended one, but Flup remains the default one.
-		"""
-		session_type = self.app().config("session")
-		if BEAKER_SESSION and session_type == BEAKER_SESSION:
-			res = BeakerSession.hasSession(request)
-			if res: return res
-			elif create: return BeakerSession(request)
-			else: return None
-		elif session_type:
-			log("Unknown session type: %s" % (session_type))
-			return None
-		else:
-			log("No supported session middleware available")
-			return None
+	# FIXME: Deprecated, might refactor
+	# def session( self, request, create=True ):
+	# 	"""Tells if there is a session attached with this request, creating it
+	# 	if `create` is true (by default).
+	# 	"""
+	# 	session_type = self.app().config("session")
+	# 	res = Session.hasSession(request)
+	# 	if res: return res
+	# 	elif create: return Session(request)
+	# 	else: return None
 
 	def app( self ):
 		return self._app

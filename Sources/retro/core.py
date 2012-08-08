@@ -36,11 +36,11 @@ This module could be easily re-used in another application, as it is (almost)
 completely standalone and separated from Retro Web applications.
 """
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 # JSON PERSISTANCE
 #
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 def json( value, *args, **kwargs ):
 	assert HAS_JSON
@@ -101,11 +101,11 @@ def asJSON( value, **options ):
 		res = asJSON(value.__dict__, **options)
 	return res
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 # COMPRESSION
-#
-# ------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
  
 def compress_gzip(data):
 	out = cStringIO.StringIO()
@@ -114,11 +114,11 @@ def compress_gzip(data):
 	f.close()
 	return out.getvalue()
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
-# EVENT OBJECT
+# EVENT
 #
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 class Event:
 
@@ -175,6 +175,12 @@ class Event:
 
 	def __call__( self,  *args, **kwargs ):
 		self.trigger(*args,**kwargs)
+
+# -----------------------------------------------------------------------------
+#
+# RENDEZ-VOUS
+#
+# -----------------------------------------------------------------------------
 
 class RendezVous:
 
@@ -271,15 +277,13 @@ class Request:
 		self._environ          = environ
 		self._headers          = None
 		self._charset          = charset
-		self._loaded           = False
-		self._percentageLoaded = False
-		self._loaderIterator   = None
 		self._data             = None
 		self._component        = None
 		self._cookies          = None
 		self._files            = None
 		self._params           = None
 		self._responseHeaders  = []
+		self._bodyLoader       = None
 
 	def headers( self ):
 		if self._headers is None:
@@ -340,7 +344,7 @@ class Request:
 
 	def contentLength( self ):
 		"""Returns the request content length (if any)"""
-		return self._environ.get(self.CONTENT_LENGTH)
+		return int(self._environ.get(self.CONTENT_LENGTH) or 0)
 
 	def get( self, name, load=False ):
 		"""Gets the parameter with the given name. It is an alias for param"""
@@ -423,7 +427,7 @@ class Request:
 			else:
 				self._params = {}
 			# We load if we haven't loaded yet and load is True
-			if load and not self._loaded: self.load()
+			if load and not self.isLoaded(): self.load()
 		return self._params
 
 	def environ( self, name=NOTHING, value=NOTHING ):
@@ -451,22 +455,49 @@ class Request:
 	def data( self,data=re ):
 		"""Gets/sets the request data (it is an alias for body)"""
 		if data == re:
-			if not self._loaded: self.load()
+			while not self.isLoaded(): self.load()
 			return self._data
 		else:
-			# We reset the parameters
-			self._params = {}
+			# We reset the parameters and files
+			self._params     = {}
+			self._files      = []
 			# We simulate a load if the data was set
 			self._environ[self.CONTENT_LENGTH] = len(data)
-			self._data = data
-			self._loaderIterator   = None
-			self._percentageLoaded = 100
-			self._loadDecodeBody()
-			self._loaded = True
+			self._data       = data
+			self._bodyLoader = RequestBodyLoader(self, complete=True)
 
 	def body( self, body=re ):
 		"""Gets/sets the request body (it is an alias for data)"""
 		return self.data(body)
+
+	def isLoaded( self ):
+		"""Tells wether the request's body is loaded or not"""
+		if self._bodyLoader: return self._bodyLoader.isComplete()
+		else: return False
+
+	def loadProgress( self ):
+		"""Returns an integer (0-100) that shows the load progress."""
+		if self._bodyLoader: return self._bodyLoader.progress()
+		else: return 0
+
+	def load( self, size=None ):
+		"""Loads `size` more bytes (all by default) from the request
+		body."""
+		# We make sure that the body loader exists
+		if not self._bodyLoader: self._bodyLoader = RequestBodyLoader(self)
+		# And then if it is not complete, 
+		if not self._bodyLoader.isComplete():
+			# FIXME: We should support alternative loading methods
+			if self._data is None:
+				self._data  = self._bodyLoader.load(size)
+			else:
+				self._data += self._bodyLoader.load(size)
+			# If the the body loader is complete, we'll now proceed
+			# with the decoding of the request, which will convert the data
+			# into params and fields.
+			if self._bodyLoader.isComplete():
+				self._params, self._files = self._bodyLoader.decode(self._data)
+		return self
 
 	def referer( self ):
 		"""Rerturns the HTTP referer for this request."""
@@ -480,116 +511,6 @@ class Request:
 	def clientPort( self ):
 		"""Returns the HTTP client port for this request."""
 		return self.environ("REMOTE_PORT")
-
-	def _loader( self, chunksize=None ):
-		"""Returns a generator that loads the data of this request. This will
-		gradually update the `_data` attribute."""
-		content_length  = int(self._environ[self.CONTENT_LENGTH] or 0)
-		remaining_bytes = content_length
-		if chunksize == None: chunksize = content_length
-		while remaining_bytes > 0:
-			if remaining_bytes > chunksize: read_bytes = chunksize
-			else:                           read_bytes = remaining_bytes
-			self._data      += self._environ['wsgi.input'].read(read_bytes)
-			remaining_bytes -= read_bytes
-			if remaining_bytes > 0:
-				self._percentageLoaded = int(100*float(content_length - remaining_bytes) / float(content_length))
-			else:
-				self._percentageLoaded = 100
-				self._loaderIterator   = None
-				self._percentageLoaded = 100
-				self._loadDecodeBody()
-				self._loaded = True
-			yield read_bytes
-
-	def _loadDecodeBody( self ):
-		"""Post-processes the data loaded by the loader, this will basically
-		convert encoded data into an actual object"""
-		content_type   = self._environ[self.CONTENT_TYPE]
-		params         = self._params
-		# We handle the case of a multi-part body
-		if content_type.startswith('multipart'):
-			# TODO: Rewrite this, it fails with some requests
-			# Creates an email from the HTTP request body
-			lines = ['Content-Type: %s' % self._environ.get(self.CONTENT_TYPE, '')]
-			for key, value in self._environ.items():
-				if key.startswith('HTTP_'): lines.append('%s: %s' % (key, value))
-			raw_email = '\r\n'.join(lines) + '\r\n\r\n' + self._data
-			message   = email.message_from_string(raw_email)
-			for part in message.get_payload():
-				names = cgi.parse_header(part['Content-Disposition'])[1]
-				if 'filename' in names:
-					assert type([]) != type(part.get_payload()), 'Nested MIME Messages are not supported'
-					if not names['filename'].strip(): continue
-					filename = names['filename']
-					filename = filename[filename.rfind('\\') + 1:]
-					if 'Content-Type' in part:
-						part_content_type = part['Content-Type']
-					else:
-						part_content_type = None
-					param_name = names['name']
-					s = {"param":param_name, "filename":filename, "contentType":part_content_type, "data":part.get_payload()}
-					self._files.append((param_name, s))
-					self._params.setdefault(param_name, part.get_payload())
-				else:
-					value = part.get_payload()
-					# TODO: decode if charset
-					# value = value.decode(self._charset, 'ignore')
-					params[names['name']] =  value
-
-	def load( self, chunksize=None ):
-		"""Loads the (POST) data of this request. The optional @chunksize
-		argument tells the number of bytes the should be read. This function
-		is used internally, and only useful in an external use if you
-		want to split the loading of the data into multiple chunks (using
-		an iterator).
-		
-		This allows you not to block the processing and requests and do
-		things like a progress indicator.
-		
-		This function will return you the percentage of the data loaded
-		(an int from 0 to 100). 
-		
-		Here is an example of how to split the loading into 
-		>	while request.load(1024) < 100:
-		>		# Do something
-		"""
-		# If this is the first time we load the request
-		if self._percentageLoaded == 0 and self._loaderIterator == None:
-			data   = ''
-			files  = self._files  = []
-			params = self.params(load=False)
-			# If this is a post 
-			if self.method() == self.POST:
-				self._data           = ""
-				self._loaderIterator = self._loader(chunksize)
-				# If we had no chunksize, we load the full request
-				if chunksize == None:
-					for _ in self._loaderIterator: pass
-				# Or we split the loading of the request
-				else:
-					self._loaderIterator.next()
-			else:
-				self._percentageLoaded = 100
-				self._loaded           = True
-			# We make sure that things like {'param':['value']} gets converted to
-			# {'param':'value'}
-			for key in params.keys():
-				v = params[key]
-				if type(v) in (tuple, list) and len(v) == 1: params[key] = v[0]
-			self._params = params
-			return self._percentageLoaded
-		# Otherwise, we iterate through the loader, if any
-		elif self._loaderIterator:
-			self._loaderIterator.next()
-			return self._percentageLoaded
-		else:
-			return self._percentageLoaded
-
-	def loaded( self ):
-		"""Returns the percentage (value between 0 and 100) of this request data
-		that was loaded."""
-		return self._percentageLoaded
 
 	def compression( self ):
 		"""Returns the best accepted compression format for this request"""
@@ -731,9 +652,105 @@ class Request:
 
 # ------------------------------------------------------------------------------
 #
-# RESPONSE OBJECT
+# REQUEST BODY LOADER
 #
 # ------------------------------------------------------------------------------
+
+class RequestBodyLoader:
+	"""Allows to load the body of a request in chunks. This is an internal
+	class that's used by Request.
+	"""
+
+	def __init__( self, request, complete=False ):
+		# NOTE: Referencing request creates a circular reference, so we'll
+		# make sure to delete the reference once the load is complete
+		# (although Python deals with circular references fine).
+		self.request       = request
+		self.contentRead   = 0
+		self.contentLength = request.contentLength()
+		if complete: self.contentRead = self.contentLength
+		# FIXME: Deprecated
+		# self.contentType   = request.contentType()
+		# self.params        = request.params(load=False)
+		# self.headers       = []
+		# # This is used by decode
+		# for key, value in request._environ.items():
+		# 	if key.startswith('HTTP_'): self.headers.append('%s: %s' % (key, value))
+
+	def isComplete( self ):
+		return self.contentLength == self.contentRead
+
+	def remainingBytes( self ):
+		return self.contentLength - self.contentRead
+
+	def progress( self ):
+		return int(100*float(self.contentRead)/float(self.contentLength))
+
+	def load( self, size=None ):
+		"""Loads the data in chunks. Return the loaded chunk -- it's up to
+		you to store and process it."""
+		# If the load is complete, we don't have anything to do
+		if self.isComplete(): return None
+		if size == None: size = self.contentLength
+		to_read   = min(self.remainingBytes(), size)
+		read_data = self.request._environ['wsgi.input'].read(to_read)
+		self.contentRead += to_read
+		assert len(read_data) == to_read
+		return read_data
+
+	def decode( self, data ):
+		"""Post-processes the data loaded by the loader, this will basically
+		convert encoded data into an actual object"""
+		if not self.request: raise Exception("Body already decoded")
+		content_type   = self.request._environ[Request.CONTENT_TYPE]
+		params         = self.request.params(load=False)
+		files          = []
+		# We handle the case of a multi-part body
+		if content_type.startswith('multipart'):
+			# TODO: Rewrite this, it fails with some requests
+			# Creates an email from the HTTP request body
+			lines = ['Content-Type: %s' % self.request._environ.get(Request.CONTENT_TYPE, '')]
+			for key, value in self.request._environ.items():
+				if key.startswith('HTTP_'): lines.append('%s: %s' % (key, value))
+			raw_email = '\r\n'.join(lines) + '\r\n\r\n' + data
+			message   = email.message_from_string(raw_email)
+			for part in message.get_payload():
+				names = cgi.parse_header(part['Content-Disposition'])[1]
+				if 'filename' in names:
+					assert type([]) != type(part.get_payload()), 'Nested MIME Messages are not supported'
+					if not names['filename'].strip(): continue
+					filename = names['filename']
+					filename = filename[filename.rfind('\\') + 1:]
+					if 'Content-Type' in part:
+						part_content_type = part['Content-Type']
+					else:
+						part_content_type = None
+					param_name = names['name']
+					s = {"param":param_name, "filename":filename, "contentType":part_content_type, "data":part.get_payload()}
+					files.append((param_name, s))
+					params.setdefault(param_name, part.get_payload())
+				else:
+					value = part.get_payload()
+					# TODO: decode if charset
+					# value = value.decode(self._charset, 'ignore')
+					params[names['name']] =  value
+		# FIXME: What about that?
+		# # We make sure that things like {'param':['value']} gets converted to
+		# # {'param':'value'}
+		# for key in params.keys():
+		# 	v = params[key]
+		# 	if type(v) in (tuple, list) and len(v) == 1: params[key] = v[0]
+		# self._params = params
+		# return self._percentageLoaded
+		# WE remove the request, as it is its final stage
+		self.request = None
+		return params, files
+
+# -----------------------------------------------------------------------------
+#
+# RESPONSE
+#
+# -----------------------------------------------------------------------------
 
 class Response:
 	"""A response is sent to a client that sent a request."""
@@ -856,11 +873,11 @@ class Response:
 		if reason: reason = reason[0]
 		return "%s %s\r\n" % (self.status, self.reason or reason)
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
-# SESSION OBJECT
+# SESSION
 #
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 class Session:
 
@@ -882,44 +899,5 @@ class Session:
 	def value( self, key=NOTHING, value=NOTHING ): 
 		"""Sets or gets the 'value' bound to the given 'key'"""
 
-class BeakerSession(Session):
-	"""Implementation of the Session object for Flup Session Middleware"""
-
-	@staticmethod
-	def hasSession( request ):
-		session = request.environ()['beaker.session']
-		if session:
-			return BeakerSession(request, session)
-		else:
-			return None
-
-	def __init__( self, request, session=None ):
-		if session is None:
-			session = request.environ()['beaker.session']
-		self._session = session
-		if not session.get("RETRO_SESSION"):
-			session["RETRO_SESSION"] = time.time()
-			session.save()
-			self._isNew = True
-		else:
-			self._isNew = False
-
-	def isNew( self ):
-		return self._isNew
-
-	def get( self, key=NOTHING, value=NOTHING ):
-		return self.value(key, value)
-
-	def value( self, key=NOTHING, value=NOTHING ):
-		if   key == NOTHING:
-			return self._session
-		elif value == NOTHING:
-			return self._session.get(key)
-		else:
-			self._session[key] = value
-			self._session.save()
-
-	def expire( self, time ):
-		raise Exception("Not implemented yet")
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
