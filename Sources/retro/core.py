@@ -488,16 +488,19 @@ class Request:
 		remaining_bytes = content_length
 		if chunksize == None: chunksize = content_length
 		while remaining_bytes > 0:
-			if remaining_bytes > chunksize: to_read = chunksize
-			else:                           to_read = remaining_bytes
-			self._data      += self._environ['wsgi.input'].read(to_read)
-			remaining_bytes -= to_read
-			self._percentageLoaded = int(100*float(content_length - remaining_bytes) / float(content_length))
-			yield to_read
-		self._loaderIterator   = None
-		self._percentageLoaded = 100
-		self._loadDecodeBody()
-		self._loaded = True
+			if remaining_bytes > chunksize: read_bytes = chunksize
+			else:                           read_bytes = remaining_bytes
+			self._data      += self._environ['wsgi.input'].read(read_bytes)
+			remaining_bytes -= read_bytes
+			if remaining_bytes > 0:
+				self._percentageLoaded = int(100*float(content_length - remaining_bytes) / float(content_length))
+			else:
+				self._percentageLoaded = 100
+				self._loaderIterator   = None
+				self._percentageLoaded = 100
+				self._loadDecodeBody()
+				self._loaded = True
+			yield read_bytes
 
 	def _loadDecodeBody( self ):
 		"""Post-processes the data loaded by the loader, this will basically
