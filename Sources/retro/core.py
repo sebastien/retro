@@ -254,17 +254,18 @@ class Request:
 	webserver, it is not directly built by the developer. As web server receive
 	requests, they have to build responses to fullfill the requests."""
 
-	REQUEST_URI    = "REQUEST_URI"
-	REQUEST_METHOD = "REQUEST_METHOD"
-	CONTENT_TYPE   = "CONTENT_TYPE"
-	CONTENT_LENGTH = "CONTENT_LENGTH"
-	QUERY_STRING   = "QUERY_STRING"
-	HTTP_COOKIE    = "HTTP_COOKIE"
-	SCRIPT_NAME    = "SCRIPT_NAME"
-	SCRIPT_ROOT    = "SCRIPT_ROOT"
-	PATH_INFO      = "PATH_INFO"
-	POST           = "POST"
-	GET            = "GET"
+	DATA_SPOOL_SIZE          = 64 * 1024
+	REQUEST_URI              = "REQUEST_URI"
+	REQUEST_METHOD           = "REQUEST_METHOD"
+	CONTENT_TYPE             = "CONTENT_TYPE"
+	CONTENT_LENGTH           = "CONTENT_LENGTH"
+	QUERY_STRING             = "QUERY_STRING"
+	HTTP_COOKIE              = "HTTP_COOKIE"
+	SCRIPT_NAME              = "SCRIPT_NAME"
+	SCRIPT_ROOT              = "SCRIPT_ROOT"
+	PATH_INFO                = "PATH_INFO"
+	POST                     = "POST"
+	GET                      = "GET"
 	HEADER_SET_COOKIE        = "Set-Cookie"
 	HEADER_CACHE_CONTROL     = "Cache-Control"
 	HEADER_EXPIRES           = "Expires"
@@ -277,7 +278,7 @@ class Request:
 		self._environ          = environ
 		self._headers          = None
 		self._charset          = charset
-		self._data             = None
+		self._data             = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
 		self._component        = None
 		self._cookies          = None
 		self._files            = None
@@ -457,18 +458,32 @@ class Request:
 		else:
 			return session.value(name, value)
 
-	def data( self,data=re ):
-		"""Gets/sets the request data (it is an alias for body)"""
+	def data( self, data=re, asFile=False ):
+		"""Gets/sets the request data as a file object. Note that when using
+		the `asFile` object, you should be sure to not do any concurrent access
+		to the data as a file, as you'll use the same file descriptor.
+		"""
 		if data == re:
 			while not self.isLoaded(): self.load()
-			return self._data
+			if asFile:
+				# NOTE: Mabe we should use dup
+				self._data.seek(0)
+				return self._data
+			else:
+				position = self._data.tell()
+				self._data.seek(0)
+				res = self._data.read()
+				self._data.seek(position)
+				return res
 		else:
 			# We reset the parameters and files
 			self._params     = {}
 			self._files      = []
 			# We simulate a load if the data was set
 			self._environ[self.CONTENT_LENGTH] = len(data)
-			self._data       = data
+			if self._data: self._data.close()
+			self._data       = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
+			self._data.write(data)
 			self._bodyLoader = RequestBodyLoader(self, complete=True)
 
 	def body( self, body=re ):
@@ -492,11 +507,7 @@ class Request:
 		if not self._bodyLoader: self._bodyLoader = RequestBodyLoader(self)
 		# And then if it is not complete, 
 		if not self._bodyLoader.isComplete():
-			# FIXME: We should support alternative loading methods
-			if self._data is None:
-				self._data  = self._bodyLoader.load(size)
-			else:
-				self._data += self._bodyLoader.load(size)
+			self._data.write(self._bodyLoader.load(size))
 			# If the the body loader is complete, we'll now proceed
 			# with the decoding of the request, which will convert the data
 			# into params and fields.
@@ -739,14 +750,13 @@ class RequestBodyLoader:
 		# If the load is complete, we don't have anything to do
 		if self.isComplete(): return None
 		if size == None: size = self.contentLength
-		# if self.contentFile is None: self.contentFile = tempfile.SpooledTemporaryFile(max_size=64 * 1024)
 		to_read   = min(self.remainingBytes(), size)
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		self.contentRead += to_read
 		assert len(read_data) == to_read
 		return read_data
 
-	def decode( self, data ):
+	def decode( self, dataFile ):
 		"""Post-processes the data loaded by the loader, this will basically
 		convert encoded data into an actual object"""
 		# NOTE: See http://www.cs.tut.fi/~jkorpela/forms/file.html
@@ -758,11 +768,23 @@ class RequestBodyLoader:
 		if content_type.startswith('multipart'):
 			# TODO: Rewrite this, it fails with some requests
 			# Creates an email from the HTTP request body
-			lines = ['Content-Type: %s' % self.request._environ.get(Request.CONTENT_TYPE, '')]
+			lines     = ['Content-Type: %s' % self.request._environ.get(Request.CONTENT_TYPE, '')]
 			for key, value in self.request._environ.items():
 				if key.startswith('HTTP_'): lines.append('%s: %s' % (key, value))
-			raw_email = '\r\n'.join(lines) + '\r\n\r\n' + data
-			message   = email.message_from_string(raw_email)
+			# We use a spooled temp file to decode the body, in case the body
+			# is really big
+			raw_email = tempfile.SpooledTemporaryFile(max_size=64 * 1024)
+			raw_email.write('\r\n'.join(lines))
+			raw_email.write('\r\n\r\n')
+			# We copy the contents of the data file there to enable the decoding
+			# FIXME: This could maybe be optimized
+			dataFile.seek(0)
+			raw_email.write(dataFile.read())
+			raw_email.seek(0)
+			# And now we docode from the file
+			message   = email.message_from_file(raw_email)
+			#raw_email = raw_email.read()
+			#message   = email.message_from_string(raw_email)
 			for part in message.get_payload():
 				part_meta = cgi.parse_header(part['Content-Disposition'])[1]
 				if 'filename' in part_meta:
@@ -787,6 +809,7 @@ class RequestBodyLoader:
 					# TODO: decode if charset
 					# value = value.decode(self._charset, 'ignore')
 					self.request._addParam(part_meta['name'], value)
+			raw_email.close()
 		# NOTE: We can remove the reference to the request now, as the
 		# processing is done.
 		self.request = None
