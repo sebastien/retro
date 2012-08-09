@@ -6,12 +6,12 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Aug-2012
+# Last mod  : 09-Aug-2012
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
 
-import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib
+import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib, tempfile
 import BaseHTTPServer, Cookie, gzip, cStringIO
 import threading
 
@@ -349,11 +349,43 @@ class Request:
 	def get( self, name, load=False ):
 		"""Gets the parameter with the given name. It is an alias for param"""
 		params = self.params(load=load)
-		for key, value in params.items():
-			if name == key:
-				if len(value) == 1: return urllib.unquote(value[0])
-				return urllib.unquote(value)
-		return None
+		return params.get(name)
+
+	def param( self, name ):
+		"""Gets the parameter with the given name. It is an alias for get"""
+		return self.get(name)
+
+	def params( self, load=False ):
+		"""Returns a dictionary with the request parameters. Unless you specify
+		load as True, this will only return the parameters containes in the
+		request URI, not the parameters contained in the form data, in the
+		case of a POST."""
+		# Otherwise, if the parameters are empty
+		if not self._params:
+			query = self._environ[self.QUERY_STRING]
+			if query:
+				# We try to parse the query string
+				query_params = cgi.parse_qs(query)
+				# FIXME: What about unquote?
+				# for key, value in params.items():
+				# 	if name == key:
+				# 		if len(value) == 1: return urllib.unquote(value[0])
+				# 		return urllib.unquote(value)
+				# TODO: Decode support
+				# if not self._charset is None:
+					# for key, value in d.iteritems():
+						# d[key] = [i.decode(self._charset, 'ignore') for i in value]
+				# In some cases we may only have a string as query, so we consider
+				# it as a key
+				if  not query_params:
+					query        = urllib.unquote(query)
+					query_params = {query:'', '':query}
+				for k,v in query_params.items(): self._addParam(k,v)
+			else:
+				self._params = {}
+			# We load if we haven't loaded yet and load is True
+			if load and not self.isLoaded(): self.load()
+		return self._params
 
 	def cookies( self ):
 		"""Returns the cookies (as a 'Cookie.SimpleCookie' instance)
@@ -388,6 +420,9 @@ class Request:
 		params = self.params(load=load)
 		return name in params
 
+	def files( self ):
+		return [_[0] for _ in self._files]
+
 	def file( self, name ):
 		"""Returns the file (as a 'cgi.FieldStorage') which was submitted
 		as parameter with the given name. You will have more information
@@ -399,36 +434,6 @@ class Request:
 				return s
 		return None
 
-	def param( self, name ):
-		"""Gets the parameter with the given name. It is an alias for get"""
-		return self.get(name)
-
-	def params( self, load=False ):
-		"""Returns a dictionary with the request parameters. Unless you specify
-		load as True, this will only return the parameters containes in the
-		request URI, not the parameters contained in the form data, in the
-		case of a POST."""
-		# Otherwise, if the parameters are empty
-		if not self._params:
-			query = self._environ[self.QUERY_STRING]
-			if query:
-				# We try to parse the query string
-				query_params = cgi.parse_qs(query)
-				# TODO: Decode support
-				# if not self._charset is None:
-					# for key, value in d.iteritems():
-						# d[key] = [i.decode(self._charset, 'ignore') for i in value]
-				# In some cases we may only have a string as query, so we consider
-				# it as a key
-				if not query_params:
-					query        = urllib.unquote(query)
-					query_params = {query:'', '':query}
-				self._params = query_params
-			else:
-				self._params = {}
-			# We load if we haven't loaded yet and load is True
-			if load and not self.isLoaded(): self.load()
-		return self._params
 
 	def environ( self, name=NOTHING, value=NOTHING ):
 		"""Gets or sets the environment attached to this request"""
@@ -496,7 +501,7 @@ class Request:
 			# with the decoding of the request, which will convert the data
 			# into params and fields.
 			if self._bodyLoader.isComplete():
-				self._params, self._files = self._bodyLoader.decode(self._data)
+				self._bodyLoader.decode(self._data)
 		return self
 
 	def referer( self ):
@@ -650,11 +655,52 @@ class Request:
 		else:
 			return headersA
 
-# ------------------------------------------------------------------------------
+	def _addParam( self, name, value ):
+		"""A wrapper function that will add the given value to the parameters,
+		ensuring that:
+		
+		- if there is only 1 value, it will be `param[name] = value`
+		- if there are more values, it will be `param[name] = [value,value]`
+
+		"""
+		if self._params is None: self._params = {}
+		# We flatten the  value if it's an array with one element (as this
+		# is what is returned when parsing query strings).
+		if value and type(value) is list and len(value) == 1: value = value[0]
+		if name not in self._params:
+			self._params[name] = value
+		else:
+			if type(self._params[name]) is list:
+				self._params[name].append(value)
+			else:
+				self._params[name] = [self._params[name], value]
+
+	def _addFile( self, name, value ):
+		"""A wrapper function to add files. This is used when decoding
+		the request body."""
+		assert isinstance(value, File)
+		if self._files is None: self._files = []
+		self._files.append((name, value))
+
+# -----------------------------------------------------------------------------
 #
 # REQUEST BODY LOADER
 #
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
+class File:
+
+	def __init__( self, data, contentType=None, name=None):
+		self.data          = data
+		self.contentLenght = len(self.data)
+		self.name          = name
+		self.contentType   = contentType
+
+# -----------------------------------------------------------------------------
+#
+# REQUEST BODY LOADER
+#
+# -----------------------------------------------------------------------------
 
 class RequestBodyLoader:
 	"""Allows to load the body of a request in chunks. This is an internal
@@ -668,6 +714,7 @@ class RequestBodyLoader:
 		self.request       = request
 		self.contentRead   = 0
 		self.contentLength = request.contentLength()
+		self.contentFile   = None
 		if complete: self.contentRead = self.contentLength
 		# FIXME: Deprecated
 		# self.contentType   = request.contentType()
@@ -692,6 +739,7 @@ class RequestBodyLoader:
 		# If the load is complete, we don't have anything to do
 		if self.isComplete(): return None
 		if size == None: size = self.contentLength
+		# if self.contentFile is None: self.contentFile = tempfile.SpooledTemporaryFile(max_size=64 * 1024)
 		to_read   = min(self.remainingBytes(), size)
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		self.contentRead += to_read
@@ -701,6 +749,7 @@ class RequestBodyLoader:
 	def decode( self, data ):
 		"""Post-processes the data loaded by the loader, this will basically
 		convert encoded data into an actual object"""
+		# NOTE: See http://www.cs.tut.fi/~jkorpela/forms/file.html
 		if not self.request: raise Exception("Body already decoded")
 		content_type   = self.request._environ[Request.CONTENT_TYPE]
 		params         = self.request.params(load=False)
@@ -715,36 +764,32 @@ class RequestBodyLoader:
 			raw_email = '\r\n'.join(lines) + '\r\n\r\n' + data
 			message   = email.message_from_string(raw_email)
 			for part in message.get_payload():
-				names = cgi.parse_header(part['Content-Disposition'])[1]
-				if 'filename' in names:
+				part_meta = cgi.parse_header(part['Content-Disposition'])[1]
+				if 'filename' in part_meta:
 					assert type([]) != type(part.get_payload()), 'Nested MIME Messages are not supported'
-					if not names['filename'].strip(): continue
-					filename = names['filename']
+					if not part_meta['filename'].strip(): continue
+					filename = part_meta['filename']
 					filename = filename[filename.rfind('\\') + 1:]
 					if 'Content-Type' in part:
 						part_content_type = part['Content-Type']
 					else:
 						part_content_type = None
-					param_name = names['name']
-					s = {"param":param_name, "filename":filename, "contentType":part_content_type, "data":part.get_payload()}
-					files.append((param_name, s))
-					params.setdefault(param_name, part.get_payload())
+					param_name = part_meta['name']
+					new_file   = File(
+						data        = part.get_payload(),
+						contentType = part_content_type,
+						name        = filename,
+					)
+					self.request._addFile (param_name, new_file)
+					self.request._addParam(param_name, new_file)
 				else:
 					value = part.get_payload()
 					# TODO: decode if charset
 					# value = value.decode(self._charset, 'ignore')
-					params[names['name']] =  value
-		# FIXME: What about that?
-		# # We make sure that things like {'param':['value']} gets converted to
-		# # {'param':'value'}
-		# for key in params.keys():
-		# 	v = params[key]
-		# 	if type(v) in (tuple, list) and len(v) == 1: params[key] = v[0]
-		# self._params = params
-		# return self._percentageLoaded
-		# WE remove the request, as it is its final stage
+					self.request._addParam(part_meta['name'], value)
+		# NOTE: We can remove the reference to the request now, as the
+		# processing is done.
 		self.request = None
-		return params, files
 
 # -----------------------------------------------------------------------------
 #

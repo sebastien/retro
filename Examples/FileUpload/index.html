@@ -1,0 +1,30 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<script type=text/javascript language=javascript src=jquery-1.7.2.min.js></script>
+	</head>
+	<body>
+		<h1>File upload test</h1>
+
+		<h2>The form</h2>
+		<form id="uploadForm" method=POST enctype="multipart/form-data" action="/upload?id=1">
+			<input id="uploadInput" name=data type=file>
+		</form>
+
+		<h2>The iframe</h2>
+		<p>The iframe is used for asynchronous posting</p>
+		<iframe id="uploadIFrame" name="uploadIFrame" style="height:10em;"></iframe>
+
+		<script type=text/javascript language=javascript>
+			var upload_input  = $("#uploadInput");
+			var upload_iframe = $("#uploadIFrame");
+			var upload_form   = $("#uploadForm");
+			upload_input.change(function(){
+				upload_form[0].target = upload_iframe.attr("id");
+				upload_form.submit();
+			});
+
+		</script>
+
+	</body>
+</html>
