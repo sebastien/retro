@@ -508,9 +508,13 @@ class Component:
 		DispatcherExpression) and a priority, describing a handler for a
 		specific URL within this component. The parameters are actually
 		the same as the ones given to the `@on` decorator."""
+		if type(urls) is dict: urls = urls.items()
 		for http_methods, path in urls:
 			handlers = {}
 			for method in http_methods.split("_"):
+				# We need to set a component to the handler
+				if not hasattr(handler, "im_self"):
+					setattr(handler, "_component", self)
 				handlers[method.upper()] = handler
 				prefix = self.PREFIX
 				if prefix and prefix[0] != "/": self.PREFIX = prefix = "/" + prefix

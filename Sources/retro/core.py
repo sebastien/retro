@@ -927,8 +927,12 @@ class Response:
 				return v
 		# If content is a generator we return it as-is
 		if type(self.content) == types.GeneratorType:
-			for c in self.content:
-				yield encode(c)
+			# we wrap the generator in a try/except
+			try:
+				for c in self.content:
+					yield encode(c)
+			except Exception, e:
+				raise e
 		# Otherwise we return a single-shot generator
 		else:
 			yield encode(self.content)
