@@ -779,13 +779,13 @@ class RequestBodyLoader:
 			# We copy the contents of the data file there to enable the decoding
 			# FIXME: This could maybe be optimized
 			dataFile.seek(0)
-			raw_email.write(dataFile.read())
+			data = dataFile.read()
+			raw_email.write(data)
 			raw_email.seek(0)
 			# And now we docode from the file
 			message   = email.message_from_file(raw_email)
-			#raw_email = raw_email.read()
-			#message   = email.message_from_string(raw_email)
 			for part in message.get_payload():
+				# FIXME: Should remove that
 				part_meta = cgi.parse_header(part['Content-Disposition'])[1]
 				if 'filename' in part_meta:
 					assert type([]) != type(part.get_payload()), 'Nested MIME Messages are not supported'
@@ -810,6 +810,19 @@ class RequestBodyLoader:
 					# value = value.decode(self._charset, 'ignore')
 					self.request._addParam(part_meta['name'], value)
 			raw_email.close()
+		elif content_type.startswith("application/x-www-form-urlencoded"):
+			# Ex: "application/x-www-form-urlencoded; charset=UTF-8"
+			charset = content_type.split("charset=",1)
+			if len(charset) > 1: charset = charset[1].split(";")[0].strip()
+			# FIXME: Should this be request.charset instead?
+			else: charset = "utf-8"
+			dataFile.seek(0)
+			data = dataFile.read()
+			# NOTE: Encoding is not supported yet
+			query_params = cgi.parse_qs(data)
+			for k,v in query_params.items(): self.request._addParam(k,v)
+		else:
+			raise Exception("Unsupported content type: %s" % (repr(content_type)))
 		# NOTE: We can remove the reference to the request now, as the
 		# processing is done.
 		self.request = None
