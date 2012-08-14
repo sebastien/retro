@@ -132,6 +132,11 @@ class ProxyService(Component, Proxy):
 		rest     = rest or ""
 		dest_uri = self._uri + rest
 		while dest_uri.endswith("//"): dest_uri=dest_uri[:-1]
+		# We get the parameters as-is from the request URI (parameters is ignored
+		uri_params = request.uri().split("?",1)
+		if len(uri_params) == 2:
+			if not dest_uri.endswith("?"): dest_uri += "?"
+			dest_uri += uri_params[1]
 		status, headers, body = self.httpRequest(self._host, self._port, method, dest_uri, body=request.body(), headers=self.filterHeaders(request.headers()))
 		# TODO: We have a redirect, so we have to rewrite it
 		if status == 302:
@@ -217,10 +222,10 @@ def createProxies( args, options=None ):
 		if url.find("@") != -1:
 			user, url = url.split("@",1)
 			user, passwd = user.split(":",1)
-			print "Proxying %s as  %s:%s@%s" % (prefix, user, passwd, url)
+			print "Proxying %s:%s@%s as %s" % (user, passwd, url, prefix)
 		else:
 			user, passwd = None, None
-			print "Proxying %s as %s" % (prefix, url)
+			print "Proxying %s as %s" % (url, prefix)
 		components.append(ProxyService(url, prefix, user=user, password=passwd, throttling=throttling))
 	return components
 
