@@ -706,6 +706,13 @@ class File:
 		self.contentLenght = len(self.data)
 		self.name          = name
 		self.contentType   = contentType
+	
+	# NOTE: This is to keep compatibility with previous Retro API
+	def __getitem__( self, name ):
+		if hasattr(self, name):
+			return getattr(self, name)
+		else:
+			return None
 
 # -----------------------------------------------------------------------------
 #
@@ -822,7 +829,8 @@ class RequestBodyLoader:
 			query_params = cgi.parse_qs(data)
 			for k,v in query_params.items(): self.request._addParam(k,v)
 		else:
-			raise Exception("Unsupported content type: %s" % (repr(content_type)))
+			# There is nothing to be decoded, we just need the raw body data
+			pass
 		# NOTE: We can remove the reference to the request now, as the
 		# processing is done.
 		self.request = None
