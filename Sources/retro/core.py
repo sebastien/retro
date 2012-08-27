@@ -136,6 +136,18 @@ def crypt_decrypt(text, password):
 	new.seek(0)
 	return new.read()
 
+RE_CUT = re.compile("^[\s\t]|")
+def cut(text, separator="|"):
+	res   = []
+	for line in text.split("\n"):
+		if not line: continue
+		m = RE_CUT.match(line)
+		if m:
+			res.append(line[m.end() + 1:])
+		else:
+			res.append(line)
+	return res
+
 # -----------------------------------------------------------------------------
 #
 # EVENT
@@ -1009,6 +1021,5 @@ class Session:
 
 	def value( self, key=NOTHING, value=NOTHING ): 
 		"""Sets or gets the 'value' bound to the given 'key'"""
-
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
