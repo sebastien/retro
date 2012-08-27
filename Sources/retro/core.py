@@ -6,14 +6,16 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 09-Aug-2012
+# Last mod  : 27-Aug-2012
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
 
-import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib, tempfile
-import BaseHTTPServer, Cookie, gzip, cStringIO
-import threading
+import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib, tempfile, string
+import BaseHTTPServer, Cookie, gzip, StringIO
+import threading, locale
+
+# FIXME: Date in cache support should be locale
 
 try:
 	import json as simplejson
@@ -108,11 +110,31 @@ def asJSON( value, **options ):
 # -----------------------------------------------------------------------------
  
 def compress_gzip(data):
-	out = cStringIO.StringIO()
+	out = StringIO.StringIO()
 	f   = gzip.GzipFile(fileobj=out, mode='w')
 	f.write(data)
 	f.close()
 	return out.getvalue()
+
+# -----------------------------------------------------------------------------
+#
+# AUTHENTICATION
+#
+# -----------------------------------------------------------------------------
+
+def crypt_decrypt(text, password):
+	"""XOR encryption, decryption"""
+	# FROM :http://www.daniweb.com/software-development/python/code/216632/text-encryptiondecryption-with-xor-python
+	old = StringIO.StringIO(text)
+	new = StringIO.StringIO(text)
+	for position in xrange(len(text)):
+		bias = ord(password[position % len(password)])  # Get next bias character from password
+		old_char = ord(old.read(1))
+		new_char = chr(old_char ^ bias)  # Get new charactor by XORing bias against old character
+		new.seek(position)
+		new.write(new_char)
+	new.seek(0)
+	return new.read()
 
 # -----------------------------------------------------------------------------
 #
@@ -289,24 +311,12 @@ class Request:
 	def headers( self ):
 		if self._headers is None:
 			e = self._environ
-			headers = {
-				"Accept"                      : e.get("HTTP_ACCEPT"),
-				"Accept-Charset"              : e.get("HTTP_ACCEPT_CHARSET"),
-				"Accept-Encoding"             : e.get("HTTP_ACCEPT_ENCODING"),
-				"Accept-Language"             : e.get("HTTP_ACCEPT_LANGUAGE"),
-				"Connection"                  : e.get("HTTP_CONNECTION"),
-				"Content-Length"              : e.get("HTTP_CONTENT_LENGTH"),
-				self.HEADER_CONTENT_TYPE      : e.get("HTTP_CONTENT_TYPE"),
-				"Cookie"                      : e.get("HTTP_COOKIE"),
-				"Host"                        : e.get("HTTP_HOST"),
-				"Keep-Alive"                  : e.get("HTTP_KEEP_ALIVE"),
-				"Pragma"                      : e.get("HTTP_PRAGMA"),
-				"Referer"                     : e.get("HTTP_REFERER"),
-				"User-Agent"                  : e.get("HTTP_USER_AGENT"),
-				self.HEADER_CACHE_CONTROL      : e.get("HTTP_CACHE_CONTROL"),
-				self.HEADER_IF_MODIFIED_SINCE : e.get("HTTP_IF_MODIFIED_SINCE"),
-				self.HEADER_IF_NONE_MATCH     : e.get("HTTP_IF_NONE_MATCH"),
-			}
+			headers = {}
+			# This parses headers from the WSGI environment
+			for key in e:
+				if not key.startswith("HTTP_"): continue
+				header = "-".join(map(string.capitalize, key[len("HTTP_"):].split("_")))
+				headers[header] = e[key]
 			i = 0
 			c = True
 			while c:
@@ -323,6 +333,7 @@ class Request:
 			return self._headers
 
 	def header( self, name ):
+		name = "-".join(map(string.capitalize, name.split("-")))
 		return self.headers().get(name)
 
 	def method( self ):
@@ -405,6 +416,7 @@ class Request:
 			if c: return c.value
 			else: return None
 		else:
+			# NOTE: See also Response.setCookie
 			found = False
 			i     = 0
 			for header in self._responseHeaders:
@@ -434,7 +446,6 @@ class Request:
 			if n == name:
 				return s
 		return None
-
 
 	def environ( self, name=NOTHING, value=NOTHING ):
 		"""Gets or sets the environment attached to this request"""
@@ -901,12 +912,19 @@ class Response:
 				return
 		self.headers.append((name, value))
 
-	def setCookie( self, name, value ):
+	def setCookie( self, name, value, path="/" ):
 		"""Sets the cookie with the given name and value."""
-		self.headers.append((
-			'Set-Cookie',
-			'%s=%s; path=/' % (name,value)
-		))
+		# NOTE: This is the same code as a branch of Request.cookie
+		found = False
+		i     = 0
+		for header in self.headers:
+			if header[0] == Request.HEADER_SET_COOKIE:
+				self.headers[i] = (header[0], "%s=%s; path=%s" % (name, value, path))
+				found = True
+			i += 1
+			break
+		if not found:
+			self.headers.append((Request.HEADER_SET_COOKIE, "%s=%s; path=%s" % (name, value, path)))
 		return self
 
 	def setContentType( self, mimeType ):

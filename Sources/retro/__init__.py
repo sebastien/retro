@@ -12,7 +12,7 @@
 import sys, os, thread
 import wsgi
 from wsgi import REACTOR, onShutdown, onError
-from core import asJSON
+from core import asJSON, crypt_decrypt
 from web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, Event, RendezVous
