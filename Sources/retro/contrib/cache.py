@@ -94,9 +94,62 @@ class NoCache(Cache):
 #
 # -----------------------------------------------------------------------------
 
-# FIXME: Should remove TIMESTAMP and use TimeoutCache instead
-
 class MemoryCache(Cache):
+	"""A simple cache that wraps a dictionary with a limit."""
+
+	def __init__( self, limit=100 ):
+		Cache.__init__(self)
+		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
+		self.data    = {}
+		self.limit   = limit
+		self.enabled = True
+
+	def enable( self ):
+		self.enabled = True
+
+	def disable( self ):
+		self.enabled = False
+
+	def get( self, key ):
+		return self.data.get(key)
+
+	def has( self, key ):
+		res = self.data.get(key)
+		return res and True
+
+	def set( self, key, data ):
+		self.cleanup()
+		self.data[key] = data
+		return data
+
+	def clear( self ):
+		self.data = {}
+
+	def remove( self, key ):
+		self.lock.acquire()
+		if self.data.has_key(key):
+			# NOTEL This is the  same as in cleanuip
+			self.weight -= self.data[key][self.WEIGHT]
+			del self.data[key]
+		self.lock.release()
+
+	def cleanup( self ):
+		if len(self.data) >= self.limit:
+			keys = []
+			for k in self.data:
+				keys.append(k)
+				if len(self.data) - len(keys) < self.limit:
+					break
+			for k in keys:
+				del self.data[k]
+
+# -----------------------------------------------------------------------------
+#
+# LRU CACHE
+#
+# -----------------------------------------------------------------------------
+
+class LRUCache(Cache):
 	"""A simple in-memory cache using a weighted LRU style dictionary,
 	 with an optional timeout for kept values (in seconds)."""
 
@@ -110,7 +163,7 @@ class MemoryCache(Cache):
 		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
 		self.data    = {}
 		self.weight  = 0
-		self.limit   = 100
+		self.limit   = limit
 		self.timeout = timeout
 		self.lock    = threading.RLock()
 		self.enabled = True
@@ -197,9 +250,9 @@ class MemoryCache(Cache):
 # FIXME: Timeout is not useful unless it has cleanup -- we should refactor this
 class TimeoutCache(Cache):
 
-	def __init__( self, cache, timeout=10 ):
+	def __init__( self, cache=None, timeout=10, limit=100 ):
 		Cache.__init__(self)
-		self.cache   = cache
+		self.cache   = cache or MemoryCache(limit=limit)
 		self.timeout = timeout
 	
 	def get( self, key ):
@@ -211,14 +264,14 @@ class TimeoutCache(Cache):
 				return None
 		else:
 			return None
-	
+
+	def hasTimedOut( self, key ):
+		value, insert_time = self.cache.get(key)
+		return (time.time() - insert_time) < self.timeout
+
 	def has( self, key ):
 		if self.cache.has(key):
-			value, insert_time = self.cache.get(key)
-			if (time.time() - insert_time)  < self.timeout:
-				return True
-			else:
-				return False
+			return not self.hasTimedOut(key)
 		else:
 			return False
 
@@ -233,25 +286,10 @@ class TimeoutCache(Cache):
 		self.cache.remove(key)
 
 	def cleanup( self ):
-		self.lock.acquire()
-		now   = time.time()
-		# We remove older items
-		if self.timeout > 0:
-			for key in self.cache.keys():
-				if now - self.data[key][self.TIMESTAMP] > self.timeout:
-					del self.data[key]
-		items = self.data.items()
-		# FIXME: This is slooooow
-		# We compare the hits
-		items.sort(lambda a,b:cmp(a[1][self.HIT], b[1][self.HIT]))
-		i = 0
-		while self.weight > self.limit and i < len(items):
-			key, value = items[i]
-			# NOTE: This is the same as remove
-			self.weight -= value[self.WEIGHT]
-			del self.data[key]
-			i += 1
-		self.lock.release()
+		for key in self.cache.keys():
+			if self.hasTimedOut(key):
+				self.cache.remove(key)
+		return self
 
 # -----------------------------------------------------------------------------
 #

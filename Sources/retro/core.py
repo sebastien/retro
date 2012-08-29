@@ -864,6 +864,7 @@ class RequestBodyLoader:
 #
 # -----------------------------------------------------------------------------
 
+# FIXME: setXXX methods should be renamed to XXX
 class Response:
 	"""A response is sent to a client that sent a request."""
 
