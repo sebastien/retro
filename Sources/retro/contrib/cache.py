@@ -43,6 +43,9 @@ class Cache:
 	def remove( self, key ):
 		raise NotImplementedError
 
+	def keys( self ):
+		raise NotImplementedError
+
 	def cleanup( self ):
 		raise NotImplementedError
 
@@ -58,6 +61,16 @@ class Cache:
 					return res
 			return operation
 		return wrap_wrapper
+
+	def __setitem__( self, key, value ):
+		return self.set(key, value)
+
+	def __getitem__( self, key ):
+		return self.get(key)
+
+	def __iter__( self ):
+		for k in self.keys():
+			yield k
 
 # -----------------------------------------------------------------------------
 #
@@ -87,6 +100,9 @@ class NoCache(Cache):
 
 	def cleanup( self ):
 		pass
+
+	def keys( self ):
+		return ()
 
 # -----------------------------------------------------------------------------
 #
@@ -124,6 +140,9 @@ class MemoryCache(Cache):
 
 	def clear( self ):
 		self.data = {}
+	
+	def keys( self ):
+		return self.data.keys()
 
 	def remove( self, key ):
 		self.lock.acquire()
@@ -212,6 +231,9 @@ class LRUCache(Cache):
 	def clear( self ):
 		self.data = {}
 
+	def keys( self ):
+		return self.data.keys()
+
 	def remove( self, key ):
 		self.lock.acquire()
 		if self.data.has_key(key):
@@ -267,7 +289,7 @@ class TimeoutCache(Cache):
 
 	def hasTimedOut( self, key ):
 		value, insert_time = self.cache.get(key)
-		return (time.time() - insert_time) < self.timeout
+		return (time.time() - insert_time) > self.timeout
 
 	def has( self, key ):
 		if self.cache.has(key):
@@ -281,6 +303,9 @@ class TimeoutCache(Cache):
 	
 	def clear( self ):
 		self.cache.clear()
+
+	def keys( self ):
+		return self.cache.keys()
 
 	def remove( self, key ):
 		self.cache.remove(key)
