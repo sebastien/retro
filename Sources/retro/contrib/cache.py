@@ -145,12 +145,8 @@ class MemoryCache(Cache):
 		return self.data.keys()
 
 	def remove( self, key ):
-		self.lock.acquire()
 		if self.data.has_key(key):
-			# NOTEL This is the  same as in cleanuip
-			self.weight -= self.data[key][self.WEIGHT]
 			del self.data[key]
-		self.lock.release()
 
 	def cleanup( self ):
 		if len(self.data) >= self.limit:
