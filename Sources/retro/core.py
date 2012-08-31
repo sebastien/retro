@@ -622,7 +622,7 @@ class Request:
 		if headers: h.extend(headers)
 		return Response(js, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
-	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, stream=None ):
+	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised.
@@ -631,6 +631,8 @@ class Request:
 		and Last-Modified headers, and will also return a 304 not changed
 		if necessary.
 		"""
+		# FIXME: Re-architecture that one, maybe using a FileStream object
+		# https://developer.mozilla.org/en-US/docs/Configuring_servers_for_Ogg_media
 		# NOTE: This is a fairly complex method that should be broken down
 		path = os.path.abspath(path)
 		if not contentType:
@@ -643,24 +645,25 @@ class Request:
 		# http://tools.ietf.org/html/rfc2616#section-10.2.7
 		content_range  = self.header("range")
 		has_range      = content_range and True
-		chunk_size     = 100 * 1024
-		if stream != None: chunk_size = stream
+		range_start    = None
+		range_end      = None
 		if content_range:
 			content_range = content_range.split("=")
-			if len(content_range) > 1: content_range = content_range[1].split("-")
-			else: content_range = (0, chunk_size)
-		else:
-			content_range = (0, chunk_size)
-		range_start    = int(content_range[0])
-		if len(content_range) == 2 and content_range[1]:
-			range_end  = int(content_range[1])
-			chunk_size = range_end - range_start
-		range_end      = range_start + chunk_size
+			if len(content_range) > 1:
+				content_range = content_range[1].split("-")
+				range_start = int(content_range[0] or 0)
+				if content_range[1]:
+					range_end = int(content_range[1])
+				else:
+					range_end = None
+			else:
+				# Range is malformed, so we just skip it
+				pass
 		# We start by looking at the file, if hasn't changed, we won't bother
 		# reading it from the filesystem
 		has_changed = True
 		headers     = []
-		if stream or lastModified is True:
+		if has_range or lastModified or etag:
 			last_modified  = time.gmtime(os.path.getmtime(path))
 			headers.append(("Last-Modified", cache_timestamp(last_modified)))
 			modified_since = self.header(self.HEADER_IF_MODIFIED_SINCE)
@@ -673,43 +676,64 @@ class Request:
 		# If the file has changed or if we request ranges or stream 
 		# then we'll load it and do the whole she bang
 		data           = None
-		content_lenght = None
+		content_length = None
 		full_length    = None
-		content_sig    = None
-		if has_changed or has_range or stream:
-			# TODO: We should use a generator if the file is too big
+		content        = None
+		etag_sig       = None
+		print "RESPOND FILE range:%s -> %s" % (content_range, (range_start, range_end))
+		if has_changed or has_range:
+			# We open the file to get its size and adjust the read length and range end
+			# accordingly
 			with file(path, 'rb') as f:
+				f.seek(0,2) ; full_length = f.tell()
 				if not has_range:
-					f.seek(0)
-					data           = f.read()
-					content_length = len(data)
-					range_end      = content_length
-					full_length    = content_length
+					content_length = full_length
 				else:
-					f.seek(0,2) ; full_length = f.tell()
-					f.seek(range_start)
-					data           = f.read(chunk_size)
-					content_length = len(data)
-					range_end      = range_start + content_length
+					if range_end is None:
+						range_end      = full_length - 1
+						content_length = full_length - range_start
+					else:
+						content_length = min(range_end - range_start, full_length - range_start)
+			print " - start=", range_start, "end=", range_end, "length=", content_length
+			# We now add the content-type and cache headers
 			headers.append(("Content-Type", contentType))
-			if stream or etag is True:
-				content_sig    = '"' + hashlib.sha1(data).hexdigest() + '"'
-				headers.append(("ETag",          content_sig))
+			if has_range or etag:
+				# We don't use the content-type for ETag as we don't want to
+				# have to read the whole file, that would be too slow.
+				# NOTE: ETag is indepdent on the range and affect the file is a whole
+				etag_sig = '"' + hashlib.sha256("%s:%s" % (path, last_modified)).hexdigest() + '"'
+				headers.append(("ETag",          etag_sig))
 			if contentLength is True:
 				headers.append(("Content-Length", str(content_length)))
-			if stream:
+			if has_range:
 				headers.append(("Accept-Ranges", "bytes"))
-				headers.append(("Content-Range", "bytes %d-%d/%d" % (range_start, range_end - 1, content_length)))
+				#headers.append(("Connection",    "Keep-Alive"))
+				#headers.append(("Keep-Alive",    "timeout=5, max=100"))
+				headers.append(("Content-Range", "bytes %d-%d/%d" % (range_start, range_end, full_length)))
+			# This is the generator that will stream the file's content
+			def pipe_content(path=path, start=range_start, remaining=content_length):
+				with file(path, 'rb') as f:
+					f.seek(start or 0)
+					while remaining:
+						# FIXME: For some reason, we have to read the whole thing in Firefox
+						chunk      = f.read(min(buffer, remaining))
+						read       = len(chunk)
+						remaining -= read
+						if read:
+							yield chunk
+						else:
+							break
+			content = pipe_content()
 		# File system modification date takes precendence (but for stream we'll test ETag instead)
-		if lastModified and not has_changed and not stream:
+		if lastModified and not has_changed and not has_range:
 			return self.notModified(contentType=contentType)
 		# Otherwise we test ETag
-		elif etag is True and content_sig and self.header(self.HEADER_IF_NONE_MATCH) == content_sig:
+		elif etag is True and etag_sig and self.header(self.HEADER_IF_NONE_MATCH) == etag_sig:
 			return self.notModified(contentType=contentType)
 		# and if nothing works, we'll return the response
 		else:
-			if stream: status = 206
-			return Response(content=data, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
+			if has_range: status = 206
+			return Response(content=content, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
@@ -927,7 +951,7 @@ class Response:
 		self.status  = status
 		self.reason  = reason
 		if type(headers) == tuple: headers = list(headers)
-		self.headers = headers or []
+		self.headers = headers or [("Accept-Ranges", "bytes")]
 		self.content = content
 		self.produceEventGuard = None
 		self.compression = compression
