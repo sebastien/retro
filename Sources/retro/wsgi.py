@@ -3,19 +3,21 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 #             Colin Stewart                           <http://www.owlfish.com/>
 #             Fabien Moritz                           <fabien.moritz@gmail.com>
 # -----------------------------------------------------------------------------
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 15-Jun-2011
+# Last mod  : 31-Aug-2011
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore or (better), Thor!
 # TODO: Test retro apps with another WSGI server
 # FIXME: Reactor is broken (and probably unnecessary)
+
+import traceback
 
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is
@@ -296,7 +298,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 	def _finish( self ):
 		try:
 			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
-		except:
+		except Exception, e:
 			# This sometimes throws an 'error: [Errno 32] Broken pipe'
 			pass
 
@@ -333,7 +335,6 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		elif self._state == self.WAITING:
 			# If a reactor is used, we re-schedule the continuation of this
 			# process when the condition/rendez-vous is met
-			print "WAITING"
 			if usesReactor():
 				handler = self
 				def resume_on_rdv(*args,**kwargs):
@@ -529,5 +530,12 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 	def serve( self ):
 		while True:
 			self.handle_request()
+
+	def handle_error(self, request, client_address):
+		exception = traceback.format_exc()
+		if exception.endswith("AttributeError: 'NoneType' object has no attribute 'recv'\n"):
+			print "[-] Connection closed by client %s:%s" % (client_address[0], client_address[1])
+		else:
+			print "[-] Unsupported exception:", exception
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
