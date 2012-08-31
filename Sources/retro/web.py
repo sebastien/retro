@@ -6,12 +6,12 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 28-Jun-l012
+# Last mod  : 31-Aug-l012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
 
-import os, re, sys, time
+import os, re, sys, time, functools
 from core import Request, Response, Event, \
 RendezVous, asJSON, json, unjson
 
@@ -183,6 +183,7 @@ def cache( store, signature=None ):
 					return result
 			else:
 				return requestHandler(self, request, *args, **kwargs)
+		functools.update_wrapper(wrapper, requestHandler)
 		return wrapper
 	return decorator
 

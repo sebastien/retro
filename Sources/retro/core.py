@@ -6,10 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 27-Aug-2012
+# Last mod  : 31-Aug-2012
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
+# TODO: Automatic suport for HEAD and cache requests
 
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib, tempfile, string
 import BaseHTTPServer, Cookie, gzip, StringIO
@@ -105,8 +106,21 @@ def asJSON( value, **options ):
 
 # -----------------------------------------------------------------------------
 #
-# COMPRESSION
+# CACHE TIMESTAMP
+#
+# -----------------------------------------------------------------------------
 
+DAYS   = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct", "Nov", "Dec")
+def cache_timestamp( t ):
+	# NOTE: We  have to do it here as we don't want to force the locale
+	# FORMAT: If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT
+	return "%s, %d %s %d %d:%d:%d GMT" % (DAYS[t.tm_wday], t.tm_mday, MONTHS[t.tm_mon - 1], t.tm_year, t.tm_hour, t.tm_min, t.tm_sec)
+
+# -----------------------------------------------------------------------------
+#
+# COMPRESSION
+#
 # -----------------------------------------------------------------------------
  
 def compress_gzip(data):
@@ -608,7 +622,7 @@ class Request:
 		if headers: h.extend(headers)
 		return Response(js, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
-	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True ):
+	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, stream=None ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised.
@@ -617,20 +631,38 @@ class Request:
 		and Last-Modified headers, and will also return a 304 not changed
 		if necessary.
 		"""
-		if not path:
-			return self.fail("No path given for image")
+		# NOTE: This is a fairly complex method that should be broken down
 		path = os.path.abspath(path)
 		if not contentType:
 			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
 			return self.notFound("File not found: %s" % (path))
+		# We start by guetting range information in case we want/need to do streaming
+		# http://benramsey.com/blog/2008/05/206-partial-content-and-range-requests/
+		# http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+		# http://tools.ietf.org/html/rfc2616#section-10.2.7
+		content_range  = self.header("range")
+		has_range      = content_range and True
+		chunk_size     = 100 * 1024
+		if stream != None: chunk_size = stream
+		if content_range:
+			content_range = content_range.split("=")
+			if len(content_range) > 1: content_range = content_range[1].split("-")
+			else: content_range = (0, chunk_size)
+		else:
+			content_range = (0, chunk_size)
+		range_start    = int(content_range[0])
+		if len(content_range) == 2 and content_range[1]:
+			range_end  = int(content_range[1])
+			chunk_size = range_end - range_start
+		range_end      = range_start + chunk_size
 		# We start by looking at the file, if hasn't changed, we won't bother
 		# reading it from the filesystem
 		has_changed = True
 		headers     = []
-		if lastModified is True:
+		if stream or lastModified is True:
 			last_modified  = time.gmtime(os.path.getmtime(path))
-			headers.append(("Last-Modified", time.strftime("%a, %d %b %Y %H:%M:%S GMT", last_modified)))
+			headers.append(("Last-Modified", cache_timestamp(last_modified)))
 			modified_since = self.header(self.HEADER_IF_MODIFIED_SINCE)
 			try:
 				modified_since = time.strptime(modified_since, "%a, %d %b %Y %H:%M:%S GMT")
@@ -638,28 +670,46 @@ class Request:
 					has_changed = False
 			except Exception, e:
 				pass
-		# If the file has changed, then we'll load it and do the whoe she bang
-		if has_changed:
-			# FIXME: This could be improved by returning a generator if the
-			# file is too big
-			with file(path, 'rb') as f: r = f.read()
+		# If the file has changed or if we request ranges or stream 
+		# then we'll load it and do the whole she bang
+		data           = None
+		content_lenght = None
+		full_length    = None
+		content_sig    = None
+		if has_changed or has_range or stream:
+			# TODO: We should use a generator if the file is too big
+			with file(path, 'rb') as f:
+				if not has_range:
+					f.seek(0)
+					data           = f.read()
+					content_length = len(data)
+					range_end      = content_length
+					full_length    = content_length
+				else:
+					f.seek(0,2) ; full_length = f.tell()
+					f.seek(range_start)
+					data           = f.read(chunk_size)
+					content_length = len(data)
+					range_end      = range_start + content_length
 			headers.append(("Content-Type", contentType))
-			content_sig = None
-			if etag is True:
-				content_sig    = '"' + hashlib.sha1(r).hexdigest() + '"'
+			if stream or etag is True:
+				content_sig    = '"' + hashlib.sha1(data).hexdigest() + '"'
 				headers.append(("ETag",          content_sig))
 			if contentLength is True:
-				content_length = len(r)
 				headers.append(("Content-Length", str(content_length)))
-		# File system modification date takes precendence
-		if   lastModified and not has_changed:
+			if stream:
+				headers.append(("Accept-Ranges", "bytes"))
+				headers.append(("Content-Range", "bytes %d-%d/%d" % (range_start, range_end - 1, content_length)))
+		# File system modification date takes precendence (but for stream we'll test ETag instead)
+		if lastModified and not has_changed and not stream:
 			return self.notModified(contentType=contentType)
 		# Otherwise we test ETag
 		elif etag is True and content_sig and self.header(self.HEADER_IF_NONE_MATCH) == content_sig:
 			return self.notModified(contentType=contentType)
 		# and if nothing works, we'll return the response
 		else:
-			return Response(content=r, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
+			if stream: status = 206
+			return Response(content=data, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
@@ -890,8 +940,7 @@ class Response:
 				self.headers = [h for h in self.headers if h[0] != Request.HEADER_CACHE_CONTROL]
 				self.headers.append((Request.HEADER_CACHE_CONTROL, "max-age=%d, public" % (duration)))
 			if expires is True:
-				expires      = time.gmtime(time.time() + duration)
-				expires      = time.strftime("%a, %d %b %Y %H:%M:%S GMT", expires)
+				expires      = cache_timestamp(time.gmtime(time.time() + duration))
 				self.headers.append((Request.HEADER_EXPIRES, expires))
 		return self
 
