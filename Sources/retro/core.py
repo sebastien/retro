@@ -115,7 +115,7 @@ MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct",
 def cache_timestamp( t ):
 	# NOTE: We  have to do it here as we don't want to force the locale
 	# FORMAT: If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT
-	return "%s, %d %s %d %d:%d:%d GMT" % (DAYS[t.tm_wday], t.tm_mday, MONTHS[t.tm_mon - 1], t.tm_year, t.tm_hour, t.tm_min, t.tm_sec)
+	return "%s, %02d %s %d %d:%d:%d GMT" % (DAYS[t.tm_wday], t.tm_mday, MONTHS[t.tm_mon - 1], t.tm_year, t.tm_hour, t.tm_min, t.tm_sec)
 
 # -----------------------------------------------------------------------------
 #
@@ -680,7 +680,6 @@ class Request:
 		full_length    = None
 		content        = None
 		etag_sig       = None
-		print "RESPOND FILE range:%s -> %s" % (content_range, (range_start, range_end))
 		if has_changed or has_range:
 			# We open the file to get its size and adjust the read length and range end
 			# accordingly
@@ -694,7 +693,6 @@ class Request:
 						content_length = full_length - range_start
 					else:
 						content_length = min(range_end - range_start, full_length - range_start)
-			print " - start=", range_start, "end=", range_end, "length=", content_length
 			# We now add the content-type and cache headers
 			headers.append(("Content-Type", contentType))
 			if has_range or etag:
