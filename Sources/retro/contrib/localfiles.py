@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 28-Jun-2012
+# Last mod  : 31-Sep-2012
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -345,46 +345,51 @@ class LibraryServer(Component):
 		response_data = ""
 		if not self.cacheAggregates or not self._inCache(paths):
 			result = []
+			# File names are expected to be separated by `+`
 			for path in paths.split("+"):
+				# Gets the .sjs or the .js
 				if os.path.exists(os.path.join(self.library, "sjs", path)):
 					path = os.path.abspath(os.path.join(self.library, "sjs", path))
 				else:
 					path = os.path.abspath(os.path.join(self.library, "js", path))
-				if path.startswith(os.path.abspath(self.library)):
-					if path.endswith(".sjs"):
-						path = path.replace("/js", "/sjs")
-						data = None
-						if not self._inCache(path):
-							data    = ""
-							tries   = 0
-							# NOTE: For some reason, sugar sometimes fails, so we add a
-							# number of retries so that we increase the "chances" of the
-							# file to be properly loaded
-							while (not data) and tries < 3:
-								command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
-								cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-								data    = cmd.stdout.read()
-								tries  += 1
-								cmd.wait()
-							if data:
-								if self.minify and jsmin: data = jsmin.jsmin(data)
-								self._toCache(path, data)
-						else:
-							data = self._fromCache(path)
-						result.append(data)
-					else:
-						if not self._inCache(path):
-							data = self.app().load(path)
+				# If the path is not within the library path, :  someone is trying to hack our server
+				# and access files outside of the path. In this case, we just
+				# return false
+				if not path.startswith(os.path.abspath(self.library)):
+					return request.returns(False)
+				# Is this a Sugar/JavaScript file?
+				if path.endswith(".sjs"):
+					path = path.replace("/js", "/sjs")
+					data = None
+					if not self._inCache(path):
+						data    = ""
+						tries   = 0
+						# NOTE: For some reason, sugar sometimes fails, so we add a
+						# number of retries so that we increase the "chances" of the
+						# file to be properly loaded
+						while (not data) and tries < 3:
+							command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
+							cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+							data    = cmd.stdout.read()
+							tries  += 1
+							cmd.wait()
+						if data:
 							if self.minify and jsmin: data = jsmin.jsmin(data)
 							self._toCache(path, data)
-						else:
-							data = self._fromCache(path)
+							result.append(data)
+					else:
+						data = self._fromCache(path)
 						result.append(data)
+				# Otherwise it's just a regular file
 				else:
-					# NOTE: If we go here, someone is trying to hack our server
-					# and access files outside of the path. In this case, we just
-					# return false
-					return request.returns(False)
+					if not self._inCache(path):
+						data = self.app().load(path)
+						if self.minify and jsmin: data = jsmin.jsmin(data)
+						self._toCache(path, data)
+						result.append(data)
+					else:
+						data = self._fromCache(path)
+						result.append(data)
 			response_data = "\n".join(result)
 			self._toCache(paths, response_data)
 		else:
