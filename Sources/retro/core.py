@@ -634,6 +634,7 @@ class Request:
 		# FIXME: Re-architecture that one, maybe using a FileStream object
 		# https://developer.mozilla.org/en-US/docs/Configuring_servers_for_Ogg_media
 		# NOTE: This is a fairly complex method that should be broken down
+		if not path: return self.notFound()
 		path = os.path.abspath(path)
 		if not contentType:
 			contentType, _ = mimetypes.guess_type(path)
