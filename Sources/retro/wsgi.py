@@ -533,8 +533,11 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
 	def handle_error(self, request, client_address):
 		exception = traceback.format_exc()
-		if exception.endswith("AttributeError: 'NoneType' object has no attribute 'recv'\n"):
+		last_error = exception.rsplit("\n", 2)[-2]
+		if   last_error == "AttributeError: 'NoneType' object has no attribute 'recv'":
 			print "[-] Connection closed by client %s:%s" % (client_address[0], client_address[1])
+		elif last_error.startswith("error: [Errno 32]"):
+			print "[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1])
 		else:
 			print "[-] Unsupported exception:", exception
 
