@@ -497,6 +497,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
 		# This might fail, so we just ignore if it does
+		error_msg = error_msg.replace("<", "&lt;").replace(">", "&gt;")
 		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
 		error(error_msg)
 		self._processEnd()

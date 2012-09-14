@@ -389,9 +389,9 @@ class Request:
 		params = self.params(load=load)
 		return params.get(name)
 
-	def param( self, name ):
+	def param( self, name, load=False ):
 		"""Gets the parameter with the given name. It is an alias for get"""
-		return self.get(name)
+		return self.get(name, load=load)
 
 	def params( self, load=False ):
 		"""Returns a dictionary with the request parameters. Unless you specify
@@ -424,6 +424,43 @@ class Request:
 			# We load if we haven't loaded yet and load is True
 			if load and not self.isLoaded(): self.load()
 		return self._params
+	
+	def hashParams( self, path=None ):
+		"""Parses the parameters that might be defined in the URL's hash, and
+		returns a dictionary. Here is how this function works:
+
+		>	hashParams("page")
+		>	>> {'__path__': 'page'}
+
+		>	hashParams("page=1")
+		>	>> {'page': '1'}
+
+		>	hashParams("page/1&category=2")
+		>	>> {'category': '2', '__path__': 'page/1'}
+
+		>	hashParams("page/1&category=2&category=3")
+		>	>> {'category': ['2', '3'], '__path__': 'page/1'}
+
+		"""
+		if path is None:
+			path = self.path().split("#", 1)
+			if len(path) == 2: path=path[1]
+			else: path = ""
+		result = {}
+		for element in path.split("&"):
+			name_value = element.split("=",1)
+			if len(name_value) == 1:
+				name  = "__path__"
+				value = name_value[0]
+			else:
+				name, value = name_value
+			if name in result:
+				if type(result[name]) not in (tuple, list):
+					result[name] = [result[name]]
+				result[name].append(value)
+			else:
+				result[name] = value
+		return result
 
 	def cookies( self ):
 		"""Returns the cookies (as a 'Cookie.SimpleCookie' instance)
