@@ -43,7 +43,9 @@ DISTROCONTENT   = $(DOCUMENTATION) $(SOURCES) $(SCRIPTS) $(TESTS) $(RESOURCES) \
 
 PACKAGE         = retro
 MAIN            = __init__.py
-MODULES         = retro retro.core retro.web
+MODULES         = retro retro.core retro.web \
+                  retro.contrib.cache\
+                  retro.contrib.localfiles retro.contrib.proxy retro.contrib.query retro.contrib.record retro.contrib.session
 
 TEST_MAIN       = 
 SOURCE_FILES    = $(shell find $(SOURCES) -name "*.py")
@@ -155,12 +157,12 @@ dist:
 	@rm -rf $(DISTRIBUTION)/$(PROJECT)-$(PROJECT_VERSION)
 
 man: README
-	kiwi -m -ilatin-1 README  Documentation/manual.html
+	texto -m -ilatin-1 README  Documentation/manual.html
 
 doc: man
 	@echo "Generating $(PROJECT) documentation"
 ifeq ($(shell basename spam/$(SDOC)),sdoc)
-	@$(SDOC) -mkiwi -cp$(SOURCES) $(MODULES) $(API)
+	@$(SDOC) -mtexto -cp$(SOURCES) $(MODULES) $(API)
 else
 	@echo "Sdoc is required to generate $(PROJECT) documentation."
 	@echo "Please see <http://www.ivy.fr/sdoc>"
