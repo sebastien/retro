@@ -642,13 +642,13 @@ class Request:
 		"""Responds to this request by a redirection to the following URL, with
 		the given keyword arguments as parameter."""
 		if kwargs: url += "?" + urllib.urlencode(kwargs)
-		return Response("", [("Location", url)], 302, compression=self.compression())
+		return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 
 	def bounce( self, **kwargs ):
 		url = self._environ.get("HTTP_REFERER")
 		if url:
 			if kwargs: url += "?" + urllib.urlencode(kwargs)
-			return Response("", [("Location", url)], 302, compression=self.compression())
+			return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 		else:
 			assert not kwargs
 			return Response("", [], 200, compression=self.compression())
@@ -718,6 +718,8 @@ class Request:
 		full_length    = None
 		content        = None
 		etag_sig       = None
+		# We now add the content-type
+		headers.append(("Content-Type", contentType))
 		if has_changed or has_range:
 			# We open the file to get its size and adjust the read length and range end
 			# accordingly
@@ -731,8 +733,6 @@ class Request:
 						content_length = full_length - range_start
 					else:
 						content_length = min(range_end - range_start, full_length - range_start)
-			# We now add the content-type and cache headers
-			headers.append(("Content-Type", contentType))
 			if has_range or etag:
 				# We don't use the content-type for ETag as we don't want to
 				# have to read the whole file, that would be too slow.
