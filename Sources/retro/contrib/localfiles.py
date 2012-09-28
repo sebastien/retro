@@ -300,7 +300,7 @@ class LibraryServer(Component):
 			self._toCache(paths, response_data)
 		else:
 			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/css").compress(self.compress).cache(seconds=self.cacheDuration)
+		return request.respond(response_data, contentType="text/css; charset=utf-8").compress(self.compress).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/ccss/{paths:rest}")
 	def getCCSS( self, request, paths ):
@@ -325,7 +325,7 @@ class LibraryServer(Component):
 			self._toCache(paths, response_data)
 		else:
 			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/css").compress(self.compress).cache(seconds=self.cacheDuration)
+		return request.respond(response_data, contentType="text/css; charset=utf-8").compress(self.compress).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
@@ -394,7 +394,7 @@ class LibraryServer(Component):
 			self._toCache(paths, response_data)
 		else:
 			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/javascript").compress(self.compress).cache(seconds=self.cacheDuration)
+		return request.respond(response_data, contentType="text/javascript; charset=utf-8").compress(self.compress).cache(seconds=self.cacheDuration)
 
 	def _guessPath( self, parent, filename, extensions ):
 		"""Tries to locate the file with the given `filename` in the `parent` directory of this
