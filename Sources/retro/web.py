@@ -778,7 +778,7 @@ class Application(Component):
 		return data
 
 	def save( self, path, data, sync=True, append=False ):
-		"""Saves the file at the given path and returns its content."""
+		"""Saves/appends to the file at the given path."""
 		flags = os.O_WRONLY | os.O_CREAT
 		if sync:       flags = flags | os.O_DSYNC
 		if not append: flags = flags | os.O_TRUNC
@@ -790,6 +790,9 @@ class Application(Component):
 			os.close(fd)
 			raise e
 		return self
+
+	def append( self, path, data, sync=True ):
+		return self.save(path,data,sync=sync,append=True)
 
 	def register( self, *components ):
 		"""Registeres the given component into this Web application. The
