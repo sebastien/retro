@@ -401,9 +401,9 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		try:
 			self._result = application(env, self._startResponse)
 			self._state  = self.PROCESSING
-		except:
+		except Exception, e:
 			self._result  = None
-			self._showError()
+			self._showError(e)
 			self._state = self.ERROR
 		return self._state
 
@@ -412,18 +412,17 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		application."""
 		self._state = self.PROCESSING
 		try:
-			try:
-				data = self._result.next()
-				if isinstance(data, core.RendezVous):
-					self._rendezvous = data
-					self._state = self.WAITING
-				elif data:
-					self._writeData(data)
-				return self._state
-			except StopIteration:
-				if hasattr(self._result, 'close'):
-					self._result.close()
-				return self._processEnd()
+			data = self._result.next()
+			if isinstance(data, core.RendezVous):
+				self._rendezvous = data
+				self._state = self.WAITING
+			elif data:
+				self._writeData(data)
+			return self._state
+		except StopIteration:
+			if hasattr(self._result, 'close'):
+				self._result.close()
+			return self._processEnd()
 		except socket.error, socketErr:
 			# Catch common network errors and suppress them
 			if (socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
@@ -436,6 +435,11 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			logging.debug ("Socket timeout")
 			self._state = self.ERROR
 			return False
+		except Exception, e:
+			self._result = None
+			print "[!] Exception in stream:", e
+			print traceback.format_exc()
+			self._state = self.ERROR
 
 	def _processEnd( self ):
 		self._state = self.ENDED
@@ -486,7 +490,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		except socket.error, socketErr:
 			logging.debug ("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 
-	def _showError( self ):
+	def _showError( self, exception=None ):
 		"""Generates a response that contains a formatted error message."""
 		error_msg = StringIO.StringIO()
 		traceback.print_exc(file=error_msg)

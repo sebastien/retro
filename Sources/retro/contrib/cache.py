@@ -339,17 +339,19 @@ class FileCache(Cache):
 		assert len(key) < max_length, "Key is too long %d > %d" % (len(key), max_length)
 		return key
 
-	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None):
+	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
 		self.setPath(path)
 		self.keyProcessor = keys or self.NAME_KEY
 		self.enabled      = True
+		if expires != None:self.EXPIRES = expires
 	
 	def noExpire( self ):
 		"""Disables cache expiration."""
 		self.EXPIRES = 0
+		return self
 
 	def withSHA1Keys( self ):
 		self.setKeyProcessor(FileCache.SHA1_KEY)

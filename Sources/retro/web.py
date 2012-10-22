@@ -760,7 +760,11 @@ class Application(Component):
 	def load( self, path, sync=True ):
 		"""Loads the file at the given path and returns its content."""
 		flags = os.O_RDONLY
-		if sync: flags = flags | os.O_RSYNC
+		# NOTE: On OSX, the following will fail
+		try:
+			if sync: flags = flags | os.O_RSYNC
+		except AttributeError, e:
+			pass
 		fd    = os.open(path, flags)
 		data  = None
 		try:
@@ -780,7 +784,10 @@ class Application(Component):
 	def save( self, path, data, sync=True, append=False ):
 		"""Saves/appends to the file at the given path."""
 		flags = os.O_WRONLY | os.O_CREAT
-		if sync:       flags = flags | os.O_DSYNC
+		try:
+			if sync:       flags = flags | os.O_DSYNC
+		except AttributeError, e:
+			pass
 		if not append: flags = flags | os.O_TRUNC
 		fd    = os.open(path, flags)
 		try:
