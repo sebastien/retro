@@ -569,9 +569,9 @@ class Request:
 		if self._bodyLoader: return self._bodyLoader.isComplete()
 		else: return False
 
-	def loadProgress( self ):
+	def loadProgress( self, inBytes=False ):
 		"""Returns an integer (0-100) that shows the load progress."""
-		if self._bodyLoader: return self._bodyLoader.progress()
+		if self._bodyLoader: return self._bodyLoader.progress(inBytes)
 		else: return 0
 
 	def load( self, size=None ):
@@ -881,8 +881,11 @@ class RequestBodyLoader:
 	def remainingBytes( self ):
 		return self.contentLength - self.contentRead
 
-	def progress( self ):
-		return int(100*float(self.contentRead)/float(self.contentLength))
+	def progress( self, inBytes=False ):
+		if inBytes:
+			return self.contentRead
+		else:
+			return int(100*float(self.contentRead)/float(self.contentLength))
 
 	def load( self, size=None ):
 		"""Loads the data in chunks. Return the loaded chunk -- it's up to
