@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 31-Aug-l012
+# Last mod  : 15-Nov-2012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -16,7 +16,7 @@ from core import Request, Response, Event, \
 RendezVous, asJSON, json, unjson
 
 LOG_ENABLED       = True
-LOG_DISPATCHER_ON = True
+LOG_DISPATCHER_ON = False
 
 def log(*args):
 	"""A log function that outputs information on stdout. It's a good
@@ -233,9 +233,10 @@ class Dispatcher:
 	def __init__( self, app ):
 		"""Creates a new Dispatcher instance. The @_handlers attribute stores
 		couple of (regexp, http_handlers)."""
-		self._handlers = []
-		self._app      = app
-		self.patterns  = {}
+		self._handlers   = []
+		self._app        = app
+		self.patterns    = {}
+		self._routesInfo = []
 		for key, value in self.PATTERNS.items():
 			self.patterns[key]=value
 
@@ -352,6 +353,7 @@ class Dispatcher:
 			ex = prefix + ex
 			if LOG_DISPATCHER_ON:
 				log("Dispatcher: @on", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
+			self._routesInfo.append((handlers.keys(), ex))
 			regexp_txt, converters, params = self._parseExpression(ex)
 			# log("Dispatcher: regexp=", repr(regexp_txt))
 			regexp = re.compile(regexp_txt)
@@ -388,6 +390,15 @@ class Dispatcher:
 			return self.dispatch(environ, path[1:], method)
 		else:
 			return [(0, fallback_handler, {}, None)]
+
+	def list( self ):
+		return self._routesInfo
+
+	def info( self ):
+		res = []
+		for methods, url in self._routesInfo:
+			res.append("Dispatcher: " + " ".join(map(lambda x:"%4s" % (x), methods)) + " " + url)
+		return "\n".join(res)
 
 	def __call__(self, environ, start_response, request=None):
 		"""Delegate request to the appropriate Application. This is the main
@@ -692,6 +703,9 @@ class Application(Component):
 				map(self.register, component)
 			else:
 				self.register(component)
+
+	def info( self ):
+		return self._dispatcher.info()
 
 	def start( self ):
 		for component in self._components:
