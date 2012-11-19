@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 15-Nov-2012
+# Last mod  : 19-Nov-2012
 # -----------------------------------------------------------------------------
 
 __pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
@@ -233,12 +233,19 @@ class Dispatcher:
 	def __init__( self, app ):
 		"""Creates a new Dispatcher instance. The @_handlers attribute stores
 		couple of (regexp, http_handlers)."""
-		self._handlers   = []
-		self._app        = app
-		self.patterns    = {}
-		self._routesInfo = []
+		self._handlers    = []
+		self._app         = app
+		self.patterns     = {}
+		self._routesInfo  = []
+		self._onException = []
 		for key, value in self.PATTERNS.items():
 			self.patterns[key]=value
+
+	def onException( self, callback ):
+		"""Registers a callback `(exception, dispatcher)` to be called when
+		an exception occurs in the handler."""
+		self._onException.append(callback)
+		return self
 
 	def app( self ):
 		"""Returns a reference to the Retro application bound to this
@@ -446,7 +453,11 @@ class Dispatcher:
 						can_handle = False
 						break
 			if can_handle:
-				return handle(handler, variables, start_response)
+				try:
+					return handle(handler, variables, start_response)
+				except Exception, e:
+					for _ in self._onException: _(e, self)
+					raise e
 			else:
 				response = Response("Not authorized",[],401)
 				return response.asWSGI(start_response, self.app().config("charset"))

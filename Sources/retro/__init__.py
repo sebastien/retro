@@ -254,6 +254,7 @@ onError=None ):
 					result.wait()
 					continue
 				yield result
+		retro_rendezvous_wrapper.stack = stack
 		return retro_rendezvous_wrapper
 	else:
 		raise Exception("Unknown setup method:" + method)
