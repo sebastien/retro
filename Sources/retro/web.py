@@ -449,7 +449,8 @@ class Dispatcher:
 				variables[params_name] = request.params()
 			if hasattr(handler, _RETRO_WHEN):
 				for predicate in getattr(handler, _RETRO_WHEN):
-					if not getattr(component, predicate)(request):
+					if isinstance(predicate, str): predicate = getattr(component, predicate)
+					if predicate(request):
 						can_handle = False
 						break
 			if can_handle:

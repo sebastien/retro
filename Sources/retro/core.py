@@ -309,6 +309,7 @@ class Request:
 	CONTENT_LENGTH           = "CONTENT_LENGTH"
 	QUERY_STRING             = "QUERY_STRING"
 	HTTP_COOKIE              = "HTTP_COOKIE"
+	HTTP_HOST                = "HTTP_HOST"
 	SCRIPT_NAME              = "SCRIPT_NAME"
 	SCRIPT_ROOT              = "SCRIPT_ROOT"
 	PATH_INFO                = "PATH_INFO"
@@ -369,6 +370,10 @@ class Request:
 	def path( self ):
 		"""Alias for `self.uri`"""
 		return self.uri()
+
+	def host( self ):
+		"""Returns the hostname for this request"""
+		return self._environ.get(self.HTTP_HOST)
 
 	def uri( self ):
 		"""Returns the URI for this method."""
