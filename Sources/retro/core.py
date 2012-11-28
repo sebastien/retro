@@ -889,8 +889,10 @@ class RequestBodyLoader:
 	def progress( self, inBytes=False ):
 		if inBytes:
 			return self.contentRead
-		else:
+		elif self.contentLength > 0:
 			return int(100*float(self.contentRead)/float(self.contentLength))
+		else:
+			return 0
 
 	def load( self, size=None ):
 		"""Loads the data in chunks. Return the loaded chunk -- it's up to
@@ -1096,12 +1098,11 @@ class Response:
 				return v
 		# If content is a generator we return it as-is
 		if type(self.content) == types.GeneratorType:
-			# we wrap the generator in a try/except
-			try:
-				for c in self.content:
-					yield encode(c)
-			except Exception, e:
-				raise e
+			# NOTE: We really don't want to wrap the generator in a try/except
+			# as otherwise it will swallow the traceback -- Retro now provides
+			# good error handlers.
+			for c in self.content:
+				yield encode(c)
 		# Otherwise we return a single-shot generator
 		else:
 			yield encode(self.content)

@@ -437,6 +437,8 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			return False
 		except Exception, e:
 			self._result = None
+			# FIXME: We're not capturing the traceback from the generator,
+			# alhought the problem actually happened within it
 			print "[!] Exception in stream:", e
 			print traceback.format_exc()
 			self._state = self.ERROR
