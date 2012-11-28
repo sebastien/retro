@@ -6,14 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 19-Nov-2012
+# Last mod  : 28-Nov-2012
 # -----------------------------------------------------------------------------
 
-__pychecker__ = "unusednames=channel_type,requests_count,request,djtmpl_path"
-
-import os, re, sys, time, functools
-from core import Request, Response, Event, \
-RendezVous, asJSON, json, unjson
+import os, re, sys, time, functools, traceback, StringIO
+from core import Request, Response, Event, RendezVous, asJSON, json, unjson
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -192,6 +189,19 @@ def cache( store, signature=None ):
 # DISPATCHER
 #
 # ------------------------------------------------------------------------------
+
+class HandlerException(Exception):
+	"""Wraps an exception that occured within a handler"""
+
+	def __init__( self, e ):
+		self.e     = e
+		t = StringIO.StringIO()
+		traceback.print_exc(file=t)
+		t.seek(0) ; self.trace = t.read() ; t.close()
+		Exception.__init__(self, str(self.e) + "\n" + self.trace)
+	
+	def __str__( self ):
+		return self.message
 
 class Dispatcher:
 	"""Dispatcher is a WSGI middleware loosely inspired from Luke Arno own
@@ -418,7 +428,12 @@ class Dispatcher:
 			request.environ("retro.variables", variables)
 			# TODO: ADD PROPER ERROR HANDLER
 			# The app is expected to produce a response object
-			response = handler(request, **variables)
+			try:
+				response = handler(request, **variables)
+			except Exception, e:
+				# NOTE: We do this so that we actually intercept the stack
+				# trace where the error occured
+				raise HandlerException(e)
 			if isinstance(response, Response):
 				result = response.asWSGI(start_response, self.app().config("charset"))
 				return result
