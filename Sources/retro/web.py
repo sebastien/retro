@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 28-Nov-2012
+# Last mod  : 29-Nov-2012
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, StringIO
@@ -464,8 +464,9 @@ class Dispatcher:
 				variables[params_name] = request.params()
 			if hasattr(handler, _RETRO_WHEN):
 				for predicate in getattr(handler, _RETRO_WHEN):
-					if isinstance(predicate, str): predicate = getattr(component, predicate)
-					if predicate(request):
+					if isinstance(predicate, str):
+						predicate = getattr(component, predicate)
+					if not predicate(request):
 						can_handle = False
 						break
 			if can_handle:
