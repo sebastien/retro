@@ -911,7 +911,7 @@ class RequestBodyLoader:
 		convert encoded data into an actual object"""
 		# NOTE: See http://www.cs.tut.fi/~jkorpela/forms/file.html
 		if not self.request: raise Exception("Body already decoded")
-		content_type   = self.request._environ[Request.CONTENT_TYPE]
+		content_type   = self.request._environ[Request.CONTENT_TYPE] or "application/x-www-form-urlencoded"
 		params         = self.request.params(load=False)
 		files          = []
 		# We handle the case of a multi-part body
