@@ -972,6 +972,7 @@ class RequestBodyLoader:
 			query_params = cgi.parse_qs(data)
 			for k,v in query_params.items(): self.request._addParam(k,v)
 		else:
+			# FIXME: Should support JSON
 			# There is nothing to be decoded, we just need the raw body data
 			pass
 		# NOTE: We can remove the reference to the request now, as the

@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 15-Nov-2012
+# Last mod  : 12-Dec-2012
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -15,11 +15,11 @@ from wsgi import REACTOR, onShutdown, onError
 from core import asJSON, crypt_decrypt, cut
 from web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
-Dispatcher, Configuration, ValidationError, Event, RendezVous
+Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.3.1"
+__version__ = "2.3.2"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 

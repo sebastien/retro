@@ -29,7 +29,23 @@ def log(*args):
 # ------------------------------------------------------------------------------
 
 class WebRuntimeError(Exception):
-	pass
+	"""An runtime error that is augmented with `code` and `data`, and that
+	exports to a JSONable object"""
+
+	def __init__( self, message=None, code=None, data=None ):
+		Exception.__init__(self, message)
+		assert self.message == message
+		self.code    = code
+		self.data    = data
+
+	def export( self ):
+		return dict(message=self.message, code=self.code, data=self.data)
+
+	def __str__( self ):
+		res = self.message
+		if self.code: res = "[{0}] {1}".format(self.code, res)
+		if self.data: res = "{0}: {1}".format(res, self.data)
+		return res
 
 class DispatcherSyntaxError(Exception):
 	"""These errors are raised by the @Dispatcher when the syntax is not as
@@ -100,6 +116,9 @@ def on( priority=0, **methods ):
 		return function
 	return decorator
 
+# TODO: We could have an extractor method that would extract sepcific parameters from
+# the request body. Ex:
+# @expose(POST="/api/ads", name=lambda _:_.get("name"), ....)
 def expose( priority=0, compress=False, **methods ):
 	"""The @expose decorator is a variation of the @on decorator. The @expose
 	decorator allows you to _expose_ an existing Python function as a JavaScript
