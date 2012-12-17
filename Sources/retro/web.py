@@ -257,6 +257,7 @@ class Dispatcher:
 		'any'    : (r'.+'        , str   ),
 		'rest'   : (r'.+'        , str   ),
 		'range'  : (r'\-?\d*\:\-?\d*', lambda x:x.split(':')),
+		'lang'   : (r"((\w\w)/)?", lambda x: x[:-1]),
 	}
 
 	def __init__( self, app ):

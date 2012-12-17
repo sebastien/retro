@@ -136,20 +136,6 @@ def compress_gzip(data):
 #
 # -----------------------------------------------------------------------------
 
-def crypt_decrypt(text, password):
-	"""XOR encryption, decryption"""
-	# FROM :http://www.daniweb.com/software-development/python/code/216632/text-encryptiondecryption-with-xor-python
-	old = StringIO.StringIO(text)
-	new = StringIO.StringIO(text)
-	for position in xrange(len(text)):
-		bias = ord(password[position % len(password)])  # Get next bias character from password
-		old_char = ord(old.read(1))
-		new_char = chr(old_char ^ bias)  # Get new charactor by XORing bias against old character
-		new.seek(position)
-		new.write(new_char)
-	new.seek(0)
-	return new.read()
-
 RE_CUT = re.compile("^[\s\t]|")
 def cut(text, separator="|"):
 	res   = []

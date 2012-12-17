@@ -1,5 +1,15 @@
+# -----------------------------------------------------------------------------
+# Project   : Retro - HTTP Toolkit
+# -----------------------------------------------------------------------------
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
+# License   : Revised BSD License
+# -----------------------------------------------------------------------------
+# Creation  : 29-Nov-2012
+# Last mod  : 17-Dec-2012
+# -----------------------------------------------------------------------------
 # SEE:  https://exyr.org/2011/hashing-passwords/
 # FROM: https://github.com/mitsuhiko/python-pbkdf2/blob/master/pbkdf2.py
+
 import hmac, hashlib
 from   struct import Struct
 from   operator import xor
@@ -69,5 +79,19 @@ def verify(password, encrypted):
 	for char_a, char_b in izip(hash_a, hash_b):
 		diff |= ord(char_a) ^ ord(char_b)
 	return diff == 0
+
+def crypt_decrypt( text, password ):
+	"""A simple XOR encryption, decryption"""
+	# FROM :http://www.daniweb.com/software-development/python/code/216632/text-encryptiondecryption-with-xor-python
+	old = StringIO.StringIO(text)
+	new = StringIO.StringIO(text)
+	for position in xrange(len(text)):
+		bias = ord(password[position % len(password)])  # Get next bias character from password
+		old_char = ord(old.read(1))
+		new_char = chr(old_char ^ bias)  # Get new charactor by XORing bias against old character
+		new.seek(position)
+		new.write(new_char)
+	new.seek(0)
+	return new.read()
 
 # EOF

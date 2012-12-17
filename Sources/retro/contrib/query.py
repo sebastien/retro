@@ -1,3 +1,13 @@
+# -----------------------------------------------------------------------------
+# Project   : Retro - HTTP Toolkit
+# -----------------------------------------------------------------------------
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
+# License   : Revised BSD License
+# -----------------------------------------------------------------------------
+# Creation  : 27-Nov-2012
+# Last mod  : 17-Dec-2012
+# -----------------------------------------------------------------------------
+
 import re
 
 RE_DATE = re.compile("(\d\d\d\d)/?(\d\d|\w+)?/?(\d\d)?[/T]?(\d\d)?[:h]?(\d\d)?[:m]?(\d\d)?s?")
@@ -9,6 +19,8 @@ def asAndOrList(text, union=",", intersection=" ", transform=lambda _:_):
 	
 	(a AND b) or (c) or (d AND e AND f)
 
+	This data structure is used as the base for expressing all the queries in
+	this module.
 	"""
 	# NOTE: In URLs, the + is translated to space!
 	res = []
@@ -19,40 +31,84 @@ def asAndOrList(text, union=",", intersection=" ", transform=lambda _:_):
 			res.append(map(transform, union_keywords.split(intersection)))
 	return res
 
-class QueryType:
+# -----------------------------------------------------------------------------
+#
+# QUERY PREDICATE
+#
+# -----------------------------------------------------------------------------
+
+class QueryPredicate:
+	"""An abstract class that defines how to parse, match and compare a value
+	to an expected value"""
 
 	def __init__( self ):
 		pass
 
 	def parse( self, value ):
+		"""Converts the value represented as a string to a value in the
+		property format. May throw a `ValueError`."""
 		raise NotImplemented
 
 	def match( self, expected, compared ):
+		"""Tells if the `compared` value matches the `expected` value. This
+		can return either a boolean or a number indicating the distance between
+		both values."""
 		return expected == compared
 
 	def compare( self, expected, compared ):
+		"""Compares the given values, should follow the same conventions as
+		the `cmp` function."""
 		return cmp(expected,compared)
 
 	def __call__( self, value ):
+		"""Calls `self.parse(value)`"""
 		return self.parse(value)
 
-class QuerySame(QueryType):
+# -----------------------------------------------------------------------------
+#
+# QUERY SAME
+#
+# -----------------------------------------------------------------------------
+
+class QuerySame(QueryPredicate):
+	"""Tells if the values are the same"""
 
 	def parse( self, value ):
 		return value
 
-class QueryInt(QueryType):
+# -----------------------------------------------------------------------------
+#
+# QUERY INT
+#
+# -----------------------------------------------------------------------------
+
+class QueryInt(QueryPredicate):
+	"""Compares integers"""
 
 	def parse( self, value ):
 		while len(data) > 1 and data[0] == "0": data = data[1:]
 		return int(data)
 
-class QueryString(QueryType):
+# -----------------------------------------------------------------------------
+#
+# QUERY STRING
+#
+# -----------------------------------------------------------------------------
+
+class QueryString(QueryPredicate):
+	"""Compares strings (case-insensitive)"""
 
 	def parse( self, value ):
 		return unicode(data).strip().lower()
 
-class QuerySubString(QueryType):
+# -----------------------------------------------------------------------------
+#
+# QUERY SUB-STRING
+#
+# -----------------------------------------------------------------------------
+
+class QuerySubString(QueryPredicate):
+	"""Compares sub-strings (case-insensitive)"""
 
 	def parse( self, value ):
 		return unicode(data).strip().lower()
@@ -60,7 +116,14 @@ class QuerySubString(QueryType):
 	def match( self, expected, compared ):
 		return compared.find(expected) > 0
 
-class QueryDate(QueryType):
+# -----------------------------------------------------------------------------
+#
+# QUERY DATE
+#
+# -----------------------------------------------------------------------------
+
+class QueryDate(QueryPredicate):
+	"""Compares dates, expected in `YYYYMMDDHHMMSS` string format"""
 
 	def parse( self, value ):
 		"""Expects YYYYMMDDHHMMSS"""
@@ -73,10 +136,18 @@ class QueryDate(QueryType):
 		seconds = cls.INT(data.group(6) or "0")
 		return (year, month, day, hour, minute, seconds)
 
-class QueryRange(QueryType):
+
+# -----------------------------------------------------------------------------
+#
+# QUERY RANGE
+#
+# -----------------------------------------------------------------------------
+
+class QueryRange(QueryPredicate):
+	"""Queries a range, expressed as `I-J`"""
 
 	def __init__( self, queryType ):
-		QueryType.__init__(self)
+		QueryPredicate.__init__(self)
 		self.queryType = queryType
 
 	def parse( self, value ):
@@ -86,7 +157,14 @@ class QueryRange(QueryType):
 		else:
 			return (queryType.parse(data[0]),queryType.parse(data[1]))
 
+# -----------------------------------------------------------------------------
+#
+# QUERY
+#
+# -----------------------------------------------------------------------------
+
 class Query:
+	"""Represents a query"""
 
 	INT       = QueryInt
 	SAME      = QuerySame
@@ -97,7 +175,15 @@ class Query:
 
 	@classmethod
 	def Parse( cls, query, format=None ):
-		"""Parses a query ... """
+		"""Parses a query given as the a dictionary of strings using the given
+		format. For instance
+		
+		>    query  = dict(date=("20121011", "20121010", "20121009") ,articlesCount="0-100",)
+		>    format = dict(date=Query.DATE, articlesCount=Query.RANGE)
+
+		Note that `query` values will be passed through the `asAndOrList` and
+		should be in the AND OR list format (ie. ((A and B and C) or (A' and B' and C'))).
+		"""
 		result = {}
 		for key in format:
 			if key in query:
@@ -105,10 +191,14 @@ class Query:
 		return result
 
 	def __init__( self, query, format=None ):
+		"""Creates a new query instance from the given `query` dictionary parsed in the given
+		`format`. See  `Query.Parse` for more details."""
 		if format: query = self.Parse(query, format)
 		self.query = query
 	
 	def predicate( self, value ):
+		"""Tells if the given value (given as a dictionary) matches the given query
+		predicates."""
 		for key in self.query.keys():
 			expected = query[key]
 			element  = expected[0][0]
@@ -144,16 +234,9 @@ class Query:
 			if (count > 0) and (i >= count):
 				break
 
-	def matchRegexp( self, expected, *compared ):
-		return self._match(lambda e,c:e.search(c)!=None, expected, compared )
-
 	def matchSubstring( self, expected, *compared ):
 		return self._match(lambda e,c:e.find(c)!=-1, expected, compared )
 	
-	def matchElement( self, expected, *compared ):
-		assert not filter(lambda _:_ and len(_) > 1, expected or ()), "It does not make sense to match elements with AND: %s" % (expected)
-		return self._match(lambda e,c:e == c, expected, compared )
-
 	# if it's just A, then you need to give [[A]]
 	def _match( self, predicate, expected, compared ):
 		"""Returns true if it finds ANY of the elements of expected in ANY
