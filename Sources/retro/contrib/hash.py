@@ -10,7 +10,7 @@
 # SEE:  https://exyr.org/2011/hashing-passwords/
 # FROM: https://github.com/mitsuhiko/python-pbkdf2/blob/master/pbkdf2.py
 
-import hmac, hashlib
+import hmac, hashlib, StringIO
 from   struct import Struct
 from   operator import xor
 from   itertools import izip, starmap
