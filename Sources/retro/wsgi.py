@@ -148,7 +148,7 @@ class Handler:
 		"""Gets an available handler"""
 		t = time.time()
 		if t - cls.CLEANUP_LAST > cls.CLEANUP_PERIOD:
-			cls.AVAILABLE = filter(lambda _:(t - _[0]) < cls.CLEANUP_PERIOD, cls.AVAILABLE)
+			cls.AVAILABLE = filter(lambda _:(t - _[1]) < cls.CLEANUP_PERIOD, cls.AVAILABLE)
 		if cls.AVAILABLE: h = cls.AVAILABLE.pop()[0]
 		else:             h = Handler()
 		return h
@@ -163,7 +163,7 @@ class Handler:
 		self.headers      = None
 		self.headersSent  = False
 		self.env          = None
-		self._response    = None
+		self.response     = None
 		self._state       = None
 		self._rendezvous  = None
 		self._iterator    = None
@@ -181,14 +181,28 @@ class Handler:
 		self.reset()
 		self._onStart     = onStart
 		self._onFinish    = onFinish
+		self._onWrite     = onWrite
 		self._state       = self.STARTED
 		self.application  = application
 		self.method       = method
 		self.uri          = uri
 		self.headers      = headers
+		# FIXME: Should provide to options:
+		# setup() -> run()     that does a single-shot run
+		# setup() -> stream()  that iterates
 		try:
-			while True:
-				yield self.next()
+			can_continue = True
+			iteration    = 0
+			# NOTE: The idea here is that the handler should yield the following:
+			# - the number of the iteration
+			# - the time elapsed since the request (lifetime)
+			# - the data chunk returned by the application
+			# - an optional event to register a callback called when the next 'step' can be called
+			# - an optional event to register a callback called if the delay has timed out
+			while can_continue:
+				can_continue = self.next()
+				if can_continue: yield (iteration, 0)
+				iteration += 1
 		except StopIteration, e:
 			pass
 
@@ -268,7 +282,7 @@ class Handler:
 		if self._onStart: self._onStart(self)
 		# Setup the state
 		self.headersSent   = False
-		self._response     = []
+		self.response      = []
 		try:
 			self._iterator = self.application(env, self._startResponse)
 			self._state    = self.PROCESSING
@@ -330,11 +344,11 @@ class Handler:
 		if self.headersSent:
 			raise Exception ("Headers already sent and start_response called again!")
 		# Should really take a copy to avoid changes in the application....
-		self._response = (response_status, response_headers)
+		self.response = (response_status, response_headers)
 		return self._writeData
 
 	def _writeData (self, data):
-		if self._onWrite: self._onWrite(handler, data)
+		if self._onWrite: self._onWrite(self, data)
 
 	def _showError( self, exception=None ):
 		"""Generates a response that contains a formatted error message."""
