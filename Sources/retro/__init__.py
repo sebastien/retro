@@ -2,16 +2,15 @@
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
-# Author    : Sebastien Pierre                               <sebastien@ffctn.com>
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Dec-2012
+# Last mod  : 23-Dec-2012
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
 import wsgi
-from wsgi import REACTOR, onShutdown, onError
 from core import asJSON, cut
 from web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
@@ -19,7 +18,7 @@ Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.4.0"
+__version__ = "3.0.0"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
@@ -107,8 +106,8 @@ def command( args, **extra ):
 	run(**extra)
 
 def run( app=None, components=(), method=STANDALONE, name="retro",
-root = ".", resetlog=False, address="", port=None, prefix='', async=False,
-sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda:True,
+root = ".", resetlog=False, address="", port=None, prefix='',
+processStack=lambda x:x, runCondition=lambda:True,
 onError=None ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
@@ -116,11 +115,6 @@ onError=None ):
 
 	This function is the 'main' for your web application, so this is basically
 	the last call you should have in your web application main."""
-	if async:
-		async = False
-		return thread.start_new_thread(run,(),locals())
-	if not (withReactor is None):
-		wsgi.USE_REACTOR = withReactor
 	if app == None: app = Application(prefix=prefix,components=components)
 	else: map(app.register, components)
 	# We set up the configuration if necessary
@@ -196,8 +190,6 @@ onError=None ):
 			environ["PATH_INFO"]  = req_uri[len(script_name):]
 		else:
 			environ["PATH_INFO"]  = "/"
-		if sessions:
-			environ["com.saddi.service.session"] = sessions
 		def start_response( status, headers, executionInfo=None ):
 			for key, value in headers:
 				print "%s: %s" % (key, value)
@@ -205,9 +197,7 @@ onError=None ):
 		# FIXME: This is broken
 		res = "".join(tuple(self.dispatcher(environ, start_response)))
 		print res
-		if sessions:
-			sessions.close()
-	#
+	
 	# == STANDALONE (WSGIREF)
 	#
 	# elif method == STANDALONE_WSGIREF:

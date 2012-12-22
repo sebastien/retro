@@ -1078,6 +1078,7 @@ class Response:
 		if reason: reason = reason[0]
 		status = "%s %s" % (self.status, self.reason or reason)
 		startResponse(status, self.headers)
+		# SEE: http://wsgi.readthedocs.org/en/latest/specifications/unicode_handling.html 
 		def encode(v):
 			if type(v) == unicode:
 				return v.encode(charset or "UTF-8")
@@ -1089,7 +1090,7 @@ class Response:
 			# as otherwise it will swallow the traceback -- Retro now provides
 			# good error handlers.
 			for c in self.content:
-				yield encode(c)
+				yield encode(c or "")
 		# Otherwise we return a single-shot generator
 		else:
 			yield encode(self.content)

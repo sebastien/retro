@@ -10,12 +10,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 31-Aug-2011
+# Last mod  : 23-Dec-2011
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore or (better), Thor!
-# TODO: Test retro apps with another WSGI server
-# FIXME: Reactor is broken (and probably unnecessary)
 
 import traceback
 
@@ -28,7 +26,7 @@ WSGI servers, which makes it the ideal target for development.
 
 import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 import sys, logging, socket, errno, time
-import traceback, StringIO, threading
+import traceback, StringIO
 import core
 
 # Jython has no signal module
@@ -43,6 +41,20 @@ except:
 # ERROR REPORTING
 #
 # ------------------------------------------------------------------------------
+
+ON_ERROR = []
+
+def error(message):
+	for callback in ON_ERROR:
+		try:
+			callback(message)
+		except:
+			pass
+
+def onError( callback ):
+	global ON_ERROR
+	if callback:
+		ON_ERROR.append(callback)
 
 SERVER_ERROR_CSS = """\
 html, body {
@@ -103,138 +115,251 @@ SERVER_ERROR = """\
 
 # ------------------------------------------------------------------------------
 #
-# WSGI REACTOR
+# HANDLER
 #
 # ------------------------------------------------------------------------------
 
-class WSGIReactorGuard:
-	"""This class is a utility that allows to protect Retro reactor from
-	being accessed by multiple threads at the same time, while also allowing
-	lightweight threads to sleep without blocking the whole application."""
+class Handler:
+	"""The handler takes a retro.Application instance, a method, URI and
+	headers and runs it with a WSGI-like environment. Retro applications are
+	WSGI application that support asynchronous execution by using `Events`
+	and `RendezVous` classes.
 
-class WSGIReactor:
-	"""The Reactor is a thread of execution that has a queue of actions
-	that need to be executed. The actions are dispatched by the WSGI handlers
-	which can be bound to a single threaded or multi-threaded web server.
+	The following features are supported:
 
-	The reactor does not need to be created, and is only useful when dealing
-	with a multi-threaded environment."""
+	- If the application yields/returns a value that has a `close` method,
+	  it will be invoked on the last result.
+	
+	Handlers are automatically pooled in the `AVAILABLE` pool so that to avoid
+	creating to many of them."""
+
+	STARTED        = "STARTED"
+	PROCESSING     = "PROCESSING"
+	WAITING        = "WAITING"
+	ENDED          = "ENDED"
+	ERROR          = "ERROR"
+
+	AVAILABLE      = []
+	CLEANUP_LAST   = 0
+	CLEANUP_PERIOD = 3600
+
+	@classmethod
+	def Get(cls):
+		"""Gets an available handler"""
+		t = time.time()
+		if t - cls.CLEANUP_LAST > cls.CLEANUP_PERIOD:
+			cls.AVAILABLE = filter(lambda _:(t - _[0]) < cls.CLEANUP_PERIOD, cls.AVAILABLE)
+		if cls.AVAILABLE: h = cls.AVAILABLE.pop()[0]
+		else:             h = Handler()
+		return h
 
 	def __init__( self ):
-		self._handlers      = []
-		self._mainthread    = None
-		self._isRunning     = False
-		self.debugMode      = False
+		self.reset()
+	
+	def reset( self ):
+		self.application  = None
+		self.method       = None
+		self.uri          = None
+		self.headers      = None
+		self.headersSent  = False
+		self.env          = None
+		self._response    = None
+		self._state       = None
+		self._rendezvous  = None
+		self._iterator    = None
+		self._onStart     = None
+		self._onWrite     = None
+		self._onFinish    = None
 
-	def register( self, handler, application ):
-		self._handlersLock.acquire()
-		self._handlers.append((handler, application))
-		self._hasHandlersEvent.set()
-		self._handlersLock.release()
-
-	def start( self ):
-		if not self._isRunning:
-			assert self._mainthread is None
-			self._handlersLock     = threading.Lock()
-			self._hasHandlersEvent = threading.Event()
-			self._hasHandlersEvent.clear()
-			self._isRunning   = True
-			self._mainthread  = threading.Thread(target=self.run)
-			self._mainthread.start()
-		return self
-
-	def stop( self ):
-		if self._isRunning:
-			self._hasHandlersEvent.set()
-			self._isRunning = False
-			self._mainthread = None
-
-	def shutdown( self, *args ):
-		self.stop()
-
-	def run( self ):
-		"""The Reactor runs by iterating on each handler, one at a time.
-		Basically, each handler is a response generator and each handler is
-		allowed to produce only one item per round. In other words, handlers are
-		interleaved."""
-		while self._isRunning:
-			self._hasHandlersEvent.wait()
-			# This situation may happen when we shutdown on empty handlers list
-			if not self._handlers:
-				continue
-			self._handlersLock.acquire()
-			handler, application = self._handlers[0]
-			del self._handlers[0]
-			if not self._handlers:
-				self._hasHandlersEvent.clear()
-			self._handlersLock.release()
-			#if self.debugMode:
-				#time.sleep(0.5)
-			# If the handler is done, we simply remove it from the handlers list
-			# If the handler continues, we re-schedule it
-			if handler.next(application) is True:
-				self._handlersLock.acquire()
-				self._handlers.append((handler,application))
-				self._hasHandlersEvent.set()
-				self._handlersLock.release()
-
-
-USE_REACTOR = False
-REACTOR     = None
-ON_SHUTDOWN = []
-ON_ERROR    = []
-
-def shutdown(*args):
-	if REACTOR:
-		REACTOR.shutdown()
-	for callback in ON_SHUTDOWN:
+	def run(self, application, method, uri, headers, onStart=None, onWrite=None, onFinish=None):
+		"""This is the main function that runs a Retro application and
+		produces the response. This does not return anything, and the execution
+		will be asynchronous if a reactor is available and that the useReactor
+		parameter is True (this is the case by default).
+		
+		Note that the same handler can only be used"""
+		self.reset()
+		self._onStart     = onStart
+		self._onFinish    = onFinish
+		self._state       = self.STARTED
+		self.application  = application
+		self.method       = method
+		self.uri          = uri
+		self.headers      = headers
 		try:
-			callback()
-		except:
-			pass
-	sys.exit()
-
-def onShutdown( callback ):
-	global ON_SHUTDOWN
-	if callback:
-		ON_SHUTDOWN.append(callback)
-
-def error(message):
-	for callback in ON_ERROR:
-		try:
-			callback(message)
-		except:
+			while True:
+				yield self.next()
+		except StopIteration, e:
 			pass
 
-def onError( callback ):
-	global ON_ERROR
-	if callback:
-		ON_ERROR.append(callback)
+	def next( self ):
+		"""Iterates through the application, updating the handler's state."""
+		res = False
+		if self._state == self.STARTED:
+			self._processStart()
+			res = True
+		elif self._state == self.PROCESSING:
+			self._processIterate()
+			res = True
+		elif self._state == self.WAITING:
+			raise NotImplementedError
+			# SEE: http://wsgi.readthedocs.org/en/latest/specifications/fdevent.html
+			# Here, we should wait for a rendez-vous to be met or timedout
+			# to continue...
+			# --
+			# if usesReactor():
+			# 	handler = self
+			# 	def resume_on_rdv(*args,**kwargs):
+			# 		handler._state = handler.PROCESSING
+			# 		self.getReactor().register(handler, application)
+			# 	# When the timeout is reached, we just end the request
+			# 	def resume_on_timeout(*args,**kwargs):
+			# 		handler._state = handler.ENDED
+			# 		self._processEnd()
+			# 		return False
+			# 	self._rendezvous.onMeet(resume_on_rdv)
+			# 	self._rendezvous.onTimeout(resume_on_timeout)
+			# If we are in a process/threaded mode, we create an Event object
+			# that will be set to true when the event is met
+			res = False
+		elif self._state != self.ENDED:
+			self._processEnd()
+			res = False
+		return res
 
-def createReactor():
-	global REACTOR
-	REACTOR = WSGIReactor()
-	if HAS_SIGNAL:
-		# Jython does not support all signals, so we only use
-		# the available ones
-		signals = ['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM']
-		for sig in signals:
+	def _processStart( self ):
+		"""First step called in the processing of a request. It creates the
+		WSGI-compatible environment and passes the environment (which
+		describes the request) and the function to output the response the
+		application request handler.
+		
+		The state of the server is set to PROCESSING or ERROR if the request
+		handler fails."""
+		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.uri)
+		script = None
+		if hasattr(self.application, "fromRetro"):
+			script = self.application.app().config("root")
+		# SEE: http://www.python.org/dev/peps/pep-0333/
+		# SEE: http://wsgi.readthedocs.org/en/latest/amendments-1.0.html
+		# SEE: http://wsgi.readthedocs.org/en/latest/proposals-2.0.html
+		self.env = env = {
+			"wsgi.version"       : (1,0)
+			,"wsgi.charset"      : "utf-8"
+			,"wsgi.url_scheme"   : "http"
+			,"wsgi.input"        : None
+			,"wsgi.errors"       : sys.stderr
+			,"wsgi.multithread"  : False
+			,"wsgi.multiprocess" : False
+			,"wsgi.run_once"     : False
+			,"REQUEST_METHOD"    : self.method
+			,"SCRIPT_NAME"       : script
+			,"PATH_INFO"         : path
+			,"QUERY_STRING"      : query
+			,"CONTENT_TYPE"      : self.headers.get("Content-Type",   "")
+			,"CONTENT_LENGTH"    : self.headers.get("Content-Length", "")
+			,"REMOTE_ADDR"       : None
+			,"SERVER_NAME"       : None
+			,"SERVER_PORT"       : None
+			,"SERVER_PROTOCOL"   : None
+		}
+		# We copy the headers in the WSGI
+		# FIXME: This should be optimized
+		for name, value in self.headers.items(): env["HTTP_%s" % name.replace ("-", "_").upper()] = value
+		if self._onStart: self._onStart(self)
+		# Setup the state
+		self.headersSent   = False
+		self._response     = []
+		try:
+			self._iterator = self.application(env, self._startResponse)
+			self._state    = self.PROCESSING
+		except Exception, e:
+			self._iterator  = None
+			self._showError(e)
+			self._state     = self.ERROR
+		return self._state
+
+	def _processIterate(self):
+		"""This iterates through the result iterator returned by the WSGI
+		application."""
+		self._state = self.PROCESSING
+		try:
+			data = self._iterator.next()
+			if isinstance(data, core.RendezVous):
+				self._rendezvous = data
+				self._state      = self.WAITING
+			elif data:
+				self._writeData(data)
+			return self._state
+		except StopIteration:
+			return self._processEnd()
+		except socket.error, socket_err:
+			# Catch common network errors and suppress them
+			if (socket_err.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
+				logging.debug ("Network error caught: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
+				# For common network errors we just return
+				self._state = self.ERROR
+				return False
+		except socket.timeout, socketTimeout:
+			# Socket time-out
+			logging.debug ("Socket timeout")
+			self._state = self.ERROR
+			return False
+		except Exception, e:
+			self._iterator = None
+			# FIXME: We're not capturing the traceback from the generator,
+			# alhought the problem actually happened within it
+			# FIXME: Should use logging, no?
+			print "[!] Exception in stream:", e
+			print traceback.format_exc()
+			self._state = self.ERROR
+
+	def _processEnd( self ):
+		self._state = self.ENDED
+		if not self.headersSent:
+			# If we have an exception here in the socket, we can safely ignore
+			# it, because the client stopped the connection anyway
 			try:
-				signal.signal(getattr(signal,sig),shutdown)
-			except Exception, e:
-				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" % (sig, e))
+				# We must write out something!
+				self._writeData(" ")
+			except:
+				pass
+		self._finish()
+		return self._state
 
-createReactor()
+	def _startResponse (self, response_status, response_headers, exc_info=None):
+		if self.headersSent:
+			raise Exception ("Headers already sent and start_response called again!")
+		# Should really take a copy to avoid changes in the application....
+		self._response = (response_status, response_headers)
+		return self._writeData
 
-def usesReactor():
-	"""Tells wether the reactor is enabled or not."""
-	return USE_REACTOR
+	def _writeData (self, data):
+		if self._onWrite: self._onWrite(handler, data)
 
-def getReactor(autocreate=True):
-	"""Returns the shared reactor instance for this module, creating a new
-	reactor if necessary."""
-	REACTOR.start()
-	return REACTOR
+	def _showError( self, exception=None ):
+		"""Generates a response that contains a formatted error message."""
+		error_msg = StringIO.StringIO()
+		traceback.print_exc(file=error_msg)
+		error_msg = error_msg.getvalue()
+		logging.error (error_msg)
+		if not self.headersSent:
+			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
+		# TODO: Format the response if in debug mode
+		self._state = self.ENDED
+		# This might fail, so we just ignore if it does
+		error_msg = error_msg.replace("<", "&lt;").replace(">", "&gt;")
+		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
+		error(error_msg)
+		self._processEnd()
+
+	def _finish( self ):
+		"""Called when the processing of the request is finished"""
+		# We append the handler to the list of AVAILABLE handlers
+		if hasattr(self._iterator, "close"):
+			self._iterator.close()
+		# We apply reset so as to clear any reference
+		self.reset()
+		self.AVAILABLE.append((self, time.time()))
 
 # ------------------------------------------------------------------------------
 #
@@ -242,7 +367,7 @@ def getReactor(autocreate=True):
 #
 # ------------------------------------------------------------------------------
 
-class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	"""A simple handler class that takes makes a WSGI interface to the
 	default Python HTTP server. 
 	
@@ -256,257 +381,77 @@ class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	two different instances.
 	"""
 
-	class ResponseExpected(Exception):
-		"""This exception occurs when a handler does not returns a Response,
-		which can happen quite often in the beginning."""
-		def __init__( self, handler ):
-			Exception.__init__(self,"""\
-Handler must return a response object: %s
-Use request methods to create a response (request.respond, request.returns, ...)
-"""% ( handler ))
+	# TODO: We should update this to use the reactor
 
-	STARTED    = "Started"
-	PROCESSING = "Processing"
-	WAITING    = "Waiting"
-	ENDED      = "Ended"
-	ERROR      = "Error"
+	def __init__( self, request, client, server ):
+		# NOTE: We need to instanciate the header here first
+		self.handler = None
+		SimpleHTTPServer.SimpleHTTPRequestHandler.__init__(self, request, client, server)
 
-	def logMessage (self, *args):
-		pass
+	# NOTE: These are specializations of SimpleHTTPServer
+	def do_GET    (self): self.run("GET")
+	def do_HEAD   (self): self.run("HEAD")
+	def do_POST   (self): self.run("POST")
+	def do_PUT    (self): self.run("PUT")
+	def do_DELETE (self): self.run("DELETE")
 
-	def logRequest (self, *args):
-		pass
+	def run( self, method ):
+		"""Runs Retro's handler in one shot"""
+		if not self.handler: self.handler = Handler.Get()
+		iterator = self.handler.run(
+			self.server.application,
+			method, self.path, self.headers,
+			self._onStart, self._onWrite, self._onFinish
+		) 
+		for _ in iterator:
+			pass
 
-	def do_GET (self):
-		self.run(self.server.application)
+	def _onStart( self, handler ):
+		"""Updates the WSGI environment of the handler"""
+		# TODO: Should add HTTP/HTTPS detection
+		env                    = handler.env
+		env["command"]         = self.command
+		env["wsgi.input"]      = self.rfile
+		env["REMOTE_ADDR"]     = self.client_address[0]
+		env["REMOTE_ADDR"]     = self.client_address[0]
+		env["SERVER_NAME"]     = self.server.server_address[0]
+		env["SERVER_PORT"]     = str(self.server.server_address[1])
+		env["SERVER_PROTOCOL"] = self.request_version
 
-	def do_HEAD (self):
-		self.run(self.server.application)
+	def _onWrite (self, handler, data):
+		if not handler.headersSent:
+			status, headers = handler.response
+			# Need to send header prior to data
+			code, reason = status.split(" ", 1)
+			success      = False
+			try:
+				self.send_response(int(code), reason)
+				success = True
+			except socket.error, socket_err:
+				logging.debug ("Cannot send response caught: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
+			if success:
+				try:
+					for header, value in headers:
+						self.send_header (header, value)
+				except socket.error, socket_err:
+					logging.debug ("Cannot send headers: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
+			try:
+				self.end_headers()
+				handler.headersSent = True
+			except socket.error, socket_err:
+				logging.debug ("Cannot end headers: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
+		# Send the data
+		try:
+			self.wfile.write (data)
+		except socket.error, socket_err:
+			logging.debug ("Cannot send data: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
 
-	def do_POST (self):
-		self.run(self.server.application)
-
-	def do_PUT (self):
-		self.run(self.server.application)
-
-	def do_DELETE (self):
-		self.run(self.server.application)
-
-	def finish( self ):
-		return
-
-	def _finish( self ):
+	def _onFinish( self, handler=None ):
 		try:
 			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
 		except Exception, e:
 			# This sometimes throws an 'error: [Errno 32] Broken pipe'
 			pass
-
-	def run(self, application, useReactor=True):
-		"""This is the main function that runs a Retro application and
-		produces the response. This does not return anything, and the execution
-		will be asynchronous is a reactor is available and that the useReactor
-		parameter is True (this is the case by default)."""
-		self._state = self.STARTED
-		self._rendezvous = None
-		# When using the reactor, we simply submit the application for
-		# execution (we delegate the execution to the reactor)
-		if usesReactor():
-			getReactor().register(self, application)
-		# Otherwise we iterate on the application (one shot execution)
-		else:
-			while self.next(application): continue
-
-	def nextWithReactor( self, application ):
-		if self.next(application):
-			getReactor().register(self.nextWithReactor, application)
-
-	def next( self, application ):
-		"""This function should be called by the main thread, and allows to
-		process the request step by step (as opposed to one-shot processing).
-		This makes it easier to do streaming."""
-		res = False
-		if self._state == self.STARTED:
-			self._processStart(application)
-			res = True
-		elif self._state == self.PROCESSING:
-			self._processIterate()
-			res = True
-		elif self._state == self.WAITING:
-			# If a reactor is used, we re-schedule the continuation of this
-			# process when the condition/rendez-vous is met
-			if usesReactor():
-				handler = self
-				def resume_on_rdv(*args,**kwargs):
-					handler._state = handler.PROCESSING
-					getReactor().register(handler, application)
-				# When the timeout is reached, we just end the request
-				def resume_on_timeout(*args,**kwargs):
-					handler._state = handler.ENDED
-					self._processEnd()
-					return False
-				self._rendezvous.onMeet(resume_on_rdv)
-				self._rendezvous.onTimeout(resume_on_timeout)
-			# If we are in a process/threaded mode, we create an Event object
-			# that will be set to true when the event is met
-			else:
-				# FIXME: Implement this
-				raise "NOT IMPLEMENTED"
-				pass
-			res = False
-		elif self._state != self.ENDED:
-			self._processEnd()
-			res = False
-		return res
-
-	def _processStart( self, application ):
-		"""First step called in the processing of a request. It creates the
-		WSGI-compatible environment and passes the environment (which
-		describes the request) and the function to output the response the
-		application request handler.
-		
-		The state of the server is set to PROCESSING or ERROR if the request
-		handler fails."""
-		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.path)
-		if not hasattr(application, "fromRetro"):
-			raise Exception("Retro embedded Web server can only work with Retro applications.")
-		script = application.app().config("root")
-		logging.info ("Running application with script name %s path %s" % (script, path))
-		env = {
-			'wsgi.version': (1,0)
-			,'wsgi.url_scheme': 'http'
-			,'wsgi.input': self.rfile
-			,'wsgi.errors': sys.stderr
-			,'wsgi.multithread': 1
-			,'wsgi.multiprocess': 0
-			,'wsgi.run_once': 0
-			,'extra.request': self.raw_requestline
-			,'extra.headers': self.headers.headers
-			,'REQUEST_METHOD': self.command
-			,'SCRIPT_NAME': script
-			,'PATH_INFO': path
-			,'QUERY_STRING': query
-			,'CONTENT_TYPE': self.headers.get ('Content-Type', '')
-			,'CONTENT_LENGTH': self.headers.get ('Content-Length', '')
-			,'REMOTE_ADDR': self.client_address[0]
-			,'SERVER_NAME': self.server.server_address [0]
-			,'SERVER_PORT': str (self.server.server_address [1])
-			,'SERVER_PROTOCOL': self.request_version
-		}
-		for httpHeader, httpValue in self.headers.items():
-			env ['HTTP_%s' % httpHeader.replace ('-', '_').upper()] = httpValue
-		# Setup the state
-		self._sentHeaders = 0
-		self._headers = []
-		try:
-			self._result = application(env, self._startResponse)
-			self._state  = self.PROCESSING
-		except Exception, e:
-			self._result  = None
-			self._showError(e)
-			self._state = self.ERROR
-		return self._state
-
-	def _processIterate(self):
-		"""This iterates through the result iterator returned by the WSGI
-		application."""
-		self._state = self.PROCESSING
-		try:
-			data = self._result.next()
-			if isinstance(data, core.RendezVous):
-				self._rendezvous = data
-				self._state = self.WAITING
-			elif data:
-				self._writeData(data)
-			return self._state
-		except StopIteration:
-			if hasattr(self._result, 'close'):
-				self._result.close()
-			return self._processEnd()
-		except socket.error, socketErr:
-			# Catch common network errors and suppress them
-			if (socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
-				logging.debug ("Network error caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
-				# For common network errors we just return
-				self._state = self.ERROR
-				return False
-		except socket.timeout, socketTimeout:
-			# Socket time-out
-			logging.debug ("Socket timeout")
-			self._state = self.ERROR
-			return False
-		except Exception, e:
-			self._result = None
-			# FIXME: We're not capturing the traceback from the generator,
-			# alhought the problem actually happened within it
-			print "[!] Exception in stream:", e
-			print traceback.format_exc()
-			self._state = self.ERROR
-
-	def _processEnd( self ):
-		self._state = self.ENDED
-		if (not self._sentHeaders):
-			# If we have an exception here in the socket, we can safely ignore
-			# it, because the client stopped the connection anyway
-			try:
-				# We must write out something!
-				self._writeData (" ")
-			except:
-				pass
-		self._finish()
-		return self._state
-
-	def _startResponse (self, response_status, response_headers, exc_info=None):
-		if (self._sentHeaders):
-			raise Exception ("Headers already sent and start_response called again!")
-		# Should really take a copy to avoid changes in the application....
-		self._headers = (response_status, response_headers)
-		return self._writeData
-
-	def _writeData (self, data):
-		if (not self._sentHeaders):
-			status, headers = self._headers
-			# Need to send header prior to data
-			statusCode = status [:status.find (' ')]
-			statusMsg = status [status.find (' ') + 1:]
-			success   = False
-			try:
-				self.send_response (int (statusCode), statusMsg)
-				success = True
-			except socket.error, socketErr:
-				logging.debug ("Cannot send response caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
-			if success:
-				try:
-					for header, value in headers:
-						self.send_header (header, value)
-				except socket.error, socketErr:
-					logging.debug ("Cannot send headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
-			try:
-				self.end_headers()
-				self._sentHeaders = 1
-			except socket.error, socketErr:
-				logging.debug ("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
-		# Send the data
-		try:
-			self.wfile.write (data)
-		except socket.error, socketErr:
-			logging.debug ("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
-
-	def _showError( self, exception=None ):
-		"""Generates a response that contains a formatted error message."""
-		error_msg = StringIO.StringIO()
-		traceback.print_exc(file=error_msg)
-		error_msg = error_msg.getvalue()
-		logging.error (error_msg)
-		if not self._sentHeaders:
-			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
-		# TODO: Format the response if in debug mode
-		self._state = self.ENDED
-		# This might fail, so we just ignore if it does
-		error_msg = error_msg.replace("<", "&lt;").replace(">", "&gt;")
-		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
-		error(error_msg)
-		self._processEnd()
 
 # ------------------------------------------------------------------------------
 #
@@ -522,14 +467,14 @@ Use request methods to create a response (request.respond, request.returns, ...)
 class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 #class WSGIServer (BaseHTTPServer.HTTPServer):
 	"""A simple extension of the base HTTPServer that forwards the handling to
-	the @WSGIHandler defined in this module.
+	the @SimpleWSGIHandler defined in this module.
 	
 	This server is multi-threaded, meaning the the application and its
 	components can be used at the same time by different thread. This allows
 	interleaving of handling of long processes, """
 
 	def __init__ (self, address, application, serveFiles=0):
-		BaseHTTPServer.HTTPServer.__init__ (self, address, WSGIHandler)
+		BaseHTTPServer.HTTPServer.__init__ (self, address, SimpleWSGIHandler)
 		self.application        = application
 		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
