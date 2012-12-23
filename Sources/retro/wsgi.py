@@ -115,11 +115,11 @@ SERVER_ERROR = """\
 
 # ------------------------------------------------------------------------------
 #
-# HANDLER
+# RETRO HANDLER
 #
 # ------------------------------------------------------------------------------
 
-class Handler:
+class RetroHandler:
 	"""The handler takes a retro.Application instance, a method, URI and
 	headers and runs it with a WSGI-like environment. Retro applications are
 	WSGI application that support asynchronous execution by using `Events`
@@ -150,7 +150,7 @@ class Handler:
 		if t - cls.CLEANUP_LAST > cls.CLEANUP_PERIOD:
 			cls.AVAILABLE = filter(lambda _:(t - _[1]) < cls.CLEANUP_PERIOD, cls.AVAILABLE)
 		if cls.AVAILABLE: h = cls.AVAILABLE.pop()[0]
-		else:             h = Handler()
+		else:             h = RetroHandler()
 		return h
 
 	def __init__( self ):
@@ -169,9 +169,8 @@ class Handler:
 		self._iterator    = None
 		self._onStart     = None
 		self._onWrite     = None
-		self._onFinish    = None
 
-	def run(self, application, method, uri, headers, onStart=None, onWrite=None, onFinish=None):
+	def process(self, application, method, uri, headers, onStart=None, onWrite=None):
 		"""This is the main function that runs a Retro application and
 		produces the response. This does not return anything, and the execution
 		will be asynchronous if a reactor is available and that the useReactor
@@ -180,7 +179,6 @@ class Handler:
 		Note that the same handler can only be used"""
 		self.reset()
 		self._onStart     = onStart
-		self._onFinish    = onFinish
 		self._onWrite     = onWrite
 		self._state       = self.STARTED
 		self.application  = application
@@ -411,13 +409,19 @@ class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 	def run( self, method ):
 		"""Runs Retro's handler in one shot"""
-		if not self.handler: self.handler = Handler.Get()
-		iterator = self.handler.run(
+		if not self.handler: self.handler = RetroHandler.Get()
+		iterator = self.handler.process(
 			self.server.application,
 			method, self.path, self.headers,
-			self._onStart, self._onWrite, self._onFinish
+			self._onStart, self._onWrite
 		) 
+		# We run the iterator in a one-shot
 		for _ in iterator:
+			pass
+		try:
+			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
+		except Exception, e:
+			# This sometimes throws an 'error: [Errno 32] Broken pipe'
 			pass
 
 	def _onStart( self, handler ):
@@ -459,13 +463,6 @@ class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 			self.wfile.write (data)
 		except socket.error, socket_err:
 			logging.debug ("Cannot send data: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
-
-	def _onFinish( self, handler=None ):
-		try:
-			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
-		except Exception, e:
-			# This sometimes throws an 'error: [Errno 32] Broken pipe'
-			pass
 
 # ------------------------------------------------------------------------------
 #
