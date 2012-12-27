@@ -364,6 +364,7 @@ class RetroHandler:
 		error(error_msg)
 		self._processEnd()
 
+
 	def _finish( self ):
 		"""Called when the processing of the request is finished"""
 		# We append the handler to the list of AVAILABLE handlers
@@ -423,6 +424,12 @@ class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 		except Exception, e:
 			# This sometimes throws an 'error: [Errno 32] Broken pipe'
 			pass
+
+	def finish( self ):
+		# NOTE: Finish is part of the SimpleHTTPRequestHandler. We
+		# don't implement it as the logic is implemented already
+		# in onWrite
+		pass
 
 	def _onStart( self, handler ):
 		"""Updates the WSGI environment of the handler"""
