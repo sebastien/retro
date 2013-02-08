@@ -32,6 +32,7 @@ NOTHING       = os
 API_CACHE     = FileCache()
 LIBRARY_CACHE = SignatureCache()
 ON_INIT       = []
+METHOD        = STANDALONE
 info          = lambda _:sys.stdout.write(str(_) + "\n")
 
 # -----------------------------------------------------------------------------
@@ -299,9 +300,10 @@ def createApp(config=(APPNAME.lower() + ".conf")):
 	"""Creates the application with given path as config file."""
 	return WebApp(config)
 
-def start( app=None, runCondition=True, method=STANDALONE ):
+def start( app=None, runCondition=True, method=None ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
+	method = method or METHOD
 	if method == STANDALONE:
 		info("Starting Web application")
 	if app is None: app = createApp()
@@ -330,6 +332,6 @@ def application(environ, startReponse):
 	return APPLICATION(environ, startReponse)
 
 if __name__ == "__main__":
-	start(method=STANDALONE)
+	start(method=METHOD)
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

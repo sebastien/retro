@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Dec-2012
+# Last mod  : 08-Feb-2012
 # -----------------------------------------------------------------------------
 
 import sys, os, thread
@@ -47,8 +47,9 @@ DEFAULT_PORT    = 8000
 DEFAULT_ADDRESS = "0.0.0.0"
 FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
-WSGI = "WSGI"
-STANDALONE = "STANDALONE"
+THOR_STANDALONE = "Thor standalone"
+WSGI            = "WSGI"
+STANDALONE      = "STANDALONE"
 
 try:
 	FLUP_FCGIServer = None
@@ -232,6 +233,17 @@ onError=None ):
 				server.handle_request()
 		except KeyboardInterrupt:
 			print "done"
+	elif method == THOR_STANDALONE:
+		import retro.thorhandler
+		server_address = (
+			address or app.config("address") or DEFAULT_ADDRESS,
+			int(port or app.config("port") or DEFAULT_PORT)
+		)
+		stack.fromRetro = True
+		stack.app       = lambda: app
+		server          = retro.thorhandler.ThorServer(server_address, stack)
+		print "Thor HTTP server listening on %s:%s" % (server.host, server.port)
+		server.run()
 	elif method == WSGI:
 		# When using standalone WSGI, we make sure to wrap RendezVous objects
 		# that might be returned by the handlers, and make sure we wait for

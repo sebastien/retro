@@ -596,7 +596,7 @@ class Request:
 	def compression( self ):
 		"""Returns the best accepted compression format for this request"""
 		encodings = self._environ.get("HTTP_ACCEPT_ENCODING") or ""
-		if encodings.find("gzip") != -1:
+		if "gzip" in encodings:
 			return "gzip"
 		else:
 			return None

@@ -121,9 +121,10 @@ SERVER_ERROR = """\
 
 class RetroHandler:
 	"""The handler takes a retro.Application instance, a method, URI and
-	headers and runs it with a WSGI-like environment. Retro applications are
-	WSGI application that support asynchronous execution by using `Events`
-	and `RendezVous` classes.
+	headers and runs it with a WSGI-like environment.
+	
+	Retro applications are WSGI application that support asynchronous execution
+	by using `Events` and `RendezVous` classes.
 
 	The following features are supported:
 
@@ -149,8 +150,12 @@ class RetroHandler:
 		t = time.time()
 		if t - cls.CLEANUP_LAST > cls.CLEANUP_PERIOD:
 			cls.AVAILABLE = filter(lambda _:(t - _[1]) < cls.CLEANUP_PERIOD, cls.AVAILABLE)
-		if cls.AVAILABLE: h = cls.AVAILABLE.pop()[0]
-		else:             h = RetroHandler()
+		if cls.AVAILABLE:
+			print "Returning handler"
+			h = cls.AVAILABLE.pop()[0]
+		else:
+			print "Creating new handler"
+			h = RetroHandler()
 		return h
 
 	def __init__( self ):
@@ -364,7 +369,6 @@ class RetroHandler:
 		error(error_msg)
 		self._processEnd()
 
-
 	def _finish( self ):
 		"""Called when the processing of the request is finished"""
 		# We append the handler to the list of AVAILABLE handlers
@@ -372,6 +376,8 @@ class RetroHandler:
 			self._iterator.close()
 		# We apply reset so as to clear any reference
 		self.reset()
+	
+	def release( self ):
 		self.AVAILABLE.append((self, time.time()))
 
 # ------------------------------------------------------------------------------
@@ -380,7 +386,7 @@ class RetroHandler:
 #
 # ------------------------------------------------------------------------------
 
-class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	"""A simple handler class that takes makes a WSGI interface to the
 	default Python HTTP server. 
 	
@@ -423,12 +429,14 @@ class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
 		except Exception, e:
 			# This sometimes throws an 'error: [Errno 32] Broken pipe'
+			raise e
 			pass
 
 	def finish( self ):
 		# NOTE: Finish is part of the SimpleHTTPRequestHandler. We
 		# don't implement it as the logic is implemented already
 		# in onWrite
+		self.handler.release()
 		pass
 
 	def _onStart( self, handler ):
@@ -485,14 +493,14 @@ class SimpleWSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 #class WSGIServer (BaseHTTPServer.HTTPServer):
 	"""A simple extension of the base HTTPServer that forwards the handling to
-	the @SimpleWSGIHandler defined in this module.
+	the @WSGIHandler defined in this module.
 	
 	This server is multi-threaded, meaning the the application and its
 	components can be used at the same time by different thread. This allows
 	interleaving of handling of long processes, """
 
 	def __init__ (self, address, application, serveFiles=0):
-		BaseHTTPServer.HTTPServer.__init__ (self, address, SimpleWSGIHandler)
+		BaseHTTPServer.HTTPServer.__init__ (self, address, WSGIHandler)
 		self.application        = application
 		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
