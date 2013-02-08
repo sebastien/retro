@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 31-Sep-2012
+# Last mod  : 08-Def-2012
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -80,7 +80,8 @@ LIST_DIR_HTML = """
 # ------------------------------------------------------------------------------
 
 class LocalFiles(Component):
-	"""The 'LocalFiles' component serves local files from the file system."""
+	"""The 'LocalFiles' component serves local files from the file system,
+	providing a directory-listing interface."""
 
 	LIST_DIR = True
 
@@ -244,7 +245,6 @@ class LibraryServer(Component):
 		return self
 
 	def _inCache( self, path ):
-		path = os.path.abspath(path)
 		if self.cache:
 			if isinstance(self.cache, SignatureCache):
 				return self.cache.has(path, SignatureCache.mtime(path))
@@ -254,7 +254,6 @@ class LibraryServer(Component):
 			return False
 
 	def _fromCache( self, path ):
-		path = os.path.abspath(path)
 		assert self.cache
 		if isinstance(self.cache, SignatureCache):
 			return self.cache.get(path, SignatureCache.mtime(path))[1]
@@ -262,7 +261,6 @@ class LibraryServer(Component):
 			return self.cache.get(path)
 
 	def _toCache( self, path, data ):
-		path = os.path.abspath(path)
 		if self.cache:
 			if isinstance(self.cache, SignatureCache):
 				return self.cache.set(path, SignatureCache.mtime(path), data)
@@ -282,51 +280,6 @@ class LibraryServer(Component):
 	def getFonts( self, request, path ):
 		return request.respondFile(os.path.join(self.library, "fonts", path)).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/css/{paths:rest}")
-	def getCSS( self, request, paths ):
-		response_data = ""
-		if not self.cacheAggregates or not self._inCache(paths):
-			result = []
-			for path in paths.split("+"):
-				if not self._inCache(path):
-					data = self.app().load(os.path.join(self.library, "css", path))
-					if self.minify and cssmin:
-						data = cssmin.cssmin(data)
-					self._toCache(path,data)
-				else:
-					data = self._fromCache(path)
-				result.append(data)
-			response_data = "\n".join(result)
-			self._toCache(paths, response_data)
-		else:
-			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/css; charset=utf-8").compress(self.compress).cache(seconds=self.cacheDuration)
-
-	@on(GET="lib/ccss/{paths:rest}")
-	def getCCSS( self, request, paths ):
-		response_data = ""
-		if not self.cacheAggregates or not self._inCache(paths):
-			result = []
-			for path in paths.split("+"):
-				root = self.library
-				if os.path.exists(os.path.join(root, "ccss", path)):
-					path = os.path.join(root, "ccss", path)
-				else:
-					path = os.path.join(root, "css", path)
-				if not self._inCache(path):
-					data = self.app().load(path)
-					data = clevercss.convert(data)
-					if self.minify and cssmin: data = cssmin.cssmin(data)
-					self._toCache(path, data)
-				else:
-					data = self._fromCache(path)
-				result.append(data)
-			response_data = "\n".join(result)
-			self._toCache(paths, response_data)
-		else:
-			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/css; charset=utf-8").compress(self.compress).cache(seconds=self.cacheDuration)
-
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
 		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg"))).cache(seconds=self.cacheDuration)
@@ -339,62 +292,86 @@ class LibraryServer(Component):
 	def getPDF( self, request, script ):
 		return request.respondFile(os.path.join(self.library, "pdf", script)).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/js/{paths:rest}")
-	@on(GET="lib/sjs/{paths:rest}")
-	def getJavaScript( self, request, paths ):
-		response_data = ""
-		if not self.cacheAggregates or not self._inCache(paths):
+	@on(GET="lib/css/{paths:rest}")
+	def getCSS( self, request, paths ):
+		return self._getFromLibrary(request, "css", paths, "text/css; charset=utf-8")
+
+	@on(GET="lib/ccss/{paths:rest}")
+	def getCCSS( self, request, paths ):
+		return self._getFromLibrary(request, "ccss", paths, "text/css; charset=utf-8")
+
+	@on(GET="lib/{prefix:(js|sjs)}/{paths:rest}")
+	def getJavaScript( self, request, prefix, paths ):
+		return self._getFromLibrary(request, prefix, paths, "text/javascript; charset=utf-8")
+
+	def _getFromLibrary( self, request, prefix, paths, contentType ):
+		"""Gets the `+` separated list of files given in `paths`, relative to
+		this library's `root` and `prefix`, returning a concatenated result of
+		the given contentType."""
+		cache_path = prefix + paths
+		if not self.cacheAggregates or not self._inCache(cache_path) or cache_path.find("+") == -1:
 			result = []
-			# File names are expected to be separated by `+`
 			for path in paths.split("+"):
-				# Gets the .sjs or the .js
-				if os.path.exists(os.path.join(self.library, "sjs", path)):
-					path = os.path.abspath(os.path.join(self.library, "sjs", path))
+				root = self.library
+				path = os.path.join(root, prefix, path)
+				if not self._inCache(path):
+					data = self._processPath(path)
+					self._toCache(path, data)
 				else:
-					path = os.path.abspath(os.path.join(self.library, "js", path))
-				# If the path is not within the library path, :  someone is trying to hack our server
-				# and access files outside of the path. In this case, we just
-				# return false
-				if not path.startswith(os.path.abspath(self.library)):
-					return request.returns(False)
-				# Is this a Sugar/JavaScript file?
-				if path.endswith(".sjs"):
-					path = path.replace("/js", "/sjs")
-					data = None
-					if not self._inCache(path):
-						data    = ""
-						tries   = 0
-						# NOTE: For some reason, sugar sometimes fails, so we add a
-						# number of retries so that we increase the "chances" of the
-						# file to be properly loaded
-						while (not data) and tries < 3:
-							command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
-							cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-							data    = cmd.stdout.read()
-							tries  += 1
-							cmd.wait()
-						if data:
-							if self.minify and jsmin: data = jsmin.jsmin(data)
-							self._toCache(path, data)
-							result.append(data)
-					else:
-						data = self._fromCache(path)
-						result.append(data)
-				# Otherwise it's just a regular file
-				else:
-					if not self._inCache(path):
-						data = self.app().load(path)
-						if self.minify and jsmin: data = jsmin.jsmin(data)
-						self._toCache(path, data)
-						result.append(data)
-					else:
-						data = self._fromCache(path)
-						result.append(data)
+					data = self._fromCache(path)
+				result.append(data)
 			response_data = "\n".join(result)
-			self._toCache(paths, response_data)
+			self._toCache(cache_path, response_data)
 		else:
-			response_data = self._fromCache(paths)
-		return request.respond(response_data, contentType="text/javascript; charset=utf-8").compress(self.compress).cache(seconds=self.cacheDuration)
+			response_data = self._fromCache(cache_path)
+		return request.respond(response_data, contentType=contentType).compress(self.compress).cache(seconds=self.cacheDuration)
+
+	def _processPath( self, path ):
+		"""Processes the file at the given path using on of the dedicated
+		file processor."""
+		if   path.endswith(".sjs"):  return self._processSJS(path)
+		elif path.endswith(".js"):   return self._processJS(path)
+		elif path.endswith(".ccss"): return self._processCCSS(path)
+		elif path.endswith(".css"):  return self._processCSS(path)
+		else: raise Exception("Format not supported: " + path)
+
+	def _processCSS( self, path ):
+		"""Processes a CSS file, minifyiing it if `cssmin` is installed."""
+		data = self.app().load(path)
+		if self.minify and cssmin: data = cssmin.cssmin(data)
+		return data
+
+	def _processCCSS( self, path ):
+		"""Processes a CCSS file, minifying it if `cssmin` is installed.
+		Requires `clevercss`"""
+		data = self.app().load(path)
+		data = clevercss.convert(data)
+		if self.minify and cssmin: data = cssmin.cssmin(data)
+		return data
+
+	def _processSJS( self, path ):
+		"""Processes a Sugar JS file, minifying it if `jsmin` is installed.
+		Requires `sugar`"""
+		data    = ""
+		tries   = 0
+		# NOTE: For some reason, sugar sometimes fails, so we add a
+		# number of retries so that we increase the "chances" of the
+		# file to be properly loaded
+		while (not data) and tries < 3:
+			command = "%s -cljs %s %s" % (self.commands["sugar"], "-L%s" % (self.library + "/sjs"), path)
+			cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+			data    = cmd.stdout.read()
+			tries  += 1
+			cmd.wait()
+		if data:
+			if self.minify and jsmin: data = jsmin.jsmin(data)
+		return data
+
+	def _processJS( self, path ):
+		"""Processes a JS file, minifying it if `jsmin` is installed."""
+		data = self.app().load(path)
+		if self.minify and jsmin: data = jsmin.jsmin(data)
+		return data
 
 	def _guessPath( self, parent, filename, extensions ):
 		"""Tries to locate the file with the given `filename` in the `parent` directory of this

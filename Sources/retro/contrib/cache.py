@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 18-Jul-2012
+# Last mod  : 01-Feb-2013
 # -----------------------------------------------------------------------------
 
 import os, stat, hashlib, threading, urllib, pickle, time
