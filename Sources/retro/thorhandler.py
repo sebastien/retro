@@ -11,7 +11,6 @@
 import thor, thor.http
 import os, imp, urlparse, sys, tempfile, logging
 from   retro.wsgi import RetroHandler
-import ipdb
 
 # -----------------------------------------------------------------------------
 #

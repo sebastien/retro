@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 17-Dec-2012
+# Last mod  : 08-Feb-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime
@@ -15,7 +15,6 @@ from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
 from retro.contrib.cache      import FileCache, SignatureCache
-
 
 __doc__ = """
 A set of classes and functions that can be used as a basic building block for

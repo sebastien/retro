@@ -10,10 +10,8 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 23-Dec-2011
+# Last mod  : 08-Feb-2013
 # -----------------------------------------------------------------------------
-
-# TODO: Use AsynCore or (better), Thor!
 
 import traceback
 
@@ -151,10 +149,8 @@ class RetroHandler:
 		if t - cls.CLEANUP_LAST > cls.CLEANUP_PERIOD:
 			cls.AVAILABLE = filter(lambda _:(t - _[1]) < cls.CLEANUP_PERIOD, cls.AVAILABLE)
 		if cls.AVAILABLE:
-			print "Returning handler"
 			h = cls.AVAILABLE.pop()[0]
 		else:
-			print "Creating new handler"
 			h = RetroHandler()
 		return h
 
