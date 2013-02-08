@@ -317,9 +317,6 @@ def start( app=None, runCondition=True, method=STANDALONE ):
 			app          = app,
 			name         = name,
 			method       = method,
-			sessions     = False,
-			# FIXME: withReactor doesn't work!!
-			withReactor  = False,
 		)
 
 # This is wrapper to make the module GUnicorn-compatible
