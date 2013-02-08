@@ -270,7 +270,12 @@ class WebApp( Application ):
 		)
 		is_production = self.isProduction = (self.config("devmode")!=1)
 		if not is_production:
-			import ipdb
+			# On development, we try to import ipdb. If this doesn't work, it's OK
+			# as it is merely a nice to have
+			try:
+				import ipdb
+			except ImportError, e:
+				pass
 		for d in (self.config("cache.path"), self.config("data.path"), self.config("cache.api.path")):
 			if not os.path.isdir(d):
 				os.makedirs(d)
