@@ -27,6 +27,34 @@ import sys, logging, socket, errno, time
 import traceback, StringIO
 import core
 
+# FIXME: ERRORS seen with  ab -n 9000 -c 500 http://localhost:8080/
+# [!] Exception in stream: Headers already sent and start_response called again!
+# Traceback (most recent call last):
+#   File "/home/sebastien/Projects/Private/FFctn-2.0/Webapp/Distribution/Library/py/retro/wsgi.py", line 299, in _processIterate
+#     data = self._iterator.next()
+#   File "/home/sebastien/Projects/Private/FFctn-2.0/Webapp/Distribution/Library/py/retro/core.py", line 1080, in asWSGI
+#     startResponse(status, self.headers)
+#   File "/home/sebastien/Projects/Private/FFctn-2.0/Webapp/Distribution/Library/py/retro/wsgi.py", line 344, in _startResponse
+#     raise Exception ("Headers already sent and start_response called again!")
+# ---
+# [!] Exception in stream: 'NoneType' object has no attribute 'sendall'
+# Traceback (most recent call last):
+#   File "/home/sebastien/Projects/Private/FFctn-2.0/Webapp/Distribution/Library/py/retro/wsgi.py", line 304, in _processIterate
+#     self._writeData(data)
+#   File "/home/sebastien/Projects/Private/FFctn-2.0/Webapp/Distribution/Library/py/retro/wsgi.py", line 350, in _writeData
+#     if self._onWrite: self._onWrite(self, data)
+#   File "/home/sebastien/Projects/Private/FFctn-2.0/Webapp/Distribution/Library/py/retro/wsgi.py", line 468, in _onWrite
+#     self.end_headers()
+#   File "/usr/lib/python2.7/BaseHTTPServer.py", line 412, in end_headers
+#     self.wfile.write("\r\n")
+#   File "/usr/lib/python2.7/socket.py", line 324, in write
+#     self.flush()
+#   File "/usr/lib/python2.7/socket.py", line 303, in flush
+#     self._sock.sendall(view[write_offset:write_offset+buffer_size])
+# AttributeError: 'NoneType' object has no attribute 'sendall'
+# Exception: Headers already sent and start_response called again!
+
+# 
 # Jython has no signal module
 try:
 	import signal
