@@ -303,9 +303,13 @@ class Dispatcher:
 		if isStart:
 			q = expression.rfind("?")
 			if q != -1:
-				query      = expression[q+1:]
-				expression = expression[:q]
-				if query: params = query.strip()[1:-1].split(":")[0]
+				open_bracket_before  = expression.rfind("{", 0, q)
+				close_bracket_before = expression.rfind("}", 0, q)
+				# We want to make sure we're not in a {} block
+				if not (open_bracket_before >= 0 and close_bracket_before < open_bracket_before):
+					query      = expression[q+1:]
+					expression = expression[:q]
+					if query: params = query.strip()[1:-1].split(":")[0]
 		while expression:
 			var_group = expression.find("{")
 			opt_group = expression.find("[")
@@ -314,7 +318,7 @@ class Dispatcher:
 				result += escape(expression[:var_group])
 				end_group = expression.find("}")
 				if end_group == -1: raise DispatcherSyntaxError("Unclosed variable block")
-				# The variable group is like {name} or {name:type}
+				# The variable group is like {name} or {name:type} or {:regexp}
 				variable  = expression[var_group+1:end_group].split(":")
 				if len(variable) == 1:
 					var_name = variable[0]
@@ -322,12 +326,14 @@ class Dispatcher:
 				elif len(variable) == 2:
 					var_name = variable[0]
 					var_type = variable[1]
-				else:
-					raise DispatcherSyntaxError("Variable syntax is {name} or {name:type}, got " + expression[var_group+1:end_group])
 				# We warn of unsupported variable type
 				if not var_type.lower() in self.patterns.keys():
-					result += "(?P<%s>%s)" % (var_name, var_type)
-					convert[var_name] = lambda x: x
+					if var_name:
+						result += "(?P<%s>%s)" % (var_name, var_type)
+						convert[var_name] = lambda x: x
+					else:
+						# This is a regexp
+						result += "(%s)" % (var_type)
 				else:
 					# We generate the expression
 					result += "(?P<%s>%s)" % (var_name, self.patterns[var_type.lower()][0])
