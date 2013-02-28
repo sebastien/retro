@@ -350,8 +350,7 @@ class RetroHandler:
 			# FIXME: We're not capturing the traceback from the generator,
 			# alhought the problem actually happened within it
 			# FIXME: Should use logging, no?
-			print "[!] Exception in stream:", e
-			print traceback.format_exc()
+			logging.error("[!] Exception in stream: {0}\n{1}".format(e,traceback.format_exc()))
 			self._state = self.ERROR
 
 	def _processEnd( self ):
@@ -503,6 +502,11 @@ class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 		except socket.error, socket_err:
 			logging.debug ("Cannot send data: (%s) %s" % (str (socket_err.args[0]), socket_err.args[1]))
 
+	def log_message(self, format, *args):
+		# SEE: BaseHTTPServer.BaseHTTPRequestHandler.log_message
+		msg = format % args
+		logging.info("%s - - [%s] %s\n" % (self.client_address[0], self.log_date_time_string(), msg))
+
 # ------------------------------------------------------------------------------
 #
 # WSGI SERVER
@@ -537,10 +541,10 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		exception = traceback.format_exc()
 		last_error = exception.rsplit("\n", 2)[-2]
 		if   last_error == "AttributeError: 'NoneType' object has no attribute 'recv'":
-			print "[-] Connection closed by client %s:%s" % (client_address[0], client_address[1])
+			logging.error("Connection closed by client %s:%s" % (client_address[0], client_address[1]))
 		elif last_error.startswith("error: [Errno 32]"):
-			print "[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1])
+			logging.error("Connection interrupted by client %s:%s" % (client_address[0], client_address[1]))
 		else:
-			print "[-] Unsupported exception:", exception
+			logging.error("Unsupported exception: {0}".format(exception))
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
