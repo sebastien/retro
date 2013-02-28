@@ -368,8 +368,8 @@ class FileCache(Cache):
 	def setPath( self, path ):
 		path = path or "."
 		if len(path) > 1 and path[-1] == "/": path = path[:-1]
-		assert os.path.exists(path)
-		assert os.path.isdir(path)
+		assert os.path.exists(path), "Cache path does not exist: {0}".format(path)
+		assert os.path.isdir(path),  "Cache path is not a directory: {0}".format(path)
 		self.path = path
 
 	def has( self, key ):

@@ -260,6 +260,12 @@ class Dispatcher:
 		'lang'   : (r"((\w\w)/)?", lambda x: x[:-1]),
 	}
 
+	@staticmethod
+	def EnableLog():
+		global LOG_DISPATCHER_ON
+		LOG_DISPATCHER_ON = True
+		return LOG_DISPATCHER_ON
+
 	def __init__( self, app ):
 		"""Creates a new Dispatcher instance. The @_handlers attribute stores
 		couple of (regexp, http_handlers)."""
