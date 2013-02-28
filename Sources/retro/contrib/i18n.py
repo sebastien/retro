@@ -16,6 +16,7 @@ A set of classes of functions to detect languages and manage translations.
 
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
+LOCALIZE_SKIP    = []
 
 def guessLanguage( request ):
 	"""Detects the language code associated with the given browser, either
@@ -46,6 +47,10 @@ def localize(handler):
 	@functools.wraps(handler)
 	def wrapper(inst, request, lang, *args, **kwargs):
 		if not lang:
+			path = request.path()
+			for skip in LOCALIZE_SKIP:
+				if path.startswith(skip):
+					return handler(inst, request, lang, *args, **kwargs)
 			lang = guessLanguage(request)
 			# Once guessed, set language for next requests
 			request.cookie(COOKIE_LANGUAGE,lang)
