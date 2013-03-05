@@ -261,9 +261,9 @@ class Dispatcher:
 	}
 
 	@staticmethod
-	def EnableLog():
+	def EnableLog(value=True):
 		global LOG_DISPATCHER_ON
-		LOG_DISPATCHER_ON = True
+		LOG_DISPATCHER_ON = value
 		return LOG_DISPATCHER_ON
 
 	def __init__( self, app ):
@@ -401,7 +401,7 @@ class Dispatcher:
 			if not ex or ex[0] != "/": ex = "/" + ex
 			ex = prefix + ex
 			if LOG_DISPATCHER_ON:
-				log("Dispatcher: @on", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
+				log("Dispatcher:", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
 			self._routesInfo.append((handlers.keys(), ex))
 			regexp_txt, converters, params = self._parseExpression(ex)
 			# log("Dispatcher: regexp=", repr(regexp_txt))
