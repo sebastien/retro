@@ -284,11 +284,11 @@ class LibraryServer(Component):
 	def getImage( self, request, image ):
 		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg"))).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/swf/{script:\w+\.swf}")
+	@on(GET="lib/swf/{script:[^/]+\.swf}")
 	def getFlash( self, request, script ):
 		return request.respondFile(os.path.join(self.library, "swf", script)).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/pdf/{script:[\w\-_\.]+\.pdf}")
+	@on(GET="lib/pdf/{script:[^/]+\.pdf}")
 	def getPDF( self, request, script ):
 		return request.respondFile(os.path.join(self.library, "pdf", script)).cache(seconds=self.cacheDuration)
 
