@@ -5,10 +5,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 17-Dec-2012
+# Last mod  : 05-Mar-2013
 # -----------------------------------------------------------------------------
 
-import re, functools
+import re, functools, logging
+from   retro.core import Request
 
 __doc__ = """
 A set of classes of functions to detect languages and manage translations.
@@ -17,6 +18,20 @@ A set of classes of functions to detect languages and manage translations.
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
 LOCALIZE_SKIP    = []
+STRINGS          = {}
+
+def T(text, lang=None ):
+	# FIXME: Use Translations instead
+	if lang is None: lang = DEFAULT_LANGUAGE
+	if isinstance(lang, Request): lang = guessLanguage(request)
+	if not STRINGS.has_key(text): STRINGS.setdefault(text, {})
+	if STRINGS[text].has_key(lang):
+		return STRINGS[text][lang]
+	elif lang == DEFAULT_LANGUAGE:
+		return text
+	else:
+		logging.error("Missing {0} translation for string: {1}".format(lang, repr(text)))
+		return text
 
 def guessLanguage( request ):
 	"""Detects the language code associated with the given browser, either
