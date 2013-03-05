@@ -6,16 +6,39 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 01-Feb-2013
+# Last mod  : 05-Mar-2013
 # -----------------------------------------------------------------------------
 
-import os, stat, hashlib, threading, urllib, pickle, time
+import os, stat, hashlib, threading, urllib, pickle, time, functools
+from   retro.web import cache_id, cache_signature
 
 class CacheError(Exception):
 	pass
 
 class CacheMiss(Exception):
 	pass
+
+def cached( store, prefix=None ):
+	"""A generic decorator that can be used to cache any function."""
+	def decorator( f ):
+		def wrapper( *args, **kwargs ):
+			key      = f.func_name
+			base_key = ",".join(map(cache_id, args))
+			rest_key = ",".join(map(lambda kv:kv[0] + "=" + kv[1], map(cache_id, kwargs.items())))
+			key      += "(" + (",".join((base_key, rest_key))) + ")"
+			if prefix: key = prefix + ":" + key
+			if store.enabled:
+				if store.has(key):
+					return store.get(key)
+				else:
+					result = f(*args, **kwargs)
+					store.set(key, result)
+					return result
+			else:
+				return f(*args, **kwargs)
+		functools.update_wrapper(wrapper, f)
+		return wrapper
+	return decorator
 
 # -----------------------------------------------------------------------------
 #
