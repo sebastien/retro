@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 17-Dec-2012
+# Last mod  : 05-Mar-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime
@@ -201,34 +201,65 @@ class PageServer(Component):
 		response = request.respond(page)
 		return response
 
-	def loadTemplate( self, name, raw=False ):
+	def loadTemplate( self, name, raw=False, type="paml" ):
 		"""Loads the template with the given name. By default, this will look into
-		the `${library.path}/paml` configuration path, parse the file as Pamela markup
+		the `${library.path}/<type>` configuration path, parse the file as Pamela markup
 		and return it as a `templating.Template` instance. If you do not wish to use these
 		two modules, simply override this method and return an object that has an
 		`apply(properties:dict, lang:str):str` method to fill the templates with the 
 		given properties in the given language.
 		"""
-		if self.app().config("devmode"):
-			import pamela.engine
-			parser = pamela.engine.Parser()
-			path   = os.path.join(self.app().config("library.path"), "paml", name + ".paml")
-			text   = None
-			with file(path, "r") as f: text   = f.read()
-			text   = parser.parseString(text, path)
+		if type == "paml":
+			return self.loadPAMLTemplate(name, raw)
 		else:
-			key = name + ":raw"
+			return self.loadPlainTemplate(name, raw, type)
+	
+	def loadPlainTemplate( self, name, raw=False, type="html", ext=None  ):
+		ext = ext or ("." + type)
+		if self.app().config("devmode"):
+			path   = os.path.join(self.app().config("library.path"), type, name + ext)
+			text   = None
+			with file(path, "r") as f: text = f.read()
+			# NOTE: We do not cache templates in dev mode
+			if raw:
+				return text
+			else:
+				import templating
+				return templating.Template(text)
+		else:
+			key = type + ":" + name + ":raw"
 			if not self._templates.has_key(key):
 				path   = os.path.join(self.app().config("library.path"), "html", name + ".html")
 				text   = None
 				with file(path, "r") as f: text   = f.read()
 				self._templates[key] = text
 			text = self._templates[key]
-		if raw:
-			return text
-		else:
+			if raw:
+				return text
+			else:
+				key = type + ":" + name
+				if not self._templates.has_key(key):
+					import templating
+					result = templating.Template(text)
+					self._templates[key] = result
+					return result
+				else:
+					return self._templates[key]
+
+	def loadPAMLTemplate( self, name, raw=False ):
+		"""Paml templates are converted to HTML templates in production,
+		so we only do the PAML conversion in dev mode"""
+		if self.app().config("devmode"):
+			import pamela.engine
+			parser = pamela.engine.Parser()
+			path   = os.path.join(self.app().config("library.path"), "paml", name + ".paml")
+			text   = self.loadPlainTemplate(name, True, "paml")
+			text   = parser.parseString(text, path)
+			# NOTE: We do not cache templates in dev mode
 			import templating
 			return templating.Template(text)
+		else:
+			return self.loadPlainTemplate(name, raw, "html")
 
 # -----------------------------------------------------------------------------
 #
@@ -315,6 +346,7 @@ def start( app=None, runCondition=True, method=STANDALONE ):
 	if method == STANDALONE:
 		info(app.config())
 		info(app.info())
+		Dispatcher.EnableLog()
 	if not lib_python_path in sys.path:
 		sys.path.insert(0, lib_python_path)
 	else:
