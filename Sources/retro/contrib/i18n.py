@@ -23,7 +23,7 @@ STRINGS          = {}
 def T(text, lang=None ):
 	# FIXME: Use Translations instead
 	if lang is None: lang = DEFAULT_LANGUAGE
-	if isinstance(lang, Request): lang = guessLanguage(request)
+	if isinstance(lang, Request): lang = guessLanguage(lang)
 	if not STRINGS.has_key(text): STRINGS.setdefault(text, {})
 	if STRINGS[text].has_key(lang):
 		return STRINGS[text][lang]
@@ -60,7 +60,7 @@ def localize(handler):
 	You should use this decorator after the `@on` and `@expose`.
 	"""
 	@functools.wraps(handler)
-	def wrapper(inst, request, lang, *args, **kwargs):
+	def retro_i18n_localize_wrapper(inst, request, lang, *args, **kwargs):
 		if not lang:
 			path = request.path()
 			for skip in LOCALIZE_SKIP:
@@ -71,7 +71,7 @@ def localize(handler):
 			request.cookie(COOKIE_LANGUAGE,lang)
 			return request.redirect("/" + lang + request.path())
 		return handler(inst, request, lang, *args, **kwargs)
-	return wrapper
+	return retro_i18n_localize_wrapper
 
 # -----------------------------------------------------------------------------
 #
