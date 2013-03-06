@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 05-Mar-2013
+# Last mod  : 06-Mar-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime
@@ -15,7 +15,6 @@ from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
 from retro.contrib.cache      import FileCache, SignatureCache
-
 
 __doc__ = """
 A set of classes and functions that can be used as a basic building block for
@@ -135,7 +134,7 @@ class PageServer(Component):
 	@on(GET=("{lang:lang}", "/{lang:lang}"), priority=-9)
 	@on(GET=("/{lang:lang}{template:rest}"), priority=-10)
 	@localize
-	def page( self, request, lang=NOTHING, template="index" ):
+	def page( self, request, lang=NOTHING, template="index", templateType=None ):
 		"""Renders the given `template` in the given `lang`. Templates
 		are located in `templates.path`"""
 		properties = {}
@@ -147,7 +146,7 @@ class PageServer(Component):
 			meta["description"] = Translations.Get("site_description", lang)
 			meta["keywords"]    = Translations.Get("site_keywords",    lang)
 			properties["meta"]  = meta
-		return self.render(request, template, guessLanguage(request), properties=properties)
+		return self.render(request, template, guessLanguage(request), properties=properties, templateType=templateType)
 
 	@on(GET=("/favicon.ico"), priority=2)
 	def favicon(self, request):
@@ -166,7 +165,7 @@ class PageServer(Component):
 			res.update(d)
 		return res
 
-	def render( self, request, template, language=None, properties=None, storable=NOTHING, **options ):
+	def render( self, request, template, language=None, properties=None, storable=NOTHING, templateType=None, **options ):
 		"""Renders a given page `template`, merging the giving `properties`
 		in the template environment, and optionally serializing the given 
 		`storable` so that it becomes available as JSON"""
@@ -193,7 +192,7 @@ class PageServer(Component):
 		)
 		context  = self.merge(context, properties)
 		if self.app().config("devmode") or not self._templates.has_key(template):
-			tmpl = self.loadTemplate(template)
+			tmpl = self.loadTemplate(template, type=templateType)
 			self._templates[template] = tmpl
 		else:
 			tmpl = self._templates[template]
@@ -201,7 +200,7 @@ class PageServer(Component):
 		response = request.respond(page)
 		return response
 
-	def loadTemplate( self, name, raw=False, type="paml" ):
+	def loadTemplate( self, name, raw=False, type=None ):
 		"""Loads the template with the given name. By default, this will look into
 		the `${library.path}/<type>` configuration path, parse the file as Pamela markup
 		and return it as a `templating.Template` instance. If you do not wish to use these
@@ -209,7 +208,7 @@ class PageServer(Component):
 		`apply(properties:dict, lang:str):str` method to fill the templates with the 
 		given properties in the given language.
 		"""
-		if type == "paml":
+		if type == "paml" or not type:
 			return self.loadPAMLTemplate(name, raw)
 		else:
 			return self.loadPlainTemplate(name, raw, type)
