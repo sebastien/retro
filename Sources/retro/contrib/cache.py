@@ -9,8 +9,9 @@
 # Last mod  : 05-Mar-2013
 # -----------------------------------------------------------------------------
 
-import os, stat, hashlib, threading, urllib, pickle, time, functools
+import re, os, stat, hashlib, threading, urllib, pickle, time, functools
 from   retro.web import cache_id, cache_signature
+RE_FILE_ESCAPE = re.compile("[\:\<\>/\(\)\[\]\{\}\$\~]|\.\.")
 
 class CacheError(Exception):
 	pass
@@ -346,21 +347,28 @@ class FileCache(Cache):
 
 	EXTENSION = ".cache"
 	EXPIRES   = 60 * 60
+	MAX_KEY_LENGTH = 100
 
-	# FIXME: Should split paths when they exceed the file name limit (256 bytes)
 	@staticmethod
 	def SHA1_KEY(_):return hashlib.sha1(_).hexdigest()
+
 	@staticmethod
 	def MD5_KEY (_):return hashlib.md5(_).hexdigest()
+
 	@classmethod
 	def NAME_KEY(self,key):
-		max_length = 100 - len(self.EXTENSION)
-		key = urllib.urlencode(dict(_=key))[2:]
-		if len(key) >= max_length:
+		max_length = self.MAX_KEY_LENGTH - len(self.EXTENSION)
+		name       = urllib.urlencode(dict(_=key))[2:]
+		name_len   = len(name)
+		if name_len >= max_length:
 			suffix = hashlib.md5(key).hexdigest()
-			key    = key[:max_length - (len(suffix) + 2)] + "-" + suffix
-		assert len(key) < max_length, "Key is too long %d > %d" % (len(key), max_length)
-		return key
+			name   = name[:max_length - (len(suffix) + 1)]
+			name  += "-" + suffix
+		if not (len(name) <= max_length):
+			import ipdb
+			ipdb.set_trace()
+		assert len(name) <= max_length, "Key is too long %d > %d, key=%s" % (len(name), max_length, repr(key))
+		return name
 
 	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None):
 		Cache.__init__(self)
@@ -371,6 +379,10 @@ class FileCache(Cache):
 		self.enabled      = True
 		if expires != None:self.EXPIRES = expires
 	
+	def expire( self, value ):
+		self.EXPIRES = value
+		return self
+
 	def noExpire( self ):
 		"""Disables cache expiration."""
 		self.EXPIRES = 0
