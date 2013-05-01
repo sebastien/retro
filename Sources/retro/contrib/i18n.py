@@ -17,7 +17,7 @@ A set of classes of functions to detect languages and manage translations.
 
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
-LOCALIZE_SKIP    = []
+LOCALIZE_SKIP    = ["lib","api"]
 STRINGS          = {}
 
 def T(text, lang=None ):

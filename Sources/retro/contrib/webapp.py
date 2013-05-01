@@ -6,15 +6,28 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 06-Mar-2013
+# Last mod  : 29-Mar-2013
 # -----------------------------------------------------------------------------
 
-import os, time, sys, datetime
+import os, time, sys, datetime, glob
 from retro                    import *
 from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
 from retro.contrib.cache      import FileCache, SignatureCache
+
+try:
+	import templating
+	templating.FORMATTERS["json"]       = asJSON
+	templating.FORMATTERS["primitive"]  = asPrimitive
+	templating.FORMATTERS["escapeHTML"] = escapeHTML
+except ImportError, e:
+	pass
+
+try:
+	import wwwclient
+except ImportError, e:
+	pass
 
 __doc__ = """
 A set of classes and functions that can be used as a basic building block for
@@ -116,6 +129,7 @@ class PageServer(Component):
 	def start( self ):
 		self.DEFAULTS["version"] = self.app().config("version") or self.DEFAULTS.get("version")
 		self.DEFAULTS["build"]   = self.app().config("build")
+		self.DEFAULTS["prefix"]  = self.app().config("prefix")
 
 	# -------------------------------------------------------------------------
 	# MAIN PAGES
@@ -126,6 +140,19 @@ class PageServer(Component):
 		implemented by subclasses."""
 		raise NotImplementedError
 
+	def listLinks( self ):
+		"""Lists the links defined in the base templates"""
+		if not wwwclient:
+			raise Exception("wwwclient is required")
+		else:
+			path  =  os.path.join(self.app().config("library.path"))
+			links = []
+			for ext in ("paml", "html"):
+				for tmpl_path in glob.glob(path + "/*/*." + ext):
+					tmpl = self.loadTemplate(os.path.basename(tmpl_path).split(".")[0], ext)
+					text = self._applyTemplate(tmpl)
+					links.extend((_[1] for _ in wwwclient.HTML.links(text)))
+			return links
 
 	# -------------------------------------------------------------------------
 	# MAIN PAGES
@@ -182,11 +209,10 @@ class PageServer(Component):
 		context = dict(
 			page        = template,
 			title       = template,
-			prefix      = self.app().config("prefix"),
 			language    = language,
 			isConnected = user and "true" or "false",
-			user        = asJSON(user, target="template").replace('"',  "&quot;"),
-			object      = asJSON(storable, **options).replace('"',  "&quot;"),
+			user        = asPrimitive(user, target="template"),
+			object      = asPrimitive(storable, **options),
 			cachebuster = time.time(),
 			currentUrl  = request.path()
 		)
@@ -196,7 +222,7 @@ class PageServer(Component):
 			self._templates[template] = tmpl
 		else:
 			tmpl = self._templates[template]
-		page     = tmpl.apply(context, language)
+		page = self._applyTemplate(tmpl, context, language)
 		response = request.respond(page)
 		return response
 
@@ -223,8 +249,7 @@ class PageServer(Component):
 			if raw:
 				return text
 			else:
-				import templating
-				return templating.Template(text)
+				return self._createTemplate(text)
 		else:
 			key = type + ":" + name + ":raw"
 			if not self._templates.has_key(key):
@@ -260,6 +285,18 @@ class PageServer(Component):
 		else:
 			return self.loadPlainTemplate(name, raw, "html")
 
+	def _createTemplate( self, text ):
+		"""Creates a new template from the given text. By default, uses the
+		`templating` module."""
+		assert templating, "templating module is required"
+		return templating.Template(text)
+
+	def _applyTemplate( self, tmpl, context=None, language=None ):
+		"""Applies the  given context data and the given language to the
+		given template. By default, will call `tmpl.apply(context,language)`.
+		"""
+		return tmpl.apply(context or self.DEFAULTS, language or DEFAULT_LANGUAGE)
+
 # -----------------------------------------------------------------------------
 #
 # WEB APPLICATION
@@ -274,7 +311,7 @@ class WebApp( Application ):
 	def DefaultConfig( cls ):
 		return {
 			"devmode"             : E("DEVMODE",            0,     int),
-			"base"                : E("BASE",               ""),
+			"base"                : E("BASE",               "/"),
 			"port"                : E("PORT",               PORT,  int),
 			"appname"             : E("APPNAME",            APPNAME),
 			"prefix"              : E("PREFIX",             ""),
