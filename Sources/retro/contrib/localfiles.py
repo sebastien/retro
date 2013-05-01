@@ -143,7 +143,7 @@ class LocalFiles(Component):
 		for key, value in self._processors.items():
 			if ext == key:
 				return value
-		return lambda x,p:(x, self.getContentType(path))
+		return lambda x,p,r:(x, self.getContentType(path))
 
 	@on(GET_POST="/")
 	def catchall( self, request ):
@@ -167,7 +167,7 @@ class LocalFiles(Component):
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		else:
-			content, content_type = processor(self.getContent(resolved_path), resolved_path)
+			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
 
 	def directoryAsHtml( self, path, localPath ):
