@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 31-Aug-2012
+# Last mod  : 13-Mar-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -63,6 +63,8 @@ def asJSON( value, **options ):
 	this method will be invoked with this function as first argument and
 	the options as keyword-arguments ('**options')
 	"""
+	# FIXME: It might be better to use json(asPrimitive(value,options)) if it
+	# does not have a performance penalty
 	if options.has_key("currentDepth"):
 		options["currentDepth"] = options["currentDepth"] + 1
 	else:
@@ -74,7 +76,7 @@ def asJSON( value, **options ):
 	elif type(value) == dict:
 		r = []
 		for k in value.keys():
-			r.append('%s:%s' % (json(k), asJSON(value[k], **options)))
+			r.append('%s:%s' % (json(unicode(k)), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
 	elif hasattr(value, "__class__") and value.__class__.__name__ == "datetime":
 		res = asJSON(tuple(value.timetuple()), **options)
@@ -102,6 +104,40 @@ def asJSON( value, **options ):
 		if res is None: res = asJSON(value.__dict__, **options)
 	else:
 		res = asJSON(value.__dict__, **options)
+	return res
+
+def asPrimitive( value, **options ):
+	"""Converts the given value to a primitive value that can be converted
+	to JSON"""
+	if options.has_key("currentDepth"):
+		options["currentDepth"] = options["currentDepth"] + 1
+	else:
+		options["currentDepth"] = 0
+	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
+		res = value
+	elif type(value) in (list, tuple, set):
+		res = [asPrimitive(v, **options) for v in value]
+	elif type(value) == dict:
+		res = {}
+		for k in value: res[k] = asPrimitive(value[k], **options)
+	elif hasattr(value, "__class__") and (value.__class__.__name__ == "datetime" or value.__class__.__name__ == "date"):
+		res = tuple(value.timetuple())
+	elif hasattr(value, "__class__") and value.__class__.__name__ == "struct_time":
+		res = tuple(value)
+	elif hasattr(value, "asPrimitive")  and callable(value.asPrimitive):
+		res = value.asPrimitive(processor=asPrimitive, **options)
+	elif hasattr(value, "export") and callable(value.export):
+		try:
+			res = value.export(**options)
+		except:
+			res = value.export() 
+	# There may be a "serializer" function that knows better about the different
+	# types of object. We use it it is provided.
+	elif options.get("serializer"):
+		serializer = options.get("serializer")
+		res        = serializer(asJSON, value, **options)
+	else:
+		res = asPrimitive(value.__dict__, **options)
 	return res
 
 # -----------------------------------------------------------------------------
@@ -147,6 +183,15 @@ def cut(text, separator="|"):
 		else:
 			res.append(line)
 	return res
+
+# -----------------------------------------------------------------------------
+#
+# MISC
+#
+# -----------------------------------------------------------------------------
+
+def escapeHTML(text, quote=True):
+	return cgi.escape(text or "", quote)
 
 # -----------------------------------------------------------------------------
 #
@@ -296,6 +341,7 @@ class Request:
 	QUERY_STRING             = "QUERY_STRING"
 	HTTP_COOKIE              = "HTTP_COOKIE"
 	HTTP_HOST                = "HTTP_HOST"
+	HTTP_USER_AGENT          = "HTTP_USER_AGENT"
 	SCRIPT_NAME              = "SCRIPT_NAME"
 	SCRIPT_ROOT              = "SCRIPT_ROOT"
 	PATH_INFO                = "PATH_INFO"
@@ -320,6 +366,7 @@ class Request:
 		self._params           = None
 		self._responseHeaders  = []
 		self._bodyLoader       = None
+		self.protocol          = "http"
 
 	def headers( self ):
 		if self._headers is None:
@@ -356,6 +403,15 @@ class Request:
 	def path( self ):
 		"""Alias for `self.uri`"""
 		return self.uri()
+
+	def url( self ):
+		return self.protocol + "://" + self.host() + self.uri()
+
+	def userAgent( self ):
+		return self._environ.get(self.HTTP_USER_AGENT)
+
+	def isFromCrawler( self ):
+		return self.userAgent().split("/")[0].lower() in CRAWLERS
 
 	def host( self ):
 		"""Returns the hostname for this request"""
@@ -957,8 +1013,15 @@ class RequestBodyLoader:
 			# NOTE: Encoding is not supported yet
 			query_params = cgi.parse_qs(data)
 			for k,v in query_params.items(): self.request._addParam(k,v)
+		elif content_type.startswith("application/json"):
+			dataFile.seek(0)
+			data = simplejson.load(dataFile)	
+			if type(data) is dict:
+				for key in data:
+					self.request._addParam(key, data[key])
+			else:
+				self.request._addParam("",data)
 		else:
-			# FIXME: Should support JSON
 			# There is nothing to be decoded, we just need the raw body data
 			pass
 		# NOTE: We can remove the reference to the request now, as the
@@ -1128,4 +1191,6 @@ class Session:
 	def value( self, key=NOTHING, value=NOTHING ): 
 		"""Sets or gets the 'value' bound to the given 'key'"""
 
+
+CRAWLERS = {'plumtreewebaccessor': True, 'suke': True, 'javabee': True, 'infoseek sidewinder': True, 'checkbot': True, 'patric': True, 'iajabot': True, 'moget': True, 'gcreep': True, 'yes': True, 'w3mir': True, 'jbot (but can be changed by the user)': True, 'borg-bot': True, 'rixbot (http:': True, 'anthillv1.1': True, "'iagent": True, 'webcatcher': True, 'scooter': True, 'openfind data gatherer, openbot': True, 'fish-search-robot': True, "hazel's ferret web hopper,": True, 'grabber': True, 'explorersearch': True, 'combine': True, 'kdd-explorer': True, 'aitcsrobot': True, 'tarspider': True, 'wget': True, 'fido': True, 'weblayers': True, 'esther': True, 'orbsearch': True, 'site valet': True, 'rules': True, 'esculapio': True, 'kit-fireball': True, 'nhsewalker': True, 'lycos': True, 'tlspider': True, 'gestalticonoclast': True, 'road runner: imagescape robot (lim@cs.leidenuniv.nl)': True, 'techbot': True, 'bbot': True, 'spiderbot': True, 'emacs-w3': True, 'w3index': True, 'sitetech-rover': True, 'bspider': True, 'robbie': True, 'portaljuice.com': True, 'poppi': True, 'valkyrie': True, 'cmc': True, 'esismartspider': True, 'diibot': True, 'computingsite robi': True, 'jcrawler': True, "shai'hulud": True, 'appie': True, 'ingrid': True, 'robozilla': True, 'arks': True, 'netcarta cyberpilot pro': True, 'katipo': True, 'infospiders': True, 'i robot 0.4 (irobot@chaos.dk)': True, 'larbin (+mail)': True, 'dienstspider': True, 'solbot': True, 'portalbspider': True, 'evliya celebi v0.151 - http:': True, 'titin': True, 'wwwwanderer v3.0': True, 'ontospider': True, 'linkwalker': True, 'informant': True, 'webreaper [webreaper@otway.com]': True, 'ucsd-crawler': True, 'linkidator': True, 'golem': True, 'pageboy': True, 'atomz': True, 'emc spider': True, 'ebiness': True, 'uptimebot': True, 'spiderman 1.0': True, 'pioneer': True, 'gulper web bot 0.2.4 (www.ecsl.cs.sunysb.edu': True, 'peregrinator-mathematics': True, 'ndspider': True, 'digimarc cgireader': True, 'calif': True, 'geturl.rexx v1.05': True, 'wlm-1.1': True, 'udmsearch': True, 'cienciaficcion.net spider (http:': True, 'fastcrawler 3.0.x (crawler@1klik.dk) - http:': True, 'atn_worldwide': True, 'raven-v2': True, 'marvin': True, 'gammaspider xxxxxxx ()': True, 'webcopy': True, 'coolbot': True, 'freecrawl': True, 'not available': True, 'arachnophilia': True, 'infoseek robot 1.0': True, 'alkalinebot': True, 'aspider': True, 'speedy spider ( http:': True, 'image.kapsi.net': True, 'awapclient': True, 'jubiirobot': True, 'webwalk': True, 'hku www robot,': True, 'momspider': True, 'cusco': True, 'htmlgobble v2.2': True, 'lockon': True, 'vision-search': True, 'cactvs chemistry spider': True, 'tarantula': True, 'perlcrawler': True, 'lwp::': True, 'ssearcher100': True, 'nec-meshexplorer': True, 'googlebot': True, 'boxseabot': True, 'webvac': True, 'dnabot': True, 'ibm_planetwide,': True, 'backrub': True, 'piltdownman': True, 'slurp': True, 'muscatferret': True, 'safetynet robot 0.1,': True, 'motor': True, 'netscoop': True, 'ko_yappo_robot': True, 'northstar': True, 'objectssearch': True, 'digimarc webreader': True, 'webbandit': True, 'spiderline': True, 'jobo (can be modified by the user)': True, 'phpdig': True, 'cyberspyder': True, 'w@pspider': True, 'lwp': True, 'msnbot': True, 'gazz': True, 'esirover v1.0': True, 'sg-scout': True, 'incywincy': True, 'araybot': True, 'jumpstation': True, 'weblinker': True, 'labelgrab': True, 'straight flash!! getterroboplus 1.5': True, 'titan': True, 'packrat': True, 'robofox v2.0': True, 'urlck': True, 'crawlpaper': True, 'wolp': True, "due to a deficiency in java it's not currently possible to set the user-agent.": True, 'resume robot': True, 'webmoose': True, 'dragonbot': True, 'gromit': True, 'nomad-v2.x': True, 'logo.gif crawler': True, "'ahoy! the homepage finder'": True, 'merzscope': True, 'digger': True, 'h\xe4m\xe4h\xe4kki': True, 'libwww-perl-5.41': True, 'none': True, 'legs': True, 'newscan-online': True, 'occam': True, 'linkscan server': True, 'architextspider': True, 'felixide': True, 'robocrawl (http:': True, 'webs@recruit.co.jp': True, 'monster': True, 'elfinbot': True, 'searchprocess': True, 'mwdsearch': True, 'cosmos': True, 'w3m2': True, 'root': True, 'bayspider': True, 'http:': True, 'auresys': True, 'gulliver': True, 'templeton': True, 'israelisearch': True, 'm': True, 'die blinde kuh': True, 'simbot': True, 'snooper': True, 'shagseeker at http:': True, 'duppies': True, 'havindex': True, 'htdig': True, 'pgp-ka': True, 'psbot': True, 'desertrealm.com; 0.2; [j];': True, 'webfetcher': True, 'abcdatos botlink': True, 'no': True, 'wired-digital-newsbot': True, 'bjaaland': True, 'eit-link-verifier-robot': True, 'dlw3robot': True, 'inspectorwww': True, 'nederland.zoek': True, 'magpie': True, 'vwbot_k': True, 'mouse.house': True, 'griffon': True, 'cydralspider': True, 'web robot pegasus': True, 'rhcs': True, 'big brother': True, 'voyager': True, "due to a deficiency in java it's not currently possible": True, 'mindcrawler': True, 'deweb': True, 'webwatch': True, 'netmechanic': True, 'funnelweb-1.0': True, 'void-bot': True, 'victoria': True, 'webquest': True, 'hometown spider pro': True, 'mozilla 3.01 pbwf (win95)': True, 'wwwc': True, 'iron33': True, 'url spider pro': True, 'suntek': True, 'joebot': True, 'dwcp': True, 'verticrawlbot': True, 'whatuseek_winona': True, 'jobot': True, 'webwalker': True, 'xget': True, 'mediafox': True, 'internet cruiser robot': True, 'araneo': True, 'muninn': True, 'roverbot': True, 'robot du crim 1.0a': True, 'senrigan': True, 'blackwidow': True, 'confuzzledbot': True, '???': True, 'parasite': True, 'slcrawler': True}
 # EOF - vim: tw=80 ts=4 sw=4 noet
