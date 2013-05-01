@@ -196,16 +196,21 @@ class LRUCache(Cache):
 	HITS       = 1
 	TIMESTAMP  = 2
 	VALUE      = 3
+	EXPIRES    = -1
 
-	def __init__( self, limit=100, timeout=-1 ):
+	def __init__( self, limit=100, expire=None ):
 		Cache.__init__(self)
 		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
 		self.data    = {}
 		self.weight  = 0
 		self.limit   = limit
-		self.timeout = timeout
 		self.lock    = threading.RLock()
 		self.enabled = True
+		if expire is not None: self.expire(expire)
+
+	def expire( self, value ):
+		self.EXPIRES = value
+		return self
 
 	def enable( self ):
 		self.enabled = True
@@ -216,7 +221,7 @@ class LRUCache(Cache):
 	def get( self, key ):
 		d = self.data.get(key)
 		if d:
-			if self.timeout <= 0 or (time.time() - d[self.TIMESTAMP]) < self.timeout:
+			if self.EXPIRES <= 0 or (time.time() - d[self.TIMESTAMP]) < self.EXPIRES:
 				# We increase the hit count
 				d[self.HITS] += 1
 				return d[self.VALUE]
@@ -266,9 +271,9 @@ class LRUCache(Cache):
 		self.lock.acquire()
 		now   = time.time()
 		# We remove older items
-		if self.timeout > 0:
+		if self.EXPIRES > 0:
 			for key in self.data.keys():
-				if now - self.data[key][self.TIMESTAMP] > self.timeout:
+				if now - self.data[key][self.TIMESTAMP] > self.EXPIRES:
 					del self.data[key]
 		items = self.data.items()
 		# FIXME: This is slooooow
