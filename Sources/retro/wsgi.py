@@ -335,6 +335,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		elif self._state == self.WAITING:
 			# If a reactor is used, we re-schedule the continuation of this
 			# process when the condition/rendez-vous is met
+			# FIXME: Should not be global
 			if usesReactor():
 				handler = self
 				def resume_on_rdv(*args,**kwargs):
@@ -394,6 +395,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			,'SERVER_PROTOCOL': self.request_version
 		}
 		for httpHeader, httpValue in self.headers.items():
+			# FIXME: Slow!
 			env ['HTTP_%s' % httpHeader.replace ('-', '_').upper()] = httpValue
 		# Setup the state
 		self._sentHeaders = 0
@@ -467,6 +469,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		if (not self._sentHeaders):
 			status, headers = self._headers
 			# Need to send header prior to data
+			# FIXME: Slow?
 			statusCode = status [:status.find (' ')]
 			statusMsg = status [status.find (' ') + 1:]
 			success   = False
