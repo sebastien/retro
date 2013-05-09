@@ -1,0 +1,2 @@
+run:
+	python FileUpload.py

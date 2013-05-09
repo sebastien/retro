@@ -5,12 +5,13 @@
 # Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
-# Creation  : 08-Aug-2012
-# Last mod  : 08-Aug-2012
+# Creation  : 09-May-2013
+# Last mod  : 09-May-2013
 # -----------------------------------------------------------------------------
 
 import time, string, hashlib
 from retro import *
+from retro.contrib.upload import Uploader
 
 # ------------------------------------------------------------------------------
 #
@@ -22,8 +23,7 @@ class Main(Component):
 
 	def __init__( self ):
 		Component.__init__(self)
-		# We'll store uploads by id here
-		self.uploads = dict()
+		self.uploader = Uploader()
 
 	@on(GET="")
 	@on(GET="{path:any}")
@@ -35,33 +35,15 @@ class Main(Component):
 	def upload( self, request ):
 		upload_id    = request.param("id")
 		block_size   = request.param("blocksize") or (64 * 1024)
-		result       = dict(progress=0,data=None)
-		print request.param("id")
-		self.uploads[upload_id] = result
-		# FIXME: Should make sure that the data is saved to disk
-		# to avoid bloating the memory with large uploads
-		def stream():
-			yield "<html><body><ul>"
-			while not request.isLoaded():
-				data               = request.load(block_size)
-				progress           = request.loadProgress()
-				result["progress"] = progress
-				self.uploads[upload_id] = result
-				print "Upload progress", progress
-				yield "<li>%s%%</li>" % (progress)
-				#time.sleep(1)
-			uploaded_file = request.file("data")
-			print "Uploaded SHA-1", hashlib.sha256(uploaded_file.data).hexdigest()
-			yield "</ul></body></html>"
-		return request.respond(stream())
+		upload       = self.uploader.start(request, upload_id, block_size)
+		upload.onCompleted(lambda _:self.app().save("data.file",_.request.data()))
+		return request.respond((
+			"%s bytes read (%f%%)<br>" % (_.lastReadBytes, _.progress) for _ in upload
+		))
 
-	@on(GET="upload/progress")
-	def uploadProgress(self, request):
-		upload_id  = request.param("id")
-		if self.uploads.has(upload_id):
-			return request.returns(self.uploads.get(upload_id))
-		else:
-			return request.notFound()
+	@expose(GET="upload/progress?{params}")
+	def uploadProgress(self, params):
+		return self.uploader.getUpload(params["id"])
 
 # ------------------------------------------------------------------------------
 #
