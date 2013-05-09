@@ -858,6 +858,7 @@ class Application(Component):
 	def save( self, path, data, sync=True, append=False ):
 		"""Saves/appends to the file at the given path."""
 		flags = os.O_WRONLY | os.O_CREAT
+		# FIXME: The file is created a +x... weird!
 		try:
 			if sync:       flags = flags | os.O_DSYNC
 		except AttributeError, e:

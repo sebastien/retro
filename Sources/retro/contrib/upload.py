@@ -11,59 +11,146 @@
 
 import time, random
 
-class Upload:
+# -----------------------------------------------------------------------------
+#
+# UPLOAD
+#
+# -----------------------------------------------------------------------------
 
-	IS_NEW          = -1
-	IS_INITIATED    = 0
+class Upload:
+	"""Wraps a request and provides convenient methods/callbacks to monitor 
+	the uploading/decoding of the request."""
+
+	IS_NEW          = 0
 	IS_STARTED      = 1
 	IS_IN_PROGRESS  = 2
-	IS_COMPLETED    = 3
-	IS_FAILED       = 4
+	IS_DECODING     = 4
+	IS_COMPLETED    = 5
+	IS_FAILED       = 6
+	CHUNK_SIZE      = 64 * 1024
 
-	def __init__( self, id=None ):
+	def __init__( self, id=None, request=None):
+		self.callbacks = {}
 		self.reset()
 		if id is not None: self.id = id
-	
+		if request: self.setRequest(request)
+
+	def onStatus( self, value, callback ):
+		self.callbacks.setdefault(value,[]).append(callback)
+
+	def onCompleted( self, callback ): return self.onStatus(self.IS_COMPLETED,   callback)
+	def onFailed( self, callback ):    return self.onStatus(self.IS_FAILED,      callback)
+	def onProgress( self, callback ):  return self.onStatus(self.IS_IN_PROGRESS, callback)
+
+	def setStatus( self, status ):
+		self.status = status
+		if status in self.callbacks:
+			for _ in self.callbacks[status]:
+				_(self)
+		return status
+
 	def reset( self ):
-		self.id       = int(time.time() * 100000) + random.randint(0,100)
-		self.status   = self.IS_NEW
-		self.created  = time.time()
-		self.updated  = time.time()
-		self.progress = 0.0
-		self.data     = None
-		self.meta     = dict()
-		self.read     = 0
-	
+		self.id        = int(time.time() * 100000) + random.randint(0,100)
+		self.request   = None
+		self.created   = time.time()
+		self.updated   = time.time()
+		self.progress  = 0.0
+		self.readBytes     = 0
+		self.lastReadBytes = 0
+		self.setStatus(self.IS_NEW)
+
+	def setRequest( self, request ):
+		self.request = request
+		self.setStatus(self.IS_STARTED)
+		return self
+
+	def getFile( self, name, chunksize=None ):
+		"""Reads the request and generated `(self.progress, request.core.File)`
+		couples until the load is complete."""
+		for _ in self.read(chunksize):
+			yield (self.progress, None)
+			if self.status == self.IS_COMPLETED:
+				yield (100, self.request.file(name))
+
+	def read( self, chunksize=None ):
+		"""Returns a generator that yields the upload object each time
+		a chunk is read."""
+		chunksize = self.CHUNK_SIZE if chunksize is None else chunksize
+		data      = None
+		while not self.request.isLoaded():
+			data               = self.request.load(chunksize, decode=False)
+			last_bytes         = self.readBytes
+			self.readBytes     = self.request.loadProgress(inBytes=True)
+			self.lastReadBytes = self.readBytes - last_bytes
+			self.progress      = self.request.loadProgress()
+			self.updated       = time.time()
+			self.setStatus(self.IS_IN_PROGRESS)
+			# We consume the data so as not to keep the file in memory
+			yield self
+		last_bytes         = self.readBytes
+		self.readBytes     = self.request.loadProgress(inBytes=True)
+		self.lastReadBytes = self.readBytes - last_bytes
+		self.progress      = self.request.loadProgress()
+		self.setStatus(self.IS_DECODING)
+		yield self 
+		self.request.load(decode=True)
+		self.setStatus(self.IS_COMPLETED)
+		self.updated       = time.time()
+		yield self
+
+	def __iter__( self ):
+		for _ in self.read(self.CHUNK_SIZE):
+			yield _
+
 	def export( self ):
-		return self.__dict__
-	
+		return dict(
+			id=self.id,
+			status=self.status,
+			created=self.created,
+			updated=self.updated,
+			progress=self.progress,
+			read=self.read,
+		)
+
+# -----------------------------------------------------------------------------
+#
+# UPLOADER
+#
+# -----------------------------------------------------------------------------
+
 class Uploader:
 	"""A class that can easily be composed to support progressive upload of
-	data"""
+	data with accessible information on the progress."""
 
-	CHUNK_SIZE        = 64 * 1024
 	CLEANUP_THRESHOLD = 60 * 8
 
 	def __init__( self, uploads=None ):
 		# TODO: SHOULD MAX THE UPLOAD QUEUE...
-		self.uploads = {} if upload is None else uploads
-		self.chunkSize = cls.CHUNK_SIZE
+		self.uploads = {} if uploads is None else uploads
 
-	def upload( self, request, field="data" ):
-		"""Starts a new upload, the data is extract from the given field."""
+	def start( self, request, uploadID=None, chunksize=None ):
+		"""Starts a new upload, the data is extract from the given field
+		(`data` by default). This returns the corresponding `Upload` instance
+		and a file object to the data file.
+		"""
 		# We start by cleaning up inactive 
 		self.cleanup()
-		upload      = self._createUploadInfo(request)
-		data_file   = self._readRequest(request, upload, field, self.chunkSize)
-		return upload_info, data_file
+		upload        = Upload(request=request, id=request.param("id") if uploadID is None else uploadID)
+		if chunksize: upload.CHUNK_SIZE = chunksize
+		self.uploads[upload.id] = upload
+		return upload
 
-	def progress( self, request ):
-		upload_id  = request.param("id")
-		if self.uploads.has(upload_id):
-			return request.returns(self.uploads.get(upload_id))
+	def getUpload( self, uploadID ):
+		"""Returns the upload with the given ID."""
+		if uploadID in self.uploads:
+			return self.uploads[uploadID]
 		else:
-			# NOTE: Chrome will call progress before the POST has started
-			return request.returns(dict(progress=0,status="starting"))
+			# NOTE: In some cases you might want to poll the progress
+			# before the startUpload has actually been started, in this 
+			# case, we return a temporary dummy new upload.
+			upload      = Upload(id=uploadID)
+			self.uploads[upload.id] = upload
+			return upload
 
 	def cleanup( self ):
 		now = time.time()
@@ -71,27 +158,6 @@ class Uploader:
 			if value.status == value.IS_COMPLETED or value.status == value.IS_FAILED:
 				del self.uploads[key]
 			# NOTE: Not sure about that
-			# elif now - value.updated > self.UPLOAD_UPDATE_THRESHOLD:
-			#	del self.uploads[key]
-
-	def getUploadInfo( self, uid ):
-		return self.uploads.get(uid)
-
-	def _createUploadInfo( self, request ):
-		upload = Upload(id=request.param("id"))
-		self.uploads.set(upload_id, upload)
-		return upload
-
-	def _readRequest( self, request, upload, field, chunkSize ):
-		while not request.isLoaded():
-			data              = request.load(chunkSize)
-			progress          = request.loadProgress()
-			info["progress"]  = min(99,progress)
-			info["status"]    = "uploading"
-			info["bytesRead"] = request.loadProgress(inBytes=True)
-			info["updated"]   = time.time()
-		info["status"]  = "uploaded"
-		info["updated"] = time.time()
-		return request.file(field)
-
+			if now - value.updated > self.CLEANUP_THRESHOLD:
+				del self.uploads[key]
 # EOF
