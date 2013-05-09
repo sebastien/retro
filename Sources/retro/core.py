@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 13-Mar-2013
+# Last mod  : 09-May-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -15,6 +15,8 @@
 import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib, tempfile, string
 import BaseHTTPServer, Cookie, gzip, StringIO
 import threading, locale
+
+NOTHING = re
 
 # FIXME: Date in cache support should be locale
 
@@ -579,16 +581,15 @@ class Request:
 		else:
 			return session.value(name, value)
 
-	def data( self, data=re, asFile=False ):
+	def data( self, data=NOTHING, asFile=False, partial=False ):
 		"""Gets/sets the request data as a file object. Note that when using
-		the `asFile` object, you should be sure to not do any concurrent access
+		the `asFile` parameter, you should be sure to not do any concurrent access
 		to the data as a file, as you'll use the same file descriptor.
 		"""
-		if data == re:
-			while not self.isLoaded(): self.load()
+		if data == NOTHING:
+			if not partial:
+				while not self.isLoaded(): self.load()
 			if asFile:
-				# NOTE: Mabe we should use dup
-				self._data.seek(0)
 				return self._data
 			else:
 				position = self._data.tell()
@@ -606,6 +607,7 @@ class Request:
 			self._data       = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
 			self._data.write(data)
 			self._bodyLoader = RequestBodyLoader(self, complete=True)
+			return self._bodyLoader
 
 	def body( self, body=re ):
 		"""Gets/sets the request body (it is an alias for data)"""
@@ -621,19 +623,25 @@ class Request:
 		if self._bodyLoader: return self._bodyLoader.progress(inBytes)
 		else: return 0
 
-	def load( self, size=None ):
+	def load( self, size=None, decode=True ):
 		"""Loads `size` more bytes (all by default) from the request
-		body."""
+		body.
+		
+		This will basically read a chunk of data from the incoming
+		request, and write it to the `_data` spooled file. Once the
+		request in completely read, the body decoder will decode
+		the data
+		"""
 		# We make sure that the body loader exists
 		if not self._bodyLoader: self._bodyLoader = RequestBodyLoader(self)
-		# And then if it is not complete, 
 		if not self._bodyLoader.isComplete():
-			self._data.write(self._bodyLoader.load(size))
+			self._bodyLoader.load(size)
+		# We make sure the body is decoded if we have decode and the request is loaded
+		if self._bodyLoader.isComplete() and decode:
 			# If the the body loader is complete, we'll now proceed
 			# with the decoding of the request, which will convert the data
 			# into params and fields.
-			if self._bodyLoader.isComplete():
-				self._bodyLoader.decode(self._data)
+			self._bodyLoader.decode()
 		return self
 
 	def referer( self ):
@@ -875,11 +883,12 @@ class Request:
 
 # -----------------------------------------------------------------------------
 #
-# REQUEST BODY LOADER
+# FILE
 #
 # -----------------------------------------------------------------------------
 
 class File:
+	"""Represents a File object as submitted as POSTED form-data."""
 
 	def __init__( self, data, contentType=None, name=None):
 		self.data          = data
@@ -901,11 +910,17 @@ class File:
 # -----------------------------------------------------------------------------
 
 class RequestBodyLoader:
-	"""Allows to load the body of a request in chunks. This is an internal
-	class that's used by Request.
+	"""Allows to load the body of a request in chunks and by using a spooled
+	memory file so that downloading and processing an incoming request does
+	not hog the memory.
+
+	This is an internal class used by the Request class.
 	"""
 
 	def __init__( self, request, complete=False ):
+		"""Creates a new request body loader. If `complete` is set to `True`,
+		then the data request body will be considered as completely read
+		and decoded."""
 		# NOTE: Referencing request creates a circular reference, so we'll
 		# make sure to delete the reference once the load is complete
 		# (although Python deals with circular references fine).
@@ -913,17 +928,14 @@ class RequestBodyLoader:
 		self.contentRead   = 0
 		self.contentLength = request.contentLength()
 		self.contentFile   = None
+		self._decoded      = complete
 		if complete: self.contentRead = self.contentLength
-		# FIXME: Deprecated
-		# self.contentType   = request.contentType()
-		# self.params        = request.params(load=False)
-		# self.headers       = []
-		# # This is used by decode
-		# for key, value in request._environ.items():
-		# 	if key.startswith('HTTP_'): self.headers.append('%s: %s' % (key, value))
 
 	def isComplete( self ):
 		return self.contentLength == self.contentRead
+
+	def isDecoded( self ):
+		return self._decoded
 
 	def remainingBytes( self ):
 		return self.contentLength - self.contentRead
@@ -936,9 +948,9 @@ class RequestBodyLoader:
 		else:
 			return 0
 
-	def load( self, size=None ):
-		"""Loads the data in chunks. Return the loaded chunk -- it's up to
-		you to store and process it."""
+	def load( self, size=None, writeData=True ):
+		"""Loads the data in chunks. Return the loaded and writes it to the
+		request data and returns it."""
 		# If the load is complete, we don't have anything to do
 		if self.isComplete(): return None
 		if size == None: size = self.contentLength
@@ -946,13 +958,23 @@ class RequestBodyLoader:
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		self.contentRead += to_read
 		assert len(read_data) == to_read
+		if writeData: self.request._data.write(read_data)
 		return read_data
 
-	def decode( self, dataFile ):
+	def decode( self, dataFile=None ):
 		"""Post-processes the data loaded by the loader, this will basically
-		convert encoded data into an actual object"""
+		parse and decode the data contained in the given data file and
+		update the request object according to the data.
+
+		For instance, a (hmultipart) form-encoded data will assign parameters
+		and files to the request object, and a JSON content will also assign
+		parameters.
+
+		If the encoding is not recognized, then nothing will happen.
+		"""
+		if self.isDecoded(): return
+		dataFile = self.request._data if dataFile is None else dataFile
 		# NOTE: See http://www.cs.tut.fi/~jkorpela/forms/file.html
-		if not self.request: raise Exception("Body already decoded")
 		content_type   = self.request._environ[Request.CONTENT_TYPE] or "application/x-www-form-urlencoded"
 		params         = self.request.params(load=False)
 		files          = []
@@ -974,7 +996,8 @@ class RequestBodyLoader:
 			data = dataFile.read()
 			raw_email.write(data)
 			raw_email.seek(0)
-			# And now we docode from the file
+			# And now we decode from the file
+			# FIXME: This will probably allocate the whole file in memory
 			message   = email.message_from_file(raw_email)
 			for part in message.get_payload():
 				# FIXME: Should remove that
@@ -989,6 +1012,7 @@ class RequestBodyLoader:
 					else:
 						part_content_type = None
 					param_name = part_meta['name']
+					# NOTE: This is also proably going to alloce the whole file in memory
 					new_file   = File(
 						data        = part.get_payload(),
 						contentType = part_content_type,
@@ -1026,7 +1050,8 @@ class RequestBodyLoader:
 			pass
 		# NOTE: We can remove the reference to the request now, as the
 		# processing is done.
-		self.request = None
+		self.request  = None
+		self._decoded = True
 
 # -----------------------------------------------------------------------------
 #
