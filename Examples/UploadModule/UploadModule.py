@@ -35,15 +35,15 @@ class Main(Component):
 	def upload( self, request ):
 		upload_id    = request.param("id")
 		block_size   = request.param("blocksize") or (64 * 1024)
-		upload       = self.uploader.start(request, upload_id, block_size)
+		upload       = self.uploader.upload(request, upload_id, block_size)
 		upload.onCompleted(lambda _:self.app().save("data.file",_.request.data()))
 		return request.respond((
-			"%s bytes read (%f%%)<br>" % (_.lastReadBytes, _.progress) for _ in upload
+			"%s bytes read (%f%%)<br>" % (_.lastBytesRead, _.progress) for _ in upload
 		))
 
 	@expose(GET="upload/progress?{params}")
 	def uploadProgress(self, params):
-		return self.uploader.getUpload(params["id"])
+		return self.uploader.get(params["id"])
 
 # ------------------------------------------------------------------------------
 #

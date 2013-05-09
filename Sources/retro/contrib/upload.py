@@ -55,8 +55,8 @@ class Upload:
 		self.created   = time.time()
 		self.updated   = time.time()
 		self.progress  = 0.0
-		self.readBytes     = 0
-		self.lastReadBytes = 0
+		self.bytesRead     = 0
+		self.lastBytesRead = 0
 		self.setStatus(self.IS_NEW)
 
 	def setRequest( self, request ):
@@ -79,17 +79,17 @@ class Upload:
 		data      = None
 		while not self.request.isLoaded():
 			data               = self.request.load(chunksize, decode=False)
-			last_bytes         = self.readBytes
-			self.readBytes     = self.request.loadProgress(inBytes=True)
-			self.lastReadBytes = self.readBytes - last_bytes
+			last_bytes         = self.bytesRead
+			self.bytesRead     = self.request.loadProgress(inBytes=True)
+			self.lastBytesRead = self.bytesRead - last_bytes
 			self.progress      = self.request.loadProgress()
 			self.updated       = time.time()
 			self.setStatus(self.IS_IN_PROGRESS)
 			# We consume the data so as not to keep the file in memory
 			yield self
-		last_bytes         = self.readBytes
-		self.readBytes     = self.request.loadProgress(inBytes=True)
-		self.lastReadBytes = self.readBytes - last_bytes
+		last_bytes         = self.bytesRead
+		self.bytesRead     = self.request.loadProgress(inBytes=True)
+		self.lastBytesRead = self.bytesRead - last_bytes
 		self.progress      = self.request.loadProgress()
 		self.setStatus(self.IS_DECODING)
 		yield self 
@@ -109,7 +109,8 @@ class Upload:
 			created=self.created,
 			updated=self.updated,
 			progress=self.progress,
-			read=self.read,
+			bytesRead=self.bytesRead,
+			lastBytesRead=self.lastBytesRead,
 		)
 
 # -----------------------------------------------------------------------------
@@ -128,7 +129,7 @@ class Uploader:
 		# TODO: SHOULD MAX THE UPLOAD QUEUE...
 		self.uploads = {} if uploads is None else uploads
 
-	def start( self, request, uploadID=None, chunksize=None ):
+	def upload( self, request, uploadID=None, chunksize=None ):
 		"""Starts a new upload, the data is extract from the given field
 		(`data` by default). This returns the corresponding `Upload` instance
 		and a file object to the data file.
@@ -140,7 +141,7 @@ class Uploader:
 		self.uploads[upload.id] = upload
 		return upload
 
-	def getUpload( self, uploadID ):
+	def get( self, uploadID ):
 		"""Returns the upload with the given ID."""
 		if uploadID in self.uploads:
 			return self.uploads[uploadID]
