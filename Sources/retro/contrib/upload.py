@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 29-Nov-2012
-# Last mod  : 08-May-2013
+# Last mod  : 10-May-2013
 # -----------------------------------------------------------------------------
 
 import time, random
@@ -29,10 +29,10 @@ class Upload:
 	IS_FAILED       = 6
 	CHUNK_SIZE      = 64 * 1024
 
-	def __init__( self, id=None, request=None):
+	def __init__( self, uid=None, request=None):
 		self.callbacks = {}
 		self.reset()
-		if id is not None: self.id = id
+		if uid is not None: self.uid = str(uid)
 		if request: self.setRequest(request)
 
 	def onStatus( self, value, callback ):
@@ -50,7 +50,7 @@ class Upload:
 		return status
 
 	def reset( self ):
-		self.id        = int(time.time() * 100000) + random.randint(0,100)
+		self.uid       = str(int(time.time() * 100000) + random.randint(0,100))
 		self.request   = None
 		self.created   = time.time()
 		self.updated   = time.time()
@@ -103,14 +103,15 @@ class Upload:
 			yield _
 
 	def export( self ):
+		import ipdb
 		return dict(
-			id=self.id,
+			uid=self.uid,
 			status=self.status,
 			created=self.created,
 			updated=self.updated,
-			progress=self.progress,
-			bytesRead=self.bytesRead,
-			lastBytesRead=self.lastBytesRead,
+			# progress=self.progress,
+			# bytesRead=self.bytesRead,
+			# lastBytesRead=self.lastBytesRead,
 		)
 
 # -----------------------------------------------------------------------------
@@ -136,9 +137,9 @@ class Uploader:
 		"""
 		# We start by cleaning up inactive 
 		self.cleanup()
-		upload        = Upload(request=request, id=request.param("id") if uploadID is None else uploadID)
+		upload        = Upload(request=request, uid=request.param("uid") if uploadID is None else uploadID)
 		if chunksize: upload.CHUNK_SIZE = chunksize
-		self.uploads[upload.id] = upload
+		self.uploads[upload.uid] = upload
 		return upload
 
 	def get( self, uploadID ):
@@ -149,8 +150,8 @@ class Uploader:
 			# NOTE: In some cases you might want to poll the progress
 			# before the startUpload has actually been started, in this 
 			# case, we return a temporary dummy new upload.
-			upload      = Upload(id=uploadID)
-			self.uploads[upload.id] = upload
+			upload      = Upload(uid=uploadID)
+			self.uploads[upload.uid] = upload
 			return upload
 
 	def cleanup( self ):
