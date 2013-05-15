@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 05-Mar-2013
+# Last mod  : 15-Mar-2013
 # -----------------------------------------------------------------------------
 
 import re, os, stat, hashlib, threading, urllib, pickle, time, functools
@@ -297,17 +297,23 @@ class LRUCache(Cache):
 # FIXME: Timeout is not useful unless it has cleanup -- we should refactor this
 class TimeoutCache(Cache):
 
-	def __init__( self, cache=None, timeout=10, limit=100 ):
+	TIMEOUT = 60 * 60
+
+	def __init__( self, cache=None, timeout=None, limit=-1 ):
 		Cache.__init__(self)
 		self.cache   = cache or MemoryCache(limit=limit)
-		self.timeout = timeout
+		self.timeout = self.TIMEOUT if timeout is None else timeout
 	
 	def get( self, key ):
 		if self.cache.has(key):
 			value, insert_time = self.cache.get(key)
+			# We don't call hasTimedOut directly as we want to save another
+			# query to the cache
 			if (time.time() - insert_time)  < self.timeout:
 				return value
 			else:
+				# Key is out of date
+				self.remove(key)
 				return None
 		else:
 			return None
