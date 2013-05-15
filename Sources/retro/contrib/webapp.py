@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 29-Mar-2013
+# Last mod  : 14-May-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -226,6 +226,11 @@ class PageServer(Component):
 		response = request.respond(page)
 		return response
 
+	def hasTemplate( self, name, type="paml" ):
+		path = os.path.join(self.app().config("library.path"), type, name + ext)
+		key  = type + ":" + name
+		return key in self._templates or os.path.exists(path)
+	
 	def loadTemplate( self, name, raw=False, type=None ):
 		"""Loads the template with the given name. By default, this will look into
 		the `${library.path}/<type>` configuration path, parse the file as Pamela markup
@@ -238,7 +243,7 @@ class PageServer(Component):
 			return self.loadPAMLTemplate(name, raw)
 		else:
 			return self.loadPlainTemplate(name, raw, type)
-	
+
 	def loadPlainTemplate( self, name, raw=False, type="html", ext=None  ):
 		ext = ext or ("." + type)
 		if self.app().config("devmode"):
@@ -253,7 +258,7 @@ class PageServer(Component):
 		else:
 			key = type + ":" + name + ":raw"
 			if not self._templates.has_key(key):
-				path   = os.path.join(self.app().config("library.path"), "html", name + ".html")
+				path   = os.path.join(self.app().config("library.path"), type, name + ext)
 				text   = None
 				with file(path, "r") as f: text   = f.read()
 				self._templates[key] = text

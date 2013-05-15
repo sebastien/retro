@@ -892,7 +892,7 @@ class File:
 
 	def __init__( self, data, contentType=None, name=None):
 		self.data          = data
-		self.contentLenght = len(self.data)
+		self.contentLength = len(self.data)
 		self.name          = name
 		self.contentType   = contentType
 	

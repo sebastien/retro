@@ -55,6 +55,7 @@ class Upload:
 		self.created   = time.time()
 		self.updated   = time.time()
 		self.progress  = 0.0
+		self.data      = None
 		self.bytesRead     = 0
 		self.lastBytesRead = 0
 		self.setStatus(self.IS_NEW)
@@ -103,15 +104,15 @@ class Upload:
 			yield _
 
 	def export( self ):
-		import ipdb
 		return dict(
 			uid=self.uid,
+			data=self.data,
 			status=self.status,
 			created=self.created,
 			updated=self.updated,
-			# progress=self.progress,
-			# bytesRead=self.bytesRead,
-			# lastBytesRead=self.lastBytesRead,
+			progress=self.progress,
+			bytesRead=self.bytesRead,
+			lastBytesRead=self.lastBytesRead,
 		)
 
 # -----------------------------------------------------------------------------
