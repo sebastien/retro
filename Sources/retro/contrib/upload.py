@@ -157,7 +157,7 @@ class Uploader:
 
 	def cleanup( self ):
 		now = time.time()
-		for key, value in self.uploads.items():
+		for key, value in list(self.uploads.items()):
 			if value.status == value.IS_COMPLETED or value.status == value.IS_FAILED:
 				del self.uploads[key]
 			# NOTE: Not sure about that

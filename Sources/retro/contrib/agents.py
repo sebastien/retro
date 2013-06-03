@@ -1,4 +1,4 @@
-import os, json, urllib, logging, retro.core
+import os, json, urllib.request, urllib.parse, urllib.error, logging, retro.core
 
 class Robots:
 
@@ -26,13 +26,13 @@ class Robots:
 
 	@classmethod
 	def ImportDB( cls, url="http://www.robotstxt.org/db/all.txt", encoding="latin-1"):
-		f  = urllib.urlopen(url)
+		f  = urllib.request.urlopen(url)
 		db_full   = {}
 		robot_id = None
 		for i, l in enumerate(f.readlines()):
 			try:
 				l.decode(encoding)
-			except UnicodeDecodeError, e:
+			except UnicodeDecodeError as e:
 				logging.error("retro.contrib.agents.Robots.ImportDB: Cannot decode line {0}:{1}".format(i,repr(l)))
 				continue
 			if l.startswith("robot-id:"):
@@ -44,7 +44,7 @@ class Robots:
 						robot_ua = robot_ua.encode("ascii")
 						db_full[robot_ua] = robot_id
 
-				except UnicodeDecodeError, e:
+				except UnicodeDecodeError as e:
 					logging.error("retro.contrib.agents.Robots.ImportDB: User agent is not ascii at line {0}:{1}".format(i,repr(robot_ua)))
 					continue
 		return db
@@ -54,7 +54,7 @@ class Robots:
 		if isinstance(request, retro.core.Request): user_agent = request.userAgent()
 		else: user_agent = request
 		db = cls.EnsureDB()
-		return db.has_key(user_agent)
+		return user_agent in db
 
 class NoScript:
 

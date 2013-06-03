@@ -24,11 +24,11 @@ def asAndOrList(text, union=",", intersection=" ", transform=lambda _:_):
 	"""
 	# NOTE: In URLs, the + is translated to space!
 	res = []
-	if type(text) in (unicode,str): text = (text,)
+	if type(text) in (str,str): text = (text,)
 	for keywords in text:
 		for union_keywords in keywords.split(union):
 			# NOTE: Should support QUOTING
-			res.append(map(transform, union_keywords.split(intersection)))
+			res.append(list(map(transform, union_keywords.split(intersection))))
 	return res
 
 # -----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ class QueryString(QueryPredicate):
 	"""Compares strings (case-insensitive)"""
 
 	def parse( self, value ):
-		return unicode(data).strip().lower()
+		return str(data).strip().lower()
 
 # -----------------------------------------------------------------------------
 #
@@ -111,7 +111,7 @@ class QuerySubString(QueryPredicate):
 	"""Compares sub-strings (case-insensitive)"""
 
 	def parse( self, value ):
-		return unicode(data).strip().lower()
+		return str(data).strip().lower()
 
 	def match( self, expected, compared ):
 		return compared.find(expected) > 0
@@ -187,7 +187,7 @@ class Query:
 		result = {}
 		for key in format:
 			if key in query:
-				result[key] = map(lambda _:map(format[key],_), (asAndOrList(query[key])))
+				result[key] = [list(map(format[key],_)) for _ in (asAndOrList(query[key]))]
 		return result
 
 	def __init__( self, query, format=None ):
@@ -199,7 +199,7 @@ class Query:
 	def predicate( self, value ):
 		"""Tells if the given value (given as a dictionary) matches the given query
 		predicates."""
-		for key in self.query.keys():
+		for key in list(self.query.keys()):
 			expected = query[key]
 			element  = expected[0][0]
 			# Each Query.[RANGE|NORMALIZED|etc] should return an object that

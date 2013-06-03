@@ -94,7 +94,7 @@ class LocalFiles(Component):
 		self._processors  = {}
 		self._optSuffixes = optsuffix
 		self.setRoot(root or ".")
-		for key, value in processors.items():
+		for key, value in list(processors.items()):
 			self._processors[key] = value
 
 	def start( self, root=None ):
@@ -140,7 +140,7 @@ class LocalFiles(Component):
 	def processorFor( self, path ):
 		"""Returns the processors for the given path."""
 		ext = os.path.splitext(path)[1][1:]
-		for key, value in self._processors.items():
+		for key, value in list(self._processors.items()):
 			if ext == key:
 				return value
 		return lambda x,p,r:(x, self.getContentType(path))

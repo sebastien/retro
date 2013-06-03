@@ -30,7 +30,7 @@ class Proxy:
 	THROTTLING = 0
 
 	def requestAsString( self, method, server, port, uri, headers, body ):
-		headers = ("%s: %s" % (h[0], h[1]) for h in headers.items() if h[1] != None)
+		headers = ("%s: %s" % (h[0], h[1]) for h in list(headers.items()) if h[1] != None)
 		return (
 			"%s %s:%s %s\n" 
 			"%s\n\n" 
@@ -39,7 +39,7 @@ class Proxy:
 
 	def filterHeaders( self, headers ):
 		res = {}
-		for name, value in headers.items():
+		for name, value in list(headers.items()):
 			if value != None:
 				res[name] = value
 		return res
@@ -68,8 +68,8 @@ class Proxy:
 		return True
 	
 	def httpRequest( self, server, port, method, url, body="", headers=None ):
-		import httplib
-		conn = httplib.HTTPConnection(server, int(port))
+		import http.client
+		conn = http.client.HTTPConnection(server, int(port))
 		conn.request(method, url, body, headers or {})
 		resp = conn.getresponse()
 		data = resp.read()
@@ -222,10 +222,10 @@ def createProxies( args, options=None ):
 		if url.find("@") != -1:
 			user, url = url.split("@",1)
 			user, passwd = user.split(":",1)
-			print "Proxying %s:%s@%s as %s" % (user, passwd, url, prefix)
+			print("Proxying %s:%s@%s as %s" % (user, passwd, url, prefix))
 		else:
 			user, passwd = None, None
-			print "Proxying %s as %s" % (url, prefix)
+			print("Proxying %s as %s" % (url, prefix))
 		components.append(ProxyService(url, prefix, user=user, password=passwd, throttling=throttling))
 	return components
 
@@ -244,12 +244,12 @@ def run( args ):
 	# We parse the options and arguments
 	options, args = oparser.parse_args(args=args)
 	if len(args) == 0:
-		print "The URL to proxy is expected as first argument"
+		print("The URL to proxy is expected as first argument")
 		return False
 	components = createProxies(args, dict(port=options.port,throttling=options.throttling,files=options.files))
 	if options.files:
 		import retro.contrib.localfiles
-		print "Serving local files..."
+		print("Serving local files...")
 		components.append(retro.contrib.localfiles.LocalFiles())
 	app    = Application(components=components)
 	import retro

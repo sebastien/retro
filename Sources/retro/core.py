@@ -12,9 +12,10 @@
 # TODO: Decouple WSGI-specific code and allow binding to Thor
 # TODO: Automatic suport for HEAD and cache requests
 
-import os, sys, cgi, re, urllib, email, time, types, mimetypes, hashlib, tempfile, string
-import BaseHTTPServer, Cookie, gzip, StringIO
+import os, sys, cgi, re, urllib.request, urllib.parse, urllib.error, email, time, types, mimetypes, hashlib, tempfile, string
+import http.server, http.cookies, gzip, io
 import threading, locale
+import collections
 
 NOTHING = re
 
@@ -67,18 +68,18 @@ def asJSON( value, **options ):
 	"""
 	# FIXME: It might be better to use json(asPrimitive(value,options)) if it
 	# does not have a performance penalty
-	if options.has_key("currentDepth"):
+	if "currentDepth" in options:
 		options["currentDepth"] = options["currentDepth"] + 1
 	else:
 		options["currentDepth"] = 0
-	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
+	if value in (True, False, None) or type(value) in (float, int, int, str, str):
 		res = json(value)
 	elif type(value) in (list, tuple, set):
-		res = "[%s]" % (",".join(map(lambda x:asJSON(x,**options), value)))
+		res = "[%s]" % (",".join([asJSON(x,**options) for x in value]))
 	elif type(value) == dict:
 		r = []
-		for k in value.keys():
-			r.append('%s:%s' % (json(unicode(k)), asJSON(value[k], **options)))
+		for k in list(value.keys()):
+			r.append('%s:%s' % (json(str(k)), asJSON(value[k], **options)))
 		res = "{%s}" % (",".join(r))
 	elif hasattr(value, "__class__") and value.__class__.__name__ == "datetime":
 		res = asJSON(tuple(value.timetuple()), **options)
@@ -86,9 +87,9 @@ def asJSON( value, **options ):
 		res = asJSON(tuple(value.timetuple()), **options)
 	elif hasattr(value, "__class__") and value.__class__.__name__ == "struct_time":
 		res = asJSON(tuple(value), **options)
-	elif hasattr(value, "asJSON")  and callable(value.asJSON):
+	elif hasattr(value, "asJSON")  and isinstance(value.asJSON, collections.Callable):
 		res = value.asJSON(asJSON, **options)
-	elif hasattr(value, "export") and callable(value.export):
+	elif hasattr(value, "export") and isinstance(value.export, collections.Callable):
 		try:
 			value = value.export(**options)
 		except:
@@ -96,7 +97,7 @@ def asJSON( value, **options ):
 		res = asJSON(value)
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
 	# that there is a library implemented on the client side
-	elif hasattr(value, "asJS") and callable(value.asJS):
+	elif hasattr(value, "asJS") and isinstance(value.asJS, collections.Callable):
 		res = value.asJS(asJSON, **options)
 	# There may be a "serializer" function that knows better about the different
 	# types of object. We use it if it is provided.
@@ -111,11 +112,11 @@ def asJSON( value, **options ):
 def asPrimitive( value, **options ):
 	"""Converts the given value to a primitive value that can be converted
 	to JSON"""
-	if options.has_key("currentDepth"):
+	if "currentDepth" in options:
 		options["currentDepth"] = options["currentDepth"] + 1
 	else:
 		options["currentDepth"] = 0
-	if value in (True, False, None) or type(value) in (float, int, long, str, unicode):
+	if value in (True, False, None) or type(value) in (float, int, int, str, str):
 		res = value
 	elif type(value) in (list, tuple, set):
 		res = [asPrimitive(v, **options) for v in value]
@@ -126,9 +127,9 @@ def asPrimitive( value, **options ):
 		res = tuple(value.timetuple())
 	elif hasattr(value, "__class__") and value.__class__.__name__ == "struct_time":
 		res = tuple(value)
-	elif hasattr(value, "asPrimitive")  and callable(value.asPrimitive):
+	elif hasattr(value, "asPrimitive")  and isinstance(value.asPrimitive, collections.Callable):
 		res = value.asPrimitive(processor=asPrimitive, **options)
-	elif hasattr(value, "export") and callable(value.export):
+	elif hasattr(value, "export") and isinstance(value.export, collections.Callable):
 		try:
 			res = value.export(**options)
 		except:
@@ -162,7 +163,7 @@ def cache_timestamp( t ):
 # -----------------------------------------------------------------------------
  
 def compress_gzip(data):
-	out = StringIO.StringIO()
+	out = io.StringIO()
 	f   = gzip.GzipFile(fileobj=out, mode='w')
 	f.write(data)
 	f.close()
@@ -383,7 +384,7 @@ class Request:
 			c = True
 			while c:
 				k = "HTTP_" + str(i)
-				if e.has_key(k):
+				if k in e:
 					name,value = e[k].split(",",1)
 					headers[name] = value
 				else:
@@ -465,9 +466,9 @@ class Request:
 				# In some cases we may only have a string as query, so we consider
 				# it as a key
 				if  not query_params:
-					query        = urllib.unquote(query)
+					query        = urllib.parse.unquote(query)
 					query_params = {query:'', '':query}
-				for k,v in query_params.items(): self._addParam(k,v)
+				for k,v in list(query_params.items()): self._addParam(k,v)
 			else:
 				self._params = {}
 			# We load if we haven't loaded yet and load is True
@@ -515,7 +516,7 @@ class Request:
 		"""Returns the cookies (as a 'Cookie.SimpleCookie' instance)
 		attached to this request."""
 		if self._cookies != None: return self._cookies
-		cookies = Cookie.SimpleCookie()
+		cookies = http.cookies.SimpleCookie()
 		cookies.load(self.environ(self.HTTP_COOKIE) or '')
 		self._cookies = cookies
 		return self._cookies
@@ -696,13 +697,13 @@ class Request:
 	def redirect( self, url, **kwargs ):
 		"""Responds to this request by a redirection to the following URL, with
 		the given keyword arguments as parameter."""
-		if kwargs: url += "?" + urllib.urlencode(kwargs)
+		if kwargs: url += "?" + urllib.parse.urlencode(kwargs)
 		return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 
 	def bounce( self, **kwargs ):
 		url = self._environ.get("HTTP_REFERER")
 		if url:
-			if kwargs: url += "?" + urllib.urlencode(kwargs)
+			if kwargs: url += "?" + urllib.parse.urlencode(kwargs)
 			return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 		else:
 			assert not kwargs
@@ -764,7 +765,7 @@ class Request:
 				modified_since = time.strptime(modified_since, "%a, %d %b %Y %H:%M:%S GMT")
 				if modified_since > last_modified:
 					has_changed = False
-			except Exception, e:
+			except Exception as e:
 				pass
 		# If the file has changed or if we request ranges or stream 
 		# then we'll load it and do the whole she bang
@@ -848,8 +849,8 @@ class Request:
 		by default."""
 		if headersB is NOTHING: headersB = self._responseHeaders
 		if headersB:
-			keys     = map   (lambda _:_[0], headersA)
-			headersB = filter(lambda _:_[0] not in keys, headersB)
+			keys     = [_[0] for _ in headersA]
+			headersB = [_ for _ in headersB if _[0] not in keys]
 			return headersB + headersA
 		else:
 			return headersA
@@ -983,7 +984,7 @@ class RequestBodyLoader:
 			# TODO: Rewrite this, it fails with some requests
 			# Creates an email from the HTTP request body
 			lines     = ['Content-Type: %s' % self.request._environ.get(Request.CONTENT_TYPE, '')]
-			for key, value in self.request._environ.items():
+			for key, value in list(self.request._environ.items()):
 				if key.startswith('HTTP_'): lines.append('%s: %s' % (key, value))
 			# We use a spooled temp file to decode the body, in case the body
 			# is really big
@@ -1036,7 +1037,7 @@ class RequestBodyLoader:
 			data = dataFile.read()
 			# NOTE: Encoding is not supported yet
 			query_params = cgi.parse_qs(data)
-			for k,v in query_params.items(): self.request._addParam(k,v)
+			for k,v in list(query_params.items()): self.request._addParam(k,v)
 		elif content_type.startswith("application/json"):
 			dataFile.seek(0)
 			data = simplejson.load(dataFile)	
@@ -1064,7 +1065,7 @@ class Response:
 	"""A response is sent to a client that sent a request."""
 
 	DEFAULT_CONTENT = "text/html"
-	REASONS = BaseHTTPServer.BaseHTTPRequestHandler.responses
+	REASONS = http.server.BaseHTTPRequestHandler.responses
 
 	def __init__( self, content=None, headers=None, status=200, reason=None,
 	produceWhen=None, compression=None):
@@ -1167,7 +1168,7 @@ class Response:
 		status = "%s %s" % (self.status, self.reason or reason)
 		startResponse(status, self.headers)
 		def encode(v):
-			if type(v) == unicode:
+			if type(v) == str:
 				return v.encode(charset or "UTF-8")
 			else:
 				return v

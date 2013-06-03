@@ -10,10 +10,10 @@
 # SEE:  https://exyr.org/2011/hashing-passwords/
 # FROM: https://github.com/mitsuhiko/python-pbkdf2/blob/master/pbkdf2.py
 
-import hmac, hashlib, StringIO
+import hmac, hashlib, io
 from   struct import Struct
 from   operator import xor
-from   itertools import izip, starmap
+from   itertools import starmap
 from   os import urandom
 from   base64 import b64encode, b64decode
 
@@ -43,20 +43,20 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
 	def _pseudorandom(x, mac=mac):
 		h = mac.copy()
 		h.update(x)
-		return map(ord, h.digest())
+		return list(map(ord, h.digest()))
 	buf = []
-	for block in xrange(1, -(-keylen // mac.digest_size) + 1):
+	for block in range(1, -(-keylen // mac.digest_size) + 1):
 		rv = u = _pseudorandom(salt + _pack_int(block))
-		for i in xrange(iterations - 1):
+		for i in range(iterations - 1):
 			u = _pseudorandom(''.join(map(chr, u)))
-			rv = starmap(xor, izip(rv, u))
+			rv = starmap(xor, zip(rv, u))
 		buf.extend(rv)
 	return ''.join(map(chr, buf))[:keylen]
 
 # FROM:  https://exyr.org/2011/hashing-passwords/
 def encrypt(password):
 	"""Generate a random salt and return a new hash for the password."""
-	if isinstance(password, unicode): password = password.encode('utf-8')
+	if isinstance(password, str): password = password.encode('utf-8')
 	salt = b64encode(urandom(SALT_LENGTH))
 	return 'PBKDF2${}${}${}${}'.format(
 		HASH_FUNCTION,
@@ -66,7 +66,7 @@ def encrypt(password):
 
 def verify(password, encrypted):
 	"""Check a password against an existing hash."""
-	if isinstance(password, unicode):
+	if isinstance(password, str):
 		password = password.encode('utf-8')
 	algorithm, hash_function, cost_factor, salt, hash_a = encrypted.split('$')
 	assert algorithm == 'PBKDF2'
@@ -76,16 +76,16 @@ def verify(password, encrypted):
 	# Same as "return hash_a == hash_b" but takes a constant time.
 	# See http://carlos.bueno.org/2011/10/timing.html
 	diff = 0
-	for char_a, char_b in izip(hash_a, hash_b):
+	for char_a, char_b in zip(hash_a, hash_b):
 		diff |= ord(char_a) ^ ord(char_b)
 	return diff == 0
 
 def crypt_decrypt( text, password ):
 	"""A simple XOR encryption, decryption"""
 	# FROM :http://www.daniweb.com/software-development/python/code/216632/text-encryptiondecryption-with-xor-python
-	old = StringIO.StringIO(text)
-	new = StringIO.StringIO(text)
-	for position in xrange(len(text)):
+	old = io.StringIO(text)
+	new = io.StringIO(text)
+	for position in range(len(text)):
 		bias = ord(password[position % len(password)])  # Get next bias character from password
 		old_char = ord(old.read(1))
 		new_char = chr(old_char ^ bias)  # Get new charactor by XORing bias against old character

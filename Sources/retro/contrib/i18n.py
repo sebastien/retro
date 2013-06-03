@@ -24,8 +24,8 @@ def T(text, lang=None ):
 	# FIXME: Use Translations instead
 	if lang is None: lang = DEFAULT_LANGUAGE
 	if isinstance(lang, Request): lang = guessLanguage(lang)
-	if not STRINGS.has_key(text): STRINGS.setdefault(text, {})
-	if STRINGS[text].has_key(lang):
+	if text not in STRINGS: STRINGS.setdefault(text, {})
+	if lang in STRINGS[text]:
 		return STRINGS[text][lang]
 	elif lang == DEFAULT_LANGUAGE:
 		return text
@@ -87,12 +87,12 @@ class Translations:
 	@classmethod
 	def Add( cls, key, **languages ):
 		v = cls.ALL.setdefault(key,{})
-		for lang, value in languages.items(): v[lang] = value
+		for lang, value in list(languages.items()): v[lang] = value
 		return cls
 
 	@classmethod
 	def Get( cls, key, lang ):
-		if cls.ALL.has_key(key):
+		if key in cls.ALL:
 			v = cls.ALL[key]
 			if v and lang in v:
 				return v[lang]

@@ -21,12 +21,12 @@ try:
 	templating.FORMATTERS["json"]       = asJSON
 	templating.FORMATTERS["primitive"]  = asPrimitive
 	templating.FORMATTERS["escapeHTML"] = escapeHTML
-except ImportError, e:
+except ImportError as e:
 	pass
 
 try:
 	import wwwclient
-except ImportError, e:
+except ImportError as e:
 	pass
 
 __doc__ = """
@@ -217,7 +217,7 @@ class PageServer(Component):
 			currentUrl  = request.path()
 		)
 		context  = self.merge(context, properties)
-		if self.app().config("devmode") or not self._templates.has_key(template):
+		if self.app().config("devmode") or template not in self._templates:
 			tmpl = self.loadTemplate(template, type=templateType)
 			self._templates[template] = tmpl
 		else:
@@ -257,7 +257,7 @@ class PageServer(Component):
 				return self._createTemplate(text)
 		else:
 			key = type + ":" + name + ":raw"
-			if not self._templates.has_key(key):
+			if key not in self._templates:
 				path   = os.path.join(self.app().config("library.path"), type, name + ext)
 				text   = None
 				with file(path, "r") as f: text   = f.read()
@@ -267,7 +267,7 @@ class PageServer(Component):
 				return text
 			else:
 				key = type + ":" + name
-				if not self._templates.has_key(key):
+				if key not in self._templates:
 					import templating
 					result = templating.Template(text)
 					self._templates[key] = result
@@ -346,7 +346,7 @@ class WebApp( Application ):
 			# as it is merely a nice to have
 			try:
 				import ipdb
-			except ImportError, e:
+			except ImportError as e:
 				pass
 		for d in (self.config("cache.path"), self.config("data.path"), self.config("cache.api.path")):
 			if not os.path.exists(d):

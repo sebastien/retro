@@ -9,7 +9,7 @@
 # Last mod  : 15-Mar-2013
 # -----------------------------------------------------------------------------
 
-import re, os, stat, hashlib, threading, urllib, pickle, time, functools
+import re, os, stat, hashlib, threading, urllib.request, urllib.parse, urllib.error, pickle, time, functools
 from   retro.web import cache_id, cache_signature
 RE_FILE_ESCAPE = re.compile("[\:\<\>/\(\)\[\]\{\}\$\~]|\.\.")
 
@@ -23,9 +23,9 @@ def cached( store, prefix=None ):
 	"""A generic decorator that can be used to cache any function."""
 	def decorator( f ):
 		def wrapper( *args, **kwargs ):
-			key      = f.func_name
+			key      = f.__name__
 			base_key = ",".join(map(cache_id, args))
-			rest_key = ",".join(map(lambda kv:kv[0] + "=" + kv[1], map(cache_id, kwargs.items())))
+			rest_key = ",".join([kv[0] + "=" + kv[1] for kv in list(map(cache_id, list(kwargs.items())))])
 			key      += "(" + (",".join((base_key, rest_key))) + ")"
 			if prefix: key = prefix + ":" + key
 			if store.enabled:
@@ -93,7 +93,7 @@ class Cache:
 		return self.get(key)
 
 	def __iter__( self ):
-		for k in self.keys():
+		for k in list(self.keys()):
 			yield k
 
 # -----------------------------------------------------------------------------
@@ -166,10 +166,10 @@ class MemoryCache(Cache):
 		self.data = {}
 	
 	def keys( self ):
-		return self.data.keys()
+		return list(self.data.keys())
 
 	def remove( self, key ):
-		if self.data.has_key(key):
+		if key in self.data:
 			del self.data[key]
 
 	def cleanup( self ):
@@ -237,7 +237,7 @@ class LRUCache(Cache):
 
 	def set( self, key, data, weight=1 ):
 		self.lock.acquire()
-		if self.data.has_key(key):
+		if key in self.data:
 			# We update the data if it's already there
 			previous       = self.data[key]
 			self.weight   -= previous[self.WEIGHT]
@@ -257,11 +257,11 @@ class LRUCache(Cache):
 		self.data = {}
 
 	def keys( self ):
-		return self.data.keys()
+		return list(self.data.keys())
 
 	def remove( self, key ):
 		self.lock.acquire()
-		if self.data.has_key(key):
+		if key in self.data:
 			# NOTEL This is the  same as in cleanuip
 			self.weight -= self.data[key][self.WEIGHT]
 			del self.data[key]
@@ -272,10 +272,10 @@ class LRUCache(Cache):
 		now   = time.time()
 		# We remove older items
 		if self.EXPIRES > 0:
-			for key in self.data.keys():
+			for key in list(self.data.keys()):
 				if now - self.data[key][self.TIMESTAMP] > self.EXPIRES:
 					del self.data[key]
-		items = self.data.items()
+		items = list(self.data.items())
 		# FIXME: This is slooooow
 		# We compare the hits
 		items.sort(lambda a,b:cmp(a[1][self.HITS], b[1][self.HITS]))
@@ -336,13 +336,13 @@ class TimeoutCache(Cache):
 		self.cache.clear()
 
 	def keys( self ):
-		return self.cache.keys()
+		return list(self.cache.keys())
 
 	def remove( self, key ):
 		self.cache.remove(key)
 
 	def cleanup( self ):
-		for key in self.cache.keys():
+		for key in list(self.cache.keys()):
 			if self.hasTimedOut(key):
 				self.cache.remove(key)
 		return self
@@ -369,7 +369,7 @@ class FileCache(Cache):
 	@classmethod
 	def NAME_KEY(self,key):
 		max_length = self.MAX_KEY_LENGTH - len(self.EXTENSION)
-		name       = urllib.urlencode(dict(_=key))[2:]
+		name       = urllib.parse.urlencode(dict(_=key))[2:]
 		name_len   = len(name)
 		if name_len >= max_length:
 			suffix = hashlib.md5(key).hexdigest()
@@ -456,13 +456,13 @@ class FileCache(Cache):
 	def _save( self, fd, data ):
 		try:
 			return self.serializer(fd, data)
-		except Exception, e:
+		except Exception as e:
 			return None
 
 	def _load( self, fd ):
 		try:
 			return self.deserializer(fd)
-		except Exception, e:
+		except Exception as e:
 			return None
 
 # -----------------------------------------------------------------------------
@@ -488,7 +488,7 @@ class SignatureCache(Cache):
 
 	def has( self, key, sig=0 ):
 		"""Tells if this cache has the value for the given key and signature."""
-		return self._cachedSig.has_key(key) and (self._cachedSig.get(key) == sig)
+		return key in self._cachedSig and (self._cachedSig.get(key) == sig)
 	
 	def get( self, key, sig=0 ):
 		"""Returns a couple (updaToDate, data) for the given key and
@@ -517,7 +517,7 @@ class SignatureCache(Cache):
 	def mtime( path):
 		try:
 			return  os.stat(path)[stat.ST_MTIME]
-		except Exception, e:
+		except Exception as e:
 			return None
 
 

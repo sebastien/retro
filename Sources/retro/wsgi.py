@@ -26,10 +26,10 @@ Retro applications, but it will give you many more features than any other
 WSGI servers, which makes it the ideal target for development.
 """
 
-import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
+import http.server, socketserver, http.server, urllib.parse
 import sys, logging, socket, errno, time
-import traceback, StringIO, threading
-import core
+import traceback, io, threading
+from . import core
 
 # Jython has no signal module
 try:
@@ -221,7 +221,7 @@ def createReactor():
 		for sig in signals:
 			try:
 				signal.signal(getattr(signal,sig),shutdown)
-			except Exception, e:
+			except Exception as e:
 				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" % (sig, e))
 
 createReactor()
@@ -242,7 +242,7 @@ def getReactor(autocreate=True):
 #
 # ------------------------------------------------------------------------------
 
-class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class WSGIHandler(http.server.SimpleHTTPRequestHandler):
 	"""A simple handler class that takes makes a WSGI interface to the
 	default Python HTTP server. 
 	
@@ -297,8 +297,8 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def _finish( self ):
 		try:
-			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
-		except Exception, e:
+			http.server.SimpleHTTPRequestHandler.finish(self)
+		except Exception as e:
 			# This sometimes throws an 'error: [Errno 32] Broken pipe'
 			pass
 
@@ -352,8 +352,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			# that will be set to true when the event is met
 			else:
 				# FIXME: Implement this
-				raise "NOT IMPLEMENTED"
-				pass
+				raise NotImplementedError
 			res = False
 		elif self._state != self.ENDED:
 			self._processEnd()
@@ -368,7 +367,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		
 		The state of the server is set to PROCESSING or ERROR if the request
 		handler fails."""
-		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.path)
+		protocol, host, path, parameters, query, fragment = urllib.parse.urlparse ('http://localhost%s' % self.path)
 		if not hasattr(application, "fromRetro"):
 			raise Exception("Retro embedded Web server can only work with Retro applications.")
 		script = application.app().config("root")
@@ -394,7 +393,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			,'SERVER_PORT': str (self.server.server_address [1])
 			,'SERVER_PROTOCOL': self.request_version
 		}
-		for httpHeader, httpValue in self.headers.items():
+		for httpHeader, httpValue in list(self.headers.items()):
 			# FIXME: Slow!
 			env ['HTTP_%s' % httpHeader.replace ('-', '_').upper()] = httpValue
 		# Setup the state
@@ -403,7 +402,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		try:
 			self._result = application(env, self._startResponse)
 			self._state  = self.PROCESSING
-		except Exception, e:
+		except Exception as e:
 			self._result  = None
 			self._showError(e)
 			self._state = self.ERROR
@@ -414,7 +413,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		application."""
 		self._state = self.PROCESSING
 		try:
-			data = self._result.next()
+			data = next(self._result)
 			if isinstance(data, core.RendezVous):
 				self._rendezvous = data
 				self._state = self.WAITING
@@ -425,24 +424,24 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			if hasattr(self._result, 'close'):
 				self._result.close()
 			return self._processEnd()
-		except socket.error, socketErr:
+		except socket.error as socketErr:
 			# Catch common network errors and suppress them
 			if (socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
 				logging.debug ("Network error caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 				# For common network errors we just return
 				self._state = self.ERROR
 				return False
-		except socket.timeout, socketTimeout:
+		except socket.timeout as socketTimeout:
 			# Socket time-out
 			logging.debug ("Socket timeout")
 			self._state = self.ERROR
 			return False
-		except Exception, e:
+		except Exception as e:
 			self._result = None
 			# FIXME: We're not capturing the traceback from the generator,
 			# alhought the problem actually happened within it
-			print "[!] Exception in stream:", e
-			print traceback.format_exc()
+			print("[!] Exception in stream:", e)
+			print(traceback.format_exc())
 			self._state = self.ERROR
 
 	def _processEnd( self ):
@@ -476,28 +475,28 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			try:
 				self.send_response (int (statusCode), statusMsg)
 				success = True
-			except socket.error, socketErr:
+			except socket.error as socketErr:
 				logging.debug ("Cannot send response caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 			if success:
 				try:
 					for header, value in headers:
 						self.send_header (header, value)
-				except socket.error, socketErr:
+				except socket.error as socketErr:
 					logging.debug ("Cannot send headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 			try:
 				self.end_headers()
 				self._sentHeaders = 1
-			except socket.error, socketErr:
+			except socket.error as socketErr:
 				logging.debug ("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 		# Send the data
 		try:
 			self.wfile.write (data)
-		except socket.error, socketErr:
+		except socket.error as socketErr:
 			logging.debug ("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 
 	def _showError( self, exception=None ):
 		"""Generates a response that contains a formatted error message."""
-		error_msg = StringIO.StringIO()
+		error_msg = io.StringIO()
 		traceback.print_exc(file=error_msg)
 		error_msg = error_msg.getvalue()
 		logging.error (error_msg)
@@ -522,7 +521,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 # TODO: Easy access of the configuration
 # TODO: Easy debugging of the WSGI application (step by step, with a debugging
 #       component)
-class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+class WSGIServer (socketserver.ThreadingMixIn, http.server.HTTPServer):
 #class WSGIServer (BaseHTTPServer.HTTPServer):
 	"""A simple extension of the base HTTPServer that forwards the handling to
 	the @WSGIHandler defined in this module.
@@ -532,7 +531,7 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 	interleaving of handling of long processes, """
 
 	def __init__ (self, address, application, serveFiles=0):
-		BaseHTTPServer.HTTPServer.__init__ (self, address, WSGIHandler)
+		http.server.HTTPServer.__init__ (self, address, WSGIHandler)
 		self.application        = application
 		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
@@ -545,10 +544,10 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		exception = traceback.format_exc()
 		last_error = exception.rsplit("\n", 2)[-2]
 		if   last_error == "AttributeError: 'NoneType' object has no attribute 'recv'":
-			print "[-] Connection closed by client %s:%s" % (client_address[0], client_address[1])
+			print("[-] Connection closed by client %s:%s" % (client_address[0], client_address[1]))
 		elif last_error.startswith("error: [Errno 32]"):
-			print "[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1])
+			print("[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1]))
 		else:
-			print "[-] Unsupported exception:", exception
+			print("[-] Unsupported exception:", exception)
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

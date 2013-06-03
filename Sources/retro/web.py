@@ -9,8 +9,8 @@
 # Last mod  : 26-May-2013
 # -----------------------------------------------------------------------------
 
-import os, re, sys, time, functools, traceback, StringIO
-from core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
+import os, re, sys, time, functools, traceback, io
+from .core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -109,7 +109,7 @@ def on( priority=0, **methods ):
 	def decorator(function):
 		v = function.__dict__.setdefault(_RETRO_ON, [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, priority)
-		for http_method, url in methods.items():
+		for http_method, url in list(methods.items()):
 			if type(url) not in (list, tuple): url = (url,)
 			for _ in url:
 				v.append((http_method, _))
@@ -135,7 +135,7 @@ def expose( priority=0, compress=False, **methods ):
 		# This is copy and paste of the @on body
 		v = function.__dict__.setdefault(_RETRO_ON,   [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, int(priority))
-		for http_method, url in methods.items():
+		for http_method, url in list(methods.items()):
 			if type(url) not in (list, tuple): url = (url,)
 			for _ in url:
 				if http_method == "json":
@@ -173,7 +173,7 @@ def cache_id(value):
 def cache_signature( prefix, args, kwargs ):
 	"""Returns the cache signature for the given arguments and keyword arguments"""
 	base_key = ",".join(map(cache_id, args))
-	rest_key = ",".join(map(lambda kv:kv[0] + "=" + kv[1], map(cache_id, kwargs.items())))
+	rest_key = ",".join([kv[0] + "=" + kv[1] for kv in list(map(cache_id, list(kwargs.items())))])
 	key      = prefix + ":" + (",".join((base_key, rest_key)))
 	return key
 
@@ -214,7 +214,7 @@ class HandlerException(Exception):
 
 	def __init__( self, e ):
 		self.e     = e
-		t = StringIO.StringIO()
+		t = io.StringIO()
 		traceback.print_exc(file=t)
 		t.seek(0) ; self.trace = t.read() ; t.close()
 		Exception.__init__(self, str(self.e) + "\n" + self.trace)
@@ -274,7 +274,7 @@ class Dispatcher:
 		self.patterns     = {}
 		self._routesInfo  = []
 		self._onException = []
-		for key, value in self.PATTERNS.items():
+		for key, value in list(self.PATTERNS.items()):
 			self.patterns[key]=value
 
 	def onException( self, callback ):
@@ -327,7 +327,7 @@ class Dispatcher:
 					var_name = variable[0]
 					var_type = variable[1]
 				# We warn of unsupported variable type
-				if not var_type.lower() in self.patterns.keys():
+				if not var_type.lower() in list(self.patterns.keys()):
 					if var_name:
 						result += "(?P<%s>%s)" % (var_name, var_type)
 						convert[var_name] = lambda x: x
@@ -401,8 +401,8 @@ class Dispatcher:
 			if not ex or ex[0] != "/": ex = "/" + ex
 			ex = prefix + ex
 			if LOG_DISPATCHER_ON:
-				log("Dispatcher:", " ".join(map(lambda x:"%4s" % (x), handlers.keys())), ex)
-			self._routesInfo.append((handlers.keys(), ex))
+				log("Dispatcher:", " ".join(["%4s" % (x) for x in list(handlers.keys())]), ex)
+			self._routesInfo.append((list(handlers.keys()), ex))
 			regexp_txt, converters, params = self._parseExpression(ex)
 			# log("Dispatcher: regexp=", repr(regexp_txt))
 			regexp = re.compile(regexp_txt)
@@ -414,7 +414,7 @@ class Dispatcher:
 	def info( self ):
 		res = []
 		for methods, url in self._routesInfo:
-			res.append("Dispatcher: " + " ".join(map(lambda x:"%4s" % (x), methods)) + " " + url)
+			res.append("Dispatcher: " + " ".join(["%4s" % (x) for x in methods]) + " " + url)
 		return "\n".join(res)
 
 	def match(self, environ, path=None, method=None):
@@ -434,7 +434,7 @@ class Dispatcher:
 				variables = match.groupdict()
 				# We convert the variables to the proper type using the
 				# converters
-				for key in variables.keys():
+				for key in list(variables.keys()):
 					variables[key] = converters[key](variables[key])
 				# We return the handler along with the variables
 				matched_handlers.append((priority, method_handler, variables, params_name))
@@ -469,7 +469,7 @@ class Dispatcher:
 			if hasattr(handler, "_component"):
 				component = handler._component
 			else:
-				component = handler.im_self
+				component = handler.__self__
 			request._component = component
 			# If there was a required parameter variables, we set the request
 			# parameters to it
@@ -488,7 +488,7 @@ class Dispatcher:
 					# The processor is expected to take the request,
 					# the handler function and the variables.
 					return processor(request, handler, variables)
-				except Exception, e:
+				except Exception as e:
 					for _ in self._onException: _(e, self)
 					raise e
 			else:
@@ -506,7 +506,7 @@ class Dispatcher:
 		# The app is expected to produce a response object
 		try:
 			response = handler(request, **variables)
-		except Exception, e:
+		except Exception as e:
 			# NOTE: We do this so that we actually intercept the stack
 			# trace where the error occured
 			raise HandlerException(e)
@@ -594,7 +594,7 @@ class Component:
 		DispatcherExpression) and a priority, describing a handler for a
 		specific URL within this component. The parameters are actually
 		the same as the ones given to the `@on` decorator."""
-		if type(urls) is dict: urls = urls.items()
+		if type(urls) is dict: urls = list(urls.items())
 		for http_methods, path in urls:
 			handlers = {}
 			for method in http_methods.split("_"):
@@ -708,7 +708,7 @@ class Component:
 					yield response_boundary
 				# And now we generate the body of the request
 				for res in dispatcher(request.environ(), fake_start_response, request):
-					if context.items():
+					if list(context.items()):
 						yield "{'status':%s,'reason':%s,'headers':%s,'body':%s}\n\n" % (
 							asJSON(context['status']),
 							asJSON(context['reason']),
@@ -718,7 +718,7 @@ class Component:
 						del context['status']
 						del context['reason']
 						del context['headers']
-						assert not context.items()
+						assert not list(context.items())
 				has_responded = True
 		# We respond using the given iterator
 		return request.respond(iterate(),headers=[["X-Channel-Boundary", response_boundary]])
@@ -740,20 +740,20 @@ class Application(Component):
 
 		def __init__(self, component, function ):
 			self.component     = component
-			self.im_self       = component
+			self.__self__       = component
 			self.function      = function
-			defaults           = function.func_defaults
-			code               = function.func_code
+			defaults           = function.__defaults__
+			code               = function.__code__
 			self.functionArgs  = list(code.co_varnames[:code.co_argcount])
 
 		def __call__( self, request, **kwargs ):
 			# We try to invoke the function with the optional arguments
-			for key, value in request.params().items(): 
+			for key, value in list(request.params().items()): 
 				if key and (key in self.functionArgs): kwargs.setdefault(key, value)
 			r = self.function(**kwargs)
 			try:
 				pass
-			except TypeError, e:
+			except TypeError as e:
 				raise ApplicationError(
 					"Error when invoking %s" % (self.function),
 					"This is probably because there are not enough arguments",
@@ -774,7 +774,7 @@ class Application(Component):
 		# each other at 'start()' phase, it will still work.
 		for component in components:
 			if type(component) in (list, tuple):
-				map(self.register, component)
+				for _ in component: self.register(_)
 			else:
 				self.register(component)
 
@@ -802,7 +802,7 @@ class Application(Component):
 	def configure( self, **kwargs ):
 		"""Configures this application. The arguments you can use as the same as
 		the properites offered by the `Configuration` objects."""
-		for key, value in kwargs.items():
+		for key, value in list(kwargs.items()):
 			self._config.set(key, value)
 		return self
 
@@ -851,7 +851,7 @@ class Application(Component):
 		# NOTE: On OSX, the following will fail
 		try:
 			if sync: flags = flags | os.O_RSYNC
-		except AttributeError, e:
+		except AttributeError as e:
 			pass
 		fd    = os.open(path, flags)
 		data  = None
@@ -864,7 +864,7 @@ class Application(Component):
 				last_read = len(t)
 			data = "".join(data)
 			os.close(fd)
-		except StandardError, e:
+		except Exception as e:
 			os.close(fd)
 			raise e
 		return data
@@ -875,14 +875,14 @@ class Application(Component):
 		# FIXME: The file is created a +x... weird!
 		try:
 			if sync:       flags = flags | os.O_DSYNC
-		except AttributeError, e:
+		except AttributeError as e:
 			pass
 		if not append: flags = flags | os.O_TRUNC
 		fd    = os.open(path, flags)
 		try:
 			os.write(fd, data)
 			os.close(fd)
-		except StandardError, e:
+		except Exception as e:
 			os.close(fd)
 			raise e
 		return self
@@ -901,7 +901,7 @@ class Application(Component):
 		"""
 		for component in components:
 			if type(component) in (tuple, list):
-				apply(self.register, component)
+				self.register(*component)
 				continue
 			assert isinstance(component, Component)
 			# FIXME: Make sure that we don't register a component twice
@@ -933,11 +933,11 @@ class Application(Component):
 		component matches, 'None' is returned, otherwise the component is
 		returned, if there are many, a list of components is returned."""
 		res = []
-		if type(nameOrClass) in (str,unicode):
+		if type(nameOrClass) in (str,str):
 			nameOrClass = nameOrClass.lower().strip()
-			res = filter(lambda c:c.__class__.__name__.lower() == nameOrClass.lower(), self._components)
+			res = [c for c in self._components if c.__class__.__name__.lower() == nameOrClass.lower()]
 		else:
-			res = filter(lambda c:isinstance(c, nameOrClass), self._components)
+			res = [c for c in self._components if isinstance(c, nameOrClass)]
 		if not res: return None
 		elif len(res) == 1: return res[0]
 		else: return res
@@ -1000,7 +1000,7 @@ class Configuration:
 	def merge( self, config ):
 		"""Merges the configuration from the given configuration into this
 		one."""
-		for key, value in config.items():
+		for key, value in list(config.items()):
 			self.set(key,value)
 
 	def set( self, name, value ):
@@ -1021,12 +1021,12 @@ class Configuration:
 
 	def items( self ):
 		"""Returns the key/values pairs of this configuration."""
-		return self._properties.items()
+		return list(self._properties.items())
 
 	def _abspath( self, path ):
 		"""Ensures that the given path is absolute. It will be made relative to
 		the root if it is not already absolute."""
-		if type(path) in (tuple,list): return map(self._abspath, path)
+		if type(path) in (tuple,list): return list(map(self._abspath, path))
 		abspath = os.path.abspath(path)
 		if path != abspath:
 			return os.path.abspath(os.path.join(self.get("root") or ".", path))

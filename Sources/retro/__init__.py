@@ -9,7 +9,7 @@
 # Last mod  : 09-May-2013
 # -----------------------------------------------------------------------------
 
-from __future__ import print_function
+
 import sys, os
 import retro.wsgi
 from retro.wsgi import REACTOR, onShutdown, onError
@@ -71,7 +71,7 @@ except ImportError:
 	WSGIREF = None
 	STANDALONE_WSGIREF = None
 
-FEATURES = filter(lambda x:x, (FLUP, FCGI, STANDALONE, WSGIREF,))
+FEATURES = [x for x in (FLUP, FCGI, STANDALONE, WSGIREF,) if x]
 def has( feature ):
 	"""Tells if your Python installation has any of the following features:
 
@@ -120,12 +120,14 @@ onError=None ):
 	if async:
 		async = False
 		# FIXME: Thread is deprecated
-		import thread
-		return thread.start_new_thread(run,(),locals())
+		import _thread
+		return _thread.start_new_thread(run,(),locals())
 	if not (withReactor is None):
 		wsgi.USE_REACTOR = withReactor
-	if app == None: app = Application(prefix=prefix,components=components)
-	else: map(app.register, components)
+	if app == None:
+		app = Application(prefix=prefix,components=components)
+	else:
+		for _ in components: app.register(_)
 	# We set up the configuration if necessary
 	config = app.config()
 	if not config: config = Configuration(CONFIG)
