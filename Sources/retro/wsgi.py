@@ -10,14 +10,14 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 31-Aug-2011
+# Last mod  : 03-Jun-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore or (better), Thor!
 # TODO: Test retro apps with another WSGI server
 # FIXME: Reactor is broken (and probably unnecessary)
 
-import traceback
+import traceback, logging
 
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is
@@ -447,8 +447,8 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			self._result = None
 			# FIXME: We're not capturing the traceback from the generator,
 			# alhought the problem actually happened within it
-			print("[!] Exception in stream:", e)
-			print(traceback.format_exc())
+			logging.error("[!] Exception in stream:", e)
+			logging.error(traceback.format_exc())
 			self._state = self.ERROR
 
 	def _processEnd( self ):
@@ -551,10 +551,10 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		exception = traceback.format_exc()
 		last_error = exception.rsplit("\n", 2)[-2]
 		if   last_error == "AttributeError: 'NoneType' object has no attribute 'recv'":
-			print("[-] Connection closed by client %s:%s" % (client_address[0], client_address[1]))
+			logging.error("[-] Connection closed by client %s:%s" % (client_address[0], client_address[1]))
 		elif last_error.startswith("error: [Errno 32]"):
-			print("[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1]))
+			logging.error("[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1]))
 		else:
-			print("[-] Unsupported exception:", exception)
+			logging.error("[-] Unsupported exception:{0}".format(exception))
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

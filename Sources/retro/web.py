@@ -903,7 +903,7 @@ class Application(Component):
 			if type(component) in (tuple, list):
 				self.register(*component)
 				continue
-			assert isinstance(component, Component)
+			assert isinstance(component, Component), "retro.web: Cannot register object because it is not a Component instance: {0}".format(component)
 			# FIXME: Make sure that we don't register a component twice
 			component._app = self
 			# We iterate on the component slots
