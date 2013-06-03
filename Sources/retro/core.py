@@ -6,16 +6,23 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 09-May-2013
+# Last mod  : 03-Jun-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
 # TODO: Automatic suport for HEAD and cache requests
 
-import os, sys, cgi, re, urllib.request, urllib.parse, urllib.error, email, time, types, mimetypes, hashlib, tempfile, string
-import http.server, http.cookies, gzip, io
-import threading, locale
-import collections
+import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
+import gzip, io, threading, locale, collections
+try:
+	import urllib.request
+	import urllib.parse    as urllib_parse
+	from   http.server     import BaseHTTPRequestHandler
+	from   http.cookies    import SimpleCookie
+except ImportError:
+	import urllib as urllib_parse
+	from   BaseHTTPServer import BaseHTTPRequestHandler
+	from   Cookie         import SimpleCookie
 
 NOTHING = re
 
@@ -466,7 +473,7 @@ class Request:
 				# In some cases we may only have a string as query, so we consider
 				# it as a key
 				if  not query_params:
-					query        = urllib.parse.unquote(query)
+					query        = urllib_parse.unquote(query)
 					query_params = {query:'', '':query}
 				for k,v in list(query_params.items()): self._addParam(k,v)
 			else:
@@ -516,7 +523,7 @@ class Request:
 		"""Returns the cookies (as a 'Cookie.SimpleCookie' instance)
 		attached to this request."""
 		if self._cookies != None: return self._cookies
-		cookies = http.cookies.SimpleCookie()
+		cookies = SimpleCookie()
 		cookies.load(self.environ(self.HTTP_COOKIE) or '')
 		self._cookies = cookies
 		return self._cookies
@@ -697,13 +704,13 @@ class Request:
 	def redirect( self, url, **kwargs ):
 		"""Responds to this request by a redirection to the following URL, with
 		the given keyword arguments as parameter."""
-		if kwargs: url += "?" + urllib.parse.urlencode(kwargs)
+		if kwargs: url += "?" + urllib_parse.urlencode(kwargs)
 		return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 
 	def bounce( self, **kwargs ):
 		url = self._environ.get("HTTP_REFERER")
 		if url:
-			if kwargs: url += "?" + urllib.parse.urlencode(kwargs)
+			if kwargs: url += "?" + urllib_parse.urlencode(kwargs)
 			return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 		else:
 			assert not kwargs
@@ -1065,7 +1072,7 @@ class Response:
 	"""A response is sent to a client that sent a request."""
 
 	DEFAULT_CONTENT = "text/html"
-	REASONS = http.server.BaseHTTPRequestHandler.responses
+	REASONS         = BaseHTTPRequestHandler.responses
 
 	def __init__( self, content=None, headers=None, status=200, reason=None,
 	produceWhen=None, compression=None):

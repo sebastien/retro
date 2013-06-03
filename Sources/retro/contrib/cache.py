@@ -9,8 +9,13 @@
 # Last mod  : 15-Mar-2013
 # -----------------------------------------------------------------------------
 
-import re, os, stat, hashlib, threading, urllib.request, urllib.parse, urllib.error, pickle, time, functools
+import re, os, stat, hashlib, threading,  pickle, time, functools
 from   retro.web import cache_id, cache_signature
+try:
+	from urllib.parse import urlencode
+except ImportError:
+	from urllib       import urlencode
+
 RE_FILE_ESCAPE = re.compile("[\:\<\>/\(\)\[\]\{\}\$\~]|\.\.")
 
 class CacheError(Exception):
@@ -369,7 +374,7 @@ class FileCache(Cache):
 	@classmethod
 	def NAME_KEY(self,key):
 		max_length = self.MAX_KEY_LENGTH - len(self.EXTENSION)
-		name       = urllib.parse.urlencode(dict(_=key))[2:]
+		name       = urlencode(dict(_=key))[2:]
 		name_len   = len(name)
 		if name_len >= max_length:
 			suffix = hashlib.md5(key).hexdigest()

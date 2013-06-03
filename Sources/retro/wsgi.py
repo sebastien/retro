@@ -26,7 +26,14 @@ Retro applications, but it will give you many more features than any other
 WSGI servers, which makes it the ideal target for development.
 """
 
-import http.server, socketserver, http.server, urllib.parse
+try:
+	import http.server  as SimpleHTTPServer
+	import socketserver as SocketServer
+	import urllib.parse as urlparse
+	BaseHTTPServer = SimpleHTTPServer
+except ImportError:
+	import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
+
 import sys, logging, socket, errno, time
 import traceback, io, threading
 from . import core
@@ -242,7 +249,7 @@ def getReactor(autocreate=True):
 #
 # ------------------------------------------------------------------------------
 
-class WSGIHandler(http.server.SimpleHTTPRequestHandler):
+class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	"""A simple handler class that takes makes a WSGI interface to the
 	default Python HTTP server. 
 	
@@ -297,7 +304,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def _finish( self ):
 		try:
-			http.server.SimpleHTTPRequestHandler.finish(self)
+			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
 		except Exception as e:
 			# This sometimes throws an 'error: [Errno 32] Broken pipe'
 			pass
@@ -367,7 +374,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		
 		The state of the server is set to PROCESSING or ERROR if the request
 		handler fails."""
-		protocol, host, path, parameters, query, fragment = urllib.parse.urlparse ('http://localhost%s' % self.path)
+		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.path)
 		if not hasattr(application, "fromRetro"):
 			raise Exception("Retro embedded Web server can only work with Retro applications.")
 		script = application.app().config("root")
@@ -521,7 +528,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 # TODO: Easy access of the configuration
 # TODO: Easy debugging of the WSGI application (step by step, with a debugging
 #       component)
-class WSGIServer (socketserver.ThreadingMixIn, http.server.HTTPServer):
+class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 #class WSGIServer (BaseHTTPServer.HTTPServer):
 	"""A simple extension of the base HTTPServer that forwards the handling to
 	the @WSGIHandler defined in this module.
@@ -531,7 +538,7 @@ class WSGIServer (socketserver.ThreadingMixIn, http.server.HTTPServer):
 	interleaving of handling of long processes, """
 
 	def __init__ (self, address, application, serveFiles=0):
-		http.server.HTTPServer.__init__ (self, address, WSGIHandler)
+		BaseHTTPServer.HTTPServer.__init__ (self, address, WSGIHandler)
 		self.application        = application
 		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
