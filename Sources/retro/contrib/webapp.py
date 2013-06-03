@@ -349,7 +349,7 @@ class WebApp( Application ):
 			except ImportError, e:
 				pass
 		for d in (self.config("cache.path"), self.config("data.path"), self.config("cache.api.path")):
-			if not os.path.isdir(d):
+			if not os.path.exists(d):
 				os.makedirs(d)
 		if isinstance(API_CACHE, FileCache):
 			API_CACHE.setPath(self.config("cache.api.path"))

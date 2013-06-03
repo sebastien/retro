@@ -6,11 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 29-Nov-2012
+# Last mod  : 26-May-2013
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, StringIO
-from core import Request, Response, Event, RendezVous, asJSON, json, unjson
+from core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -408,7 +408,16 @@ class Dispatcher:
 			regexp = re.compile(regexp_txt)
 			self._handlers.insert(0, (priority, regexp, params, converters, handlers))
 
-	def dispatch(self, environ, path=None, method=None):
+	def list( self ):
+		return self._routesInfo
+
+	def info( self ):
+		res = []
+		for methods, url in self._routesInfo:
+			res.append("Dispatcher: " + " ".join(map(lambda x:"%4s" % (x), methods)) + " " + url)
+		return "\n".join(res)
+
+	def match(self, environ, path=None, method=None):
 		"""Figure out which handler to delegate to or send 404 or 405. This
 		returns the handler plus a map of variables to pass to the handler."""
 		if path == None: path     = environ['PATH_INFO']
@@ -436,48 +445,20 @@ class Dispatcher:
 			matched_handlers.append((-1, fallback_handler, {}, None))
 			return matched_handlers
 		elif path and path[0] == "/":
-			return self.dispatch(environ, path[1:], method)
+			# If we didn't found any matching handler, we try without the 
+			# / prefix
+			return self.match(environ, path[1:], method)
 		else:
 			return [(0, fallback_handler, {}, None)]
 
-	def list( self ):
-		return self._routesInfo
-
-	def info( self ):
-		res = []
-		for methods, url in self._routesInfo:
-			res.append("Dispatcher: " + " ".join(map(lambda x:"%4s" % (x), methods)) + " " + url)
-		return "\n".join(res)
-
-	def __call__(self, environ, start_response, request=None):
-		"""Delegate request to the appropriate Application. This is the main
-		method of the dispatcher, which is WSGI-compatible."""
-		handlers = self.dispatch(environ)
-		def handle( handler, variables, start_response):
-			# FIXME: Add a charset option
-			# We bind the component to the request
-			request.environ("retro.start_response", start_response)
-			request.environ("retro.variables", variables)
-			# TODO: ADD PROPER ERROR HANDLER
-			# The app is expected to produce a response object
-			try:
-				response = handler(request, **variables)
-			except Exception, e:
-				# NOTE: We do this so that we actually intercept the stack
-				# trace where the error occured
-				raise HandlerException(e)
-			if isinstance(response, Response):
-				result = response.asWSGI(start_response, self.app().config("charset"))
-				return result
-			# TODO: Add an option to warn on None returned by handlers
-			elif response == None:
-				response = Response("",[],200)
-				return response.asWSGI(start_response, self.app().config("charset"))
-			else:
-				return response
+	def dispatch( self, environ, handlers=NOTHING, processor=(lambda r,h,v:h(r,**v)), request=None ):
+		"""Dispatches the given `environ` or `request` to the given handlers
+		previously obtained by calling `match`, returns a `Response` instance."""
 		# We try the handlers (the fallback handler is contained within the
 		# list)
+		if handlers is NOTHING: handlers = self.match(environ)
 		if request == None:
+			assert environ, "Dispatcher.dispatch: request or environ is required"
 			request = Request(environ, self.app().config("charset"))
 		for _, handler, variables, params_name in handlers:
 			can_handle = True
@@ -502,15 +483,48 @@ class Dispatcher:
 						can_handle = False
 						break
 			if can_handle:
+				#return processor(request, handler, variables)
 				try:
-					return handle(handler, variables, start_response)
+					# The processor is expected to take the request,
+					# the handler function and the variables.
+					return processor(request, handler, variables)
 				except Exception, e:
 					for _ in self._onException: _(e, self)
 					raise e
 			else:
 				response = Response("Not authorized",[],401)
-				return response.asWSGI(start_response, self.app().config("charset"))
+				#return response.asWSGI(start_response, self.app().config("charset"))
+				return response
 		assert WebRuntimeError("No handler found")
+
+	def _processWSGI( self, request, handler, variables, start_response ):
+		# FIXME: Add a charset option
+		# We bind the component to the request
+		request.environ("retro.start_response", start_response)
+		request.environ("retro.variables", variables)
+		# TODO: ADD PROPER ERROR HANDLER
+		# The app is expected to produce a response object
+		try:
+			response = handler(request, **variables)
+		except Exception, e:
+			# NOTE: We do this so that we actually intercept the stack
+			# trace where the error occured
+			raise HandlerException(e)
+		if isinstance(response, Response):
+			result = response.asWSGI(start_response, self.app().config("charset"))
+			return result
+		# TODO: Add an option to warn on None returned by handlers
+		elif response == None:
+			response = Response("",[],200)
+			return response.asWSGI(start_response, self.app().config("charset"))
+		else:
+			return response.asWSGI(start_response, self.app().config("charset"))
+
+	def __call__(self, environ, start_response, request=None):
+		"""Delegate request to the appropriate Application. This is the main
+		method of the dispatcher, which is WSGI-compatible."""
+		processor = lambda r,h,v:self._processWSGI(r,h,v,start_response)
+		return self.dispatch(environ, processor=processor, request=request)
 
 # ------------------------------------------------------------------------------
 #

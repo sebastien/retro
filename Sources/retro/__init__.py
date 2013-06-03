@@ -9,11 +9,12 @@
 # Last mod  : 09-May-2013
 # -----------------------------------------------------------------------------
 
-import sys, os, thread
-import wsgi
-from wsgi import REACTOR, onShutdown, onError
-from core import asJSON, asPrimitive, cut, escapeHTML
-from web  import on, expose, predicate, when, restrict, cache, \
+from __future__ import print_function
+import sys, os
+import retro.wsgi
+from retro.wsgi import REACTOR, onShutdown, onError
+from retro.core import asJSON, asPrimitive, cut, escapeHTML
+from retro.web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
 
@@ -118,6 +119,8 @@ onError=None ):
 	the last call you should have in your web application main."""
 	if async:
 		async = False
+		# FIXME: Thread is deprecated
+		import thread
 		return thread.start_new_thread(run,(),locals())
 	if not (withReactor is None):
 		wsgi.USE_REACTOR = withReactor
@@ -200,11 +203,11 @@ onError=None ):
 			environ["com.saddi.service.session"] = sessions
 		def start_response( status, headers, executionInfo=None ):
 			for key, value in headers:
-				print "%s: %s" % (key, value)
-			print
+				print ("%s: %s" % (key, value))
+			print ()
 		# FIXME: This is broken
 		res = "".join(tuple(self.dispatcher(environ, start_response)))
-		print res
+		print (res)
 		if sessions:
 			sessions.close()
 	#
@@ -236,12 +239,12 @@ onError=None ):
 		server = wsgi.WSGIServer(server_address, stack)
 		wsgi.onError(onError)
 		socket = server.socket.getsockname()
-		print "Retro embedded server listening on %s:%s" % ( socket[0], socket[1])
+		print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))
 		try:
 			while runCondition():
 				server.handle_request()
 		except KeyboardInterrupt:
-			print "done"
+			print ("done")
 	elif method == WSGI:
 		# When using standalone WSGI, we make sure to wrap RendezVous objects
 		# that might be returned by the handlers, and make sure we wait for
