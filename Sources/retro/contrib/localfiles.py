@@ -226,6 +226,15 @@ class LibraryServer(Component):
 	for most web applications. You can specialize this class later if you
 	want to change the behaviour."""
 
+	CONTENT_TYPES = dict(
+		svg  = "image/svg+xml",
+		ico  = "image/vnd.microsoft.icon",
+		png  = "image/png",
+		gif  = "image/gif",
+		jpg  = "image/jpeg",
+		jpeg = "image/jpeg",
+	)
+
 	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), minify=False, compress=False, cacheAggregates=True, cacheDuration=24*60*60 ):
 		Component.__init__(self, name=name)
 		self.library  = library
@@ -282,7 +291,9 @@ class LibraryServer(Component):
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
-		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg"))).cache(seconds=self.cacheDuration)
+		content_type = self.CONTENT_TYPES.get(image.rsplit(".",1)[-1])
+		# NOTE: I had to add the content type as not adding it blocks the system in production in some circumstances...
+		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg")), content_type).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/swf/{script:[^/]+\.swf}")
 	def getFlash( self, request, script ):

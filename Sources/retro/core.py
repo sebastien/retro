@@ -729,6 +729,8 @@ class Request:
 		if not path: return self.notFound()
 		path = os.path.abspath(path)
 		if not contentType:
+			# FIXME: For some reason, sometimes the following call stalls the
+			# request (only in production mode!)
 			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
 			return self.notFound("File not found: %s" % (path))
