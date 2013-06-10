@@ -181,7 +181,7 @@ class PageServer(Component):
 			meta["description"] = Translations.Get("site_description", lang)
 			meta["keywords"]    = Translations.Get("site_keywords",    lang)
 			properties["meta"]  = meta
-		res = self.render(request, template, guessLanguage(request), properties=properties, templateType=templateType)
+		res = self.render(request, template, lang, properties=properties, templateType=templateType)
 		return res
 
 	@on(GET=("/favicon.ico"), priority=2)
@@ -216,7 +216,7 @@ class PageServer(Component):
 		else:
 			storable = None
 		context = dict(
-			page        = template,
+			path        = template,
 			title       = template,
 			language    = language,
 			isConnected = user and "true" or "false",
