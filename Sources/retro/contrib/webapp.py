@@ -10,7 +10,7 @@
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
-from retro                    import *
+from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE
 from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
@@ -385,7 +385,7 @@ def createApp(config=(APPNAME.lower() + ".conf")):
 	"""Creates the application with given path as config file."""
 	return WebApp(config)
 
-def start( app=None, runCondition=True, method=STANDALONE ):
+def start( app=None, port=None, runCondition=True, method=STANDALONE ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
 	if method == STANDALONE:
@@ -402,6 +402,7 @@ def start( app=None, runCondition=True, method=STANDALONE ):
 	else:
 		return run(
 			app          = app,
+			port         = port,
 			name         = name,
 			method       = method,
 			sessions     = False,
