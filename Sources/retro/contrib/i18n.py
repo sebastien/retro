@@ -5,7 +5,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 05-Mar-2013
+# Last mod  : 12-Jun-2013
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
@@ -19,6 +19,7 @@ DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
 LOCALIZE_SKIP    = ["lib","api"]
 STRINGS          = {}
+RE_LANG          = re.compile("^\w\w(\-\w\w)?$")
 
 def T(text, lang=None ):
 	# FIXME: Use Translations instead
@@ -69,7 +70,12 @@ def localize(handler):
 			lang = guessLanguage(request)
 			# Once guessed, set language for next requests
 			request.cookie(COOKIE_LANGUAGE,lang)
-			return request.redirect("/" + lang + request.path())
+			path = request.path()
+			# if path is like /LL or /LL-LL (ex /en /en-ca)
+			if (len(path) == 3 or len(path) == 6) and RE_LANG.match(path[1:]):
+				return request.redirect(path + "/")
+			else:
+				return request.redirect("/" + lang + request.path())
 		return handler(inst, request, lang, *args, **kwargs)
 	return retro_i18n_localize_wrapper
 

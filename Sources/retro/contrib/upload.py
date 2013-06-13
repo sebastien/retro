@@ -46,7 +46,11 @@ class Upload:
 		self.status = status
 		if status in self.callbacks:
 			for _ in self.callbacks[status]:
-				_(self)
+				try:
+					_(self)
+				except Exception, e:
+					self.fail(e)
+					raise e
 		return status
 
 	def reset( self ):
@@ -56,6 +60,7 @@ class Upload:
 		self.updated   = time.time()
 		self.progress  = 0.0
 		self.data      = None
+		self.meta      = {}
 		self.bytesRead     = 0
 		self.lastBytesRead = 0
 		self.setStatus(self.IS_NEW)
@@ -99,6 +104,10 @@ class Upload:
 		self.updated       = time.time()
 		yield self
 
+	def fail( self, error=None ):
+		self.setStatus(self.IS_FAILED)
+		self.meta["error"] = str(error)
+
 	def __iter__( self ):
 		for _ in self.read(self.CHUNK_SIZE):
 			yield _
@@ -107,6 +116,7 @@ class Upload:
 		return dict(
 			uid=self.uid,
 			data=self.data,
+			meta=self.meta,
 			status=self.status,
 			created=self.created,
 			updated=self.updated,
