@@ -18,6 +18,7 @@ A set of classes of functions to detect languages and manage translations.
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
 LOCALIZE_SKIP    = ["lib","api"]
+ENABLED          = True
 STRINGS          = {}
 RE_LANG          = re.compile("^\w\w(\-\w\w)?$")
 
@@ -62,7 +63,7 @@ def localize(handler):
 	"""
 	@functools.wraps(handler)
 	def retro_i18n_localize_wrapper(inst, request, lang, *args, **kwargs):
-		if not lang:
+		if ENABLED and (not lang):
 			path = request.path()
 			for skip in LOCALIZE_SKIP:
 				if path.startswith(skip):
