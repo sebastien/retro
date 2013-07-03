@@ -6,11 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 09-Jun-2013
+# Last mod  : 03-Jul-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
-from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE
+from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE, WSGI
 from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
@@ -43,7 +43,7 @@ APPNAME       = "webapp"
 VERSION       = "0.0.0"
 PORT          = 8080
 LANGUAGE      = DEFAULT_LANGUAGE
-E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME + "_"+v) or d)
+E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME.upper() + "_" + v) or d)
 T             = lambda v,l=None: Translations.Get(v,l or LANGUAGE)
 NOTHING       = os
 API_CACHE     = FileCache()
