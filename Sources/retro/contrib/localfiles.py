@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Def-2012
+# Last mod  : 19-Jul-2013
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -143,15 +143,15 @@ class LocalFiles(Component):
 		for key, value in self._processors.items():
 			if ext == key:
 				return value
-		return lambda x,p,r:(x, self.getContentType(path))
+		return None
 
-	@on(GET_POST="/")
+	@on(GET_POST_HEAD="/")
 	def catchall( self, request ):
 		"""A catchall that will display the content of the current
 		directory."""
 		return self.local(request, ".")
 
-	@on(GET_POST="/{path:any}")
+	@on(GET_POST_HEAD="/{path:any}")
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
 		resolved_path = self.resolvePath(path)
@@ -166,9 +166,11 @@ class LocalFiles(Component):
 					return request.respond(self.directoryAsHtml(path, resolved_path))
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
-		else:
+		if processor:
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
+		else:
+			return request.respondFile(resolved_path)
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""
