@@ -34,24 +34,31 @@ except:
 	clevercss = None
 
 LIST_DIR_CSS  = SERVER_ERROR_CSS + """
-.directoryListing {
+.retro-directory-listing {
 	list-style-type: none;
 }
-.directoryListing li:hover{
+.retro-directory-listing li:hover{
 	background: #FFFFE0;
 }
-.directoryListing .bullet {
+.retro-directory-listing li .bullet {
 	color: #AAAAAA;
-	padding-right: 20px;
+	position: absolute;
 }
-.directoryListing .directory {
+
+.retro-directory-listing li a {
+	padding-left: 2.5em;
+	display: block;
+	padding-top: 0.10em;
+	padding-bottom: 0.10em;
+}
+.retro-directory-listing .directory {
 	background: #EEEEEE;
 }
-.directoryListing .hidden, .directoryListing .hidden a {
+.retro-directory-listing .hidden, .retro-directory-listing .hidden a {
 	color: #FFAAAA;
 	font-style: italic;
 }
-.directoryListing .parent {
+.retro-directory-listing .parent {
 	color: #AAAAAA;
 }
 """
@@ -66,7 +73,7 @@ LIST_DIR_HTML = """
 </head>
 <body>
 	<h1>Content of <span class="dirname">%s</span></h1>
-	<ul class="directoryListing">
+	<ul class="retro-directory-listing">
 	%s
 	</ul>
 </body>
