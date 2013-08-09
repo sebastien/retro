@@ -18,7 +18,7 @@ import time, random
 # -----------------------------------------------------------------------------
 
 class Upload:
-	"""Wraps a request and provides convenient methods/callbacks to monitor 
+	"""Wraps a request and provides convenient methods/callbacks to monitor
 	the uploading/decoding of the request."""
 
 	IS_NEW          = 0
@@ -43,7 +43,6 @@ class Upload:
 	def onProgress( self, callback ):  return self.onStatus(self.IS_IN_PROGRESS, callback)
 
 	def setStatus( self, status ):
-		self.status = status
 		if status in self.callbacks:
 			for _ in self.callbacks[status]:
 				try:
@@ -51,6 +50,8 @@ class Upload:
 				except Exception, e:
 					self.fail(e)
 					raise e
+		# We only change the status once all the callbacks have been executed
+		self.status = status
 		return status
 
 	def reset( self ):
@@ -98,7 +99,7 @@ class Upload:
 		self.lastBytesRead = self.bytesRead - last_bytes
 		self.progress      = self.request.loadProgress()
 		self.setStatus(self.IS_DECODING)
-		yield self 
+		yield self
 		self.request.load(decode=True)
 		self.setStatus(self.IS_COMPLETED)
 		self.updated       = time.time()
@@ -146,7 +147,7 @@ class Uploader:
 		(`data` by default). This returns the corresponding `Upload` instance
 		and a file object to the data file.
 		"""
-		# We start by cleaning up inactive 
+		# We start by cleaning up inactive
 		self.cleanup()
 		upload        = Upload(request=request, uid=request.param("uid") if uploadID is None else uploadID)
 		if chunksize: upload.CHUNK_SIZE = chunksize
@@ -159,7 +160,7 @@ class Uploader:
 			return self.uploads[uploadID]
 		else:
 			# NOTE: In some cases you might want to poll the progress
-			# before the startUpload has actually been started, in this 
+			# before the startUpload has actually been started, in this
 			# case, we return a temporary dummy new upload.
 			upload      = Upload(uid=uploadID)
 			self.uploads[upload.uid] = upload
