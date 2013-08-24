@@ -15,6 +15,8 @@ from .core import Request, Response, Event, RendezVous, asJSON, json, unjson, NO
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
 
+# Rethink exception handling: where should that be handled? Dispatcher or WSGI?
+
 def log(*args):
 	"""A log function that outputs information on stdout. It's a good
 	idea to replace this function by another if you want to have a custom
@@ -210,15 +212,14 @@ def cache( store, signature=None ):
 # ------------------------------------------------------------------------------
 
 class HandlerException(Exception):
-	"""Wraps an exception that occured within a handler"""
+	"""Wraps an exception that occured within a handler. This allows to Test
+	for this specific type of error (when the callback of the dispatcher failed)."""
 
 	def __init__( self, e ):
 		self.e     = e
-		t = io.StringIO()
-		traceback.print_exc(file=t)
-		t.seek(0) ; self.trace = t.read() ; t.close()
+		self.trace = "\n|".join(traceback.format_exc().split("\n"))
 		Exception.__init__(self, str(self.e) + "\n" + self.trace)
-	
+
 	def __str__( self ):
 		return self.message
 
@@ -360,7 +361,7 @@ class Dispatcher:
 				expression = None
 		if isStart: result = "^%s$" % (result)
 		return result, convert, params
-	
+
 	# FIXME: That's not used anymore, but I suspect this is useful for debugging
 	@staticmethod
 	def decomposeExpression( expression ):
@@ -445,7 +446,7 @@ class Dispatcher:
 			matched_handlers.append((-1, fallback_handler, {}, None))
 			return matched_handlers
 		elif path and path[0] == "/":
-			# If we didn't found any matching handler, we try without the 
+			# If we didn't found any matching handler, we try without the
 			# / prefix
 			return self.match(environ, path[1:], method)
 		else:
@@ -483,7 +484,6 @@ class Dispatcher:
 						can_handle = False
 						break
 			if can_handle:
-				#return processor(request, handler, variables)
 				try:
 					# The processor is expected to take the request,
 					# the handler function and the variables.
@@ -658,7 +658,7 @@ class Component:
 
 	def onShutdown( self ):
 		"""A stub to be overriden by subclasses."""
-	
+
 	def isRunning( self ):
 		"""Tells if the component is running."""
 		return self._isRunning
@@ -748,7 +748,7 @@ class Application(Component):
 
 		def __call__( self, request, **kwargs ):
 			# We try to invoke the function with the optional arguments
-			for key, value in list(request.params().items()): 
+			for key, value in list(request.params().items()):
 				if key and (key in self.functionArgs): kwargs.setdefault(key, value)
 			r = self.function(**kwargs)
 			try:
@@ -819,7 +819,7 @@ class Application(Component):
 		"""Returns the configuration value for the given name. Please note that
 		this may raise an exception if the property is not part of the
 		configuration properties.
-		
+
 		When no configuration property name is given, the whole configuration is
 		returned.
 		"""
@@ -836,8 +836,8 @@ class Application(Component):
 	def rootPath( self ):
 		"""Returns the absolute path where this application is rooted. This is
 		only set at the execution.
-		
-		This is an alias for 'config("root")'""" 
+
+		This is an alias for 'config("root")'"""
 		return self._config.get("root")
 
 	def localPath( self, path ):
@@ -856,7 +856,7 @@ class Application(Component):
 		fd    = os.open(path, flags)
 		data  = None
 		try:
-			last_read = 1 
+			last_read = 1
 			data      = []
 			while last_read > 0:
 				t = os.read(fd, 128000)
@@ -894,7 +894,7 @@ class Application(Component):
 		"""Registeres the given component into this Web application. The
 		component handlers will be bound to the proper URLs, and the component
 		consistency will be checked against available resources.
-		
+
 		This is where all the "gluing" occurs. The component attriutes are
 		introspected to see if there are decorated with Retro decorators. If
 		so, then the corresponding registration/initialization is made.
