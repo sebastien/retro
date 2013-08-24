@@ -6,11 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 14-May-2013
+# Last mod  : 24-Jul-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
-from retro                    import *
+from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE, WSGI
 from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
@@ -23,6 +23,12 @@ try:
 	templating.FORMATTERS["escapeHTML"] = escapeHTML
 except ImportError as e:
 	pass
+	templating = None
+
+try:
+	import pamela.engine as pamela_engine
+except ImportError as e:
+	pamela_engine = None
 
 try:
 	import wwwclient
@@ -38,7 +44,7 @@ APPNAME       = "webapp"
 VERSION       = "0.0.0"
 PORT          = 8080
 LANGUAGE      = DEFAULT_LANGUAGE
-E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME + "_"+v) or d)
+E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME.upper() + "_" + v) or d)
 T             = lambda v,l=None: Translations.Get(v,l or LANGUAGE)
 NOTHING       = os
 API_CACHE     = FileCache()
@@ -76,8 +82,8 @@ class Permissions:
 
 	@classmethod
 	def CreateSessionCookie( cls, request, userid="anonymous" ):
-		"""The session cookie is made of two part, separated by a `:`. The 
-		first part is a salted hash of the client's IP and user agent, 
+		"""The session cookie is made of two part, separated by a `:`. The
+		first part is a salted hash of the client's IP and user agent,
 		the second one is an encrypted user id.
 
 		This mechanism is definitely not very secure against cookie stealing,
@@ -91,7 +97,7 @@ class Permissions:
 		return hashlib.sha256(address).hexdigest() + str(user_id)
 
 	@classmethod
-	def GetUserId( cls, request ):
+	def GetUserID( cls, request ):
 		"""Gets the user ID associated to this request, if any."""
 		connection_cookie = request.cookie(cls.COOKIE_CONNECTION)
 		if connection_cookie > 64:
@@ -138,7 +144,10 @@ class PageServer(Component):
 	def getUser( self, request ):
 		"""Returns the user associated with the given request. Must be
 		implemented by subclasses."""
-		raise NotImplementedError
+		if hasattr(self.app(), "getUser"):
+			return self.app().getUser(request)
+		else:
+			raise NotImplementedError
 
 	def listLinks( self ):
 		"""Lists the links defined in the base templates"""
@@ -173,7 +182,8 @@ class PageServer(Component):
 			meta["description"] = Translations.Get("site_description", lang)
 			meta["keywords"]    = Translations.Get("site_keywords",    lang)
 			properties["meta"]  = meta
-		return self.render(request, template, guessLanguage(request), properties=properties, templateType=templateType)
+		res = self.render(request, template, lang, properties=properties, templateType=templateType)
+		return res
 
 	@on(GET=("/favicon.ico"), priority=2)
 	def favicon(self, request):
@@ -194,7 +204,7 @@ class PageServer(Component):
 
 	def render( self, request, template, language=None, properties=None, storable=NOTHING, templateType=None, **options ):
 		"""Renders a given page `template`, merging the giving `properties`
-		in the template environment, and optionally serializing the given 
+		in the template environment, and optionally serializing the given
 		`storable` so that it becomes available as JSON"""
 		properties = properties or {}
 		template   = template.split("#")[0].split("?")[0]
@@ -207,7 +217,7 @@ class PageServer(Component):
 		else:
 			storable = None
 		context = dict(
-			page        = template,
+			path        = template,
 			title       = template,
 			language    = language,
 			isConnected = user and "true" or "false",
@@ -230,13 +240,13 @@ class PageServer(Component):
 		path = os.path.join(self.app().config("library.path"), type, name + ext)
 		key  = type + ":" + name
 		return key in self._templates or os.path.exists(path)
-	
+
 	def loadTemplate( self, name, raw=False, type=None ):
 		"""Loads the template with the given name. By default, this will look into
 		the `${library.path}/<type>` configuration path, parse the file as Pamela markup
 		and return it as a `templating.Template` instance. If you do not wish to use these
 		two modules, simply override this method and return an object that has an
-		`apply(properties:dict, lang:str):str` method to fill the templates with the 
+		`apply(properties:dict, lang:str):str` method to fill the templates with the
 		given properties in the given language.
 		"""
 		if type == "paml" or not type:
@@ -268,7 +278,7 @@ class PageServer(Component):
 			else:
 				key = type + ":" + name
 				if key not in self._templates:
-					import templating
+					assert templating, "retro.contrib.webapp.templating must be defined to use templates"
 					result = templating.Template(text)
 					self._templates[key] = result
 					return result
@@ -279,13 +289,13 @@ class PageServer(Component):
 		"""Paml templates are converted to HTML templates in production,
 		so we only do the PAML conversion in dev mode"""
 		if self.app().config("devmode"):
-			import pamela.engine
-			parser = pamela.engine.Parser()
+			assert pamela_engine, "retro.contrib.webapp.loadPAMLTemplate requires the pamela.engine module"
+			parser = pamela_engine.Parser()
 			path   = os.path.join(self.app().config("library.path"), "paml", name + ".paml")
 			text   = self.loadPlainTemplate(name, True, "paml")
 			text   = parser.parseString(text, path)
 			# NOTE: We do not cache templates in dev mode
-			import templating
+			assert templating, "retro.contrib.webapp.templating must be defined to use templates"
 			return templating.Template(text)
 		else:
 			return self.loadPlainTemplate(name, raw, "html")
@@ -376,7 +386,7 @@ def createApp(config=(APPNAME.lower() + ".conf")):
 	"""Creates the application with given path as config file."""
 	return WebApp(config)
 
-def start( app=None, runCondition=True, method=STANDALONE ):
+def start( app=None, port=None, runCondition=True, method=STANDALONE ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
 	if method == STANDALONE:
@@ -393,6 +403,7 @@ def start( app=None, runCondition=True, method=STANDALONE ):
 	else:
 		return run(
 			app          = app,
+			port         = port,
 			name         = name,
 			method       = method,
 			sessions     = False,

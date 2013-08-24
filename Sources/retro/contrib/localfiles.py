@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Def-2012
+# Last mod  : 19-Jul-2013
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -34,24 +34,31 @@ except:
 	clevercss = None
 
 LIST_DIR_CSS  = SERVER_ERROR_CSS + """
-.directoryListing {
+.retro-directory-listing {
 	list-style-type: none;
 }
-.directoryListing li:hover{
+.retro-directory-listing li:hover{
 	background: #FFFFE0;
 }
-.directoryListing .bullet {
+.retro-directory-listing li .bullet {
 	color: #AAAAAA;
-	padding-right: 20px;
+	position: absolute;
 }
-.directoryListing .directory {
+
+.retro-directory-listing li a {
+	padding-left: 2.5em;
+	display: block;
+	padding-top: 0.10em;
+	padding-bottom: 0.10em;
+}
+.retro-directory-listing .directory {
 	background: #EEEEEE;
 }
-.directoryListing .hidden, .directoryListing .hidden a {
+.retro-directory-listing .hidden, .retro-directory-listing .hidden a {
 	color: #FFAAAA;
 	font-style: italic;
 }
-.directoryListing .parent {
+.retro-directory-listing .parent {
 	color: #AAAAAA;
 }
 """
@@ -66,7 +73,7 @@ LIST_DIR_HTML = """
 </head>
 <body>
 	<h1>Content of <span class="dirname">%s</span></h1>
-	<ul class="directoryListing">
+	<ul class="retro-directory-listing">
 	%s
 	</ul>
 </body>
@@ -143,15 +150,15 @@ class LocalFiles(Component):
 		for key, value in list(self._processors.items()):
 			if ext == key:
 				return value
-		return lambda x,p,r:(x, self.getContentType(path))
+		return None
 
-	@on(GET_POST="/")
+	@on(GET_POST_HEAD="/")
 	def catchall( self, request ):
 		"""A catchall that will display the content of the current
 		directory."""
 		return self.local(request, ".")
 
-	@on(GET_POST="/{path:any}")
+	@on(GET_POST_HEAD="/{path:any}")
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory."""
 		resolved_path = self.resolvePath(path)
@@ -166,9 +173,11 @@ class LocalFiles(Component):
 					return request.respond(self.directoryAsHtml(path, resolved_path))
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
-		else:
+		if processor:
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
+		else:
+			return request.respondFile(resolved_path)
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""
@@ -226,6 +235,15 @@ class LibraryServer(Component):
 	for most web applications. You can specialize this class later if you
 	want to change the behaviour."""
 
+	CONTENT_TYPES = dict(
+		svg  = "image/svg+xml",
+		ico  = "image/vnd.microsoft.icon",
+		png  = "image/png",
+		gif  = "image/gif",
+		jpg  = "image/jpeg",
+		jpeg = "image/jpeg",
+	)
+
 	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), minify=False, compress=False, cacheAggregates=True, cacheDuration=24*60*60 ):
 		Component.__init__(self, name=name)
 		self.library  = library
@@ -282,7 +300,9 @@ class LibraryServer(Component):
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
-		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg"))).cache(seconds=self.cacheDuration)
+		content_type = self.CONTENT_TYPES.get(image.rsplit(".",1)[-1])
+		# NOTE: I had to add the content type as not adding it blocks the system in production in some circumstances...
+		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg")), content_type).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/swf/{script:[^/]+\.swf}")
 	def getFlash( self, request, script ):

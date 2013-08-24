@@ -718,12 +718,14 @@ class Request:
 			assert not kwargs
 			return Response("", [], 200, compression=self.compression())
 
-	def returns( self, value=None, js=None, contentType="application/json", status=200, headers=None, options=None ):
-		if js == None: js = asJSON(value, **(options or {}))
-		h = [("Content-Type", contentType)]
+	def returns( self, value=None, raw=False, contentType=None, status=200, headers=None, options=None ):
+		if not raw: value = asJSON(value, **(options or {}))
+		h = [("Content-Type", contentType or "application/json")]
 		if headers: h.extend(headers)
-		return Response(js, headers=self._mergeHeaders(h), status=status, compression=self.compression())
+		return Response(value, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
+	# FIXME: This should be split in respondData or respondStream that would allow to have ranged request
+	# support for not only files but arbitrary data
 	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
@@ -739,6 +741,8 @@ class Request:
 		if not path: return self.notFound()
 		path = os.path.abspath(path)
 		if not contentType:
+			# FIXME: For some reason, sometimes the following call stalls the
+			# request (only in production mode!)
 			contentType, _ = mimetypes.guess_type(path)
 		if not os.path.exists(path):
 			return self.notFound("File not found: %s" % (path))

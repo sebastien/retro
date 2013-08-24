@@ -486,7 +486,6 @@ class SignatureCache(Cache):
 		self._backend    = backend or MemoryCache()
 		self.enabled     = True
 
-
 	def clear( self ):
 		self._cachedSig = {}
 		self.backend.clear()

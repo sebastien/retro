@@ -74,13 +74,15 @@ class ApplicationError(Exception):
 #
 # ------------------------------------------------------------------------------
 
-_RETRO_ON              = "_retro_on"
-_RETRO_ON_PRIORITY     = "_retro_on_priority"
-_RETRO_EXPOSE            = "_retro_expose"
-_RETRO_EXPOSE_JSON       = "_retro_expose_json"
-_RETRO_EXPOSE_COMPRESS   = "_retro_expose_compress"
-_RETRO_WHEN            = "_retro_when"
-_RETRO_IS_PREDICATE    = "_retro_isPredicate"
+_RETRO_ON                   = "_retro_on"
+_RETRO_ON_PRIORITY          = "_retro_on_priority"
+_RETRO_EXPOSE               = "_retro_expose"
+_RETRO_EXPOSE_JSON          = "_retro_expose_json"
+_RETRO_EXPOSE_RAW           = "_retro_expose_raw"
+_RETRO_EXPOSE_COMPRESS      = "_retro_expose_compress"
+_RETRO_EXPOSE_CONTENT_TYPE  = "_retro_expose_content_type"
+_RETRO_WHEN                 = "_retro_when"
+_RETRO_IS_PREDICATE         = "_retro_isPredicate"
 
 def on( priority=0, **methods ):
 	"""The @on decorator is one of the main important things you will use within
@@ -121,7 +123,7 @@ def on( priority=0, **methods ):
 # TODO: We could have an extractor method that would extract sepcific parameters from
 # the request body. Ex:
 # @expose(POST="/api/ads", name=lambda _:_.get("name"), ....)
-def expose( priority=0, compress=False, **methods ):
+def expose( priority=0, compress=False, contentType=None, raw=False, **methods ):
 	"""The @expose decorator is a variation of the @on decorator. The @expose
 	decorator allows you to _expose_ an existing Python function as a JavaScript
 	(or JSON) producing method.
@@ -133,7 +135,9 @@ def expose( priority=0, compress=False, **methods ):
 	def decorator(function):
 		function.__dict__.setdefault(_RETRO_EXPOSE, True)
 		function.__dict__.setdefault(_RETRO_EXPOSE_JSON, None)
+		function.__dict__.setdefault(_RETRO_EXPOSE_RAW , raw)
 		function.__dict__.setdefault(_RETRO_EXPOSE_COMPRESS, compress)
+		function.__dict__.setdefault(_RETRO_EXPOSE_CONTENT_TYPE, contentType)
 		# This is copy and paste of the @on body
 		v = function.__dict__.setdefault(_RETRO_ON,   [])
 		function.__dict__.setdefault(_RETRO_ON_PRIORITY, int(priority))
@@ -760,7 +764,12 @@ class Application(Component):
 					e
 				)
 			# And now we return the response as JS
-			return request.returns(r, options=getattr(self.function,_RETRO_EXPOSE_JSON)).compress(getattr(self.function,_RETRO_EXPOSE_COMPRESS))
+			return request.returns(
+				r,
+				contentType=getattr(self.function,_RETRO_EXPOSE_CONTENT_TYPE),
+				raw=getattr(self.function,_RETRO_EXPOSE_RAW),
+				options=getattr(self.function,_RETRO_EXPOSE_JSON)
+			).compress(getattr(self.function,_RETRO_EXPOSE_COMPRESS))
 
 	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)
@@ -874,10 +883,14 @@ class Application(Component):
 		flags = os.O_WRONLY | os.O_CREAT
 		# FIXME: The file is created a +x... weird!
 		try:
-			if sync:       flags = flags | os.O_DSYNC
+			if sync:
+				flags = flags | os.O_DSYNC
 		except AttributeError as e:
 			pass
-		if not append: flags = flags | os.O_TRUNC
+		if append:
+			flags = flags | os.O_APPEND
+		else:
+			flags = flags | os.O_TRUNC
 		fd    = os.open(path, flags)
 		try:
 			os.write(fd, data)
