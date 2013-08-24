@@ -60,7 +60,7 @@ def asJSON( value, **options ):
 	enhanced version of `simplejson`, because it supports more datatypes
 	(datetime, struct_time) and provides more flexibilty in how values can be
 	serialized.
-	
+
 	Specifically, the given 'value' contains a 'asJS' or 'asJSON' method,
 	this method will be invoked with this function as first argument and
 	the options as keyword-arguments ('**options')
@@ -92,7 +92,7 @@ def asJSON( value, **options ):
 		try:
 			value = value.export(**options)
 		except:
-			value = value.export() 
+			value = value.export()
 		res = asJSON(value)
 	# The asJS is not JSON, but rather only JavaScript objects, so this implies
 	# that there is a library implemented on the client side
@@ -132,7 +132,7 @@ def asPrimitive( value, **options ):
 		try:
 			res = value.export(**options)
 		except:
-			res = value.export() 
+			res = value.export()
 	# There may be a "serializer" function that knows better about the different
 	# types of object. We use it it is provided.
 	elif options.get("serializer"):
@@ -160,7 +160,7 @@ def cache_timestamp( t ):
 # COMPRESSION
 #
 # -----------------------------------------------------------------------------
- 
+
 def compress_gzip(data):
 	out = StringIO.StringIO()
 	f   = gzip.GzipFile(fileobj=out, mode='w')
@@ -311,7 +311,7 @@ class RendezVous:
 					c(self,c,self.count)
 				self._onMeet = None
 		return self
-	
+
 	def wait( self ):
 		self._meetSemaphore.wait()
 
@@ -424,7 +424,7 @@ class Request:
 		uri = self._environ.get(self.REQUEST_URI) or self._environ.get(self.PATH_INFO)
 		if self._environ.get(self.QUERY_STRING): uri += "?" + self._environ.get(self.QUERY_STRING)
 		return uri
-	
+
 	def contentType( self ):
 		"""Returns the request content type"""
 		return self._environ.get(self.CONTENT_TYPE)
@@ -473,7 +473,7 @@ class Request:
 			# We load if we haven't loaded yet and load is True
 			if load and not self.isLoaded(): self.load()
 		return self._params
-	
+
 	def hashParams( self, path=None ):
 		"""Parses the parameters that might be defined in the URL's hash, and
 		returns a dictionary. Here is how this function works:
@@ -626,7 +626,7 @@ class Request:
 	def load( self, size=None, decode=True ):
 		"""Loads `size` more bytes (all by default) from the request
 		body.
-		
+
 		This will basically read a chunk of data from the incoming
 		request, and write it to the `_data` spooled file. Once the
 		request in completely read, the body decoder will decode
@@ -677,7 +677,7 @@ class Request:
 		BOUNDARY  = "RETRO-Multiple-content-response"
 		bodies    = iter(bodies)
 		if not headers: headers = []
-		headers.append(("Content-Type", "multipart/x-mixed-replace; " 
+		headers.append(("Content-Type", "multipart/x-mixed-replace; "
 		+ 'boundary=' + BOUNDARY + ''))
 		def bodygenerator():
 			for body in bodies:
@@ -714,11 +714,13 @@ class Request:
 		if headers: h.extend(headers)
 		return Response(value, headers=self._mergeHeaders(h), status=status, compression=self.compression())
 
+	# FIXME: This should be split in respondData or respondStream that would allow to have ranged request
+	# support for not only files but arbitrary data
 	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
 		filesystem, and exception is raised.
-		
+
 		By default, this method supports caching and will serve both ETags
 		and Last-Modified headers, and will also return a 304 not changed
 		if necessary.
@@ -768,7 +770,7 @@ class Request:
 					has_changed = False
 			except Exception, e:
 				pass
-		# If the file has changed or if we request ranges or stream 
+		# If the file has changed or if we request ranges or stream
 		# then we'll load it and do the whole she bang
 		data           = None
 		content_length = None
@@ -841,12 +843,12 @@ class Request:
 	def fail( self, content=None,status=412, headers=None ):
 		"""Returns an Error 412 with the given content"""
 		return Response(content, status=status, headers=self._mergeHeaders(headers), compression=self.compression())
-	
+
 	def cacheID( self ):
 		return "%s:%s" % (self.method(), self.uri())
 
 	def _mergeHeaders( self, headersA, headersB=NOTHING ):
-		"""Returns headersB + headersA, where headersB is self._responseHeaders 
+		"""Returns headersB + headersA, where headersB is self._responseHeaders
 		by default."""
 		if headersB is NOTHING: headersB = self._responseHeaders
 		if headersB:
@@ -859,7 +861,7 @@ class Request:
 	def _addParam( self, name, value ):
 		"""A wrapper function that will add the given value to the parameters,
 		ensuring that:
-		
+
 		- if there is only 1 value, it will be `param[name] = value`
 		- if there are more values, it will be `param[name] = [value,value]`
 
@@ -897,7 +899,7 @@ class File:
 		self.contentLength = len(self.data)
 		self.name          = name
 		self.contentType   = contentType
-	
+
 	# NOTE: This is to keep compatibility with previous Retro API
 	def __getitem__( self, name ):
 		if hasattr(self, name):
@@ -1041,7 +1043,7 @@ class RequestBodyLoader:
 			for k,v in query_params.items(): self.request._addParam(k,v)
 		elif content_type.startswith("application/json"):
 			dataFile.seek(0)
-			data = simplejson.load(dataFile)	
+			data = simplejson.load(dataFile)
 			if type(data) is dict:
 				for key in data:
 					self.request._addParam(key, data[key])
@@ -1215,7 +1217,7 @@ class Session:
 		"""Alias to 'self.value(key,value)'"""
 		return self.value(key, value)
 
-	def value( self, key=NOTHING, value=NOTHING ): 
+	def value( self, key=NOTHING, value=NOTHING ):
 		"""Sets or gets the 'value' bound to the given 'key'"""
 
 
