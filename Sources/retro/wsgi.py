@@ -10,7 +10,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 03-Jun-2013
+# Last mod  : 24-Aug-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore or (better), Thor!
@@ -96,7 +96,7 @@ SERVER_ERROR = """\
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <title>Retro Error</title>
-<style><!-- 
+<style><!--
 %s
  --></style>
 </head>
@@ -229,7 +229,7 @@ def createReactor():
 			try:
 				signal.signal(getattr(signal,sig),shutdown)
 			except Exception as e:
-				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" % (sig, e))
+				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" %(sig, e))
 
 createReactor()
 
@@ -251,14 +251,14 @@ def getReactor(autocreate=True):
 
 class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	"""A simple handler class that takes makes a WSGI interface to the
-	default Python HTTP server. 
-	
+	default Python HTTP server.
+
 	This handler is made to handle HTTP response generation in multiple times,
-	allowing easy implementation of streaming/comet/push (whatever you call it).
+	allowing easy implementation of streaming/comet/push(whatever you call it).
 	It will also automatically delegate the processing of the requests to the
-	module REACTOR if it exists (see 'getReactor()')
-	
-	NOTE: It seems like some browsers (including FireFox) won't allow more than
+	module REACTOR if it exists(see 'getReactor()')
+
+	NOTE: It seems like some browsers(including FireFox) won't allow more than
 	one open POST connection per session... so be sure to test streaming with
 	two different instances.
 	"""
@@ -269,8 +269,8 @@ class WSGIHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 		def __init__( self, handler ):
 			Exception.__init__(self,"""\
 Handler must return a response object: %s
-Use request methods to create a response (request.respond, request.returns, ...)
-"""% ( handler ))
+Use request methods to create a response(request.respond, request.returns, ...)
+"""%( handler ))
 
 	STARTED    = "Started"
 	PROCESSING = "Processing"
@@ -278,25 +278,25 @@ Use request methods to create a response (request.respond, request.returns, ...)
 	ENDED      = "Ended"
 	ERROR      = "Error"
 
-	def logMessage (self, *args):
+	def logMessage(self, *args):
 		pass
 
-	def logRequest (self, *args):
+	def logRequest(self, *args):
 		pass
 
-	def do_GET (self):
+	def do_GET(self):
 		self.run(self.server.application)
 
-	def do_HEAD (self):
+	def do_HEAD(self):
 		self.run(self.server.application)
 
-	def do_POST (self):
+	def do_POST(self):
 		self.run(self.server.application)
 
-	def do_PUT (self):
+	def do_PUT(self):
 		self.run(self.server.application)
 
-	def do_DELETE (self):
+	def do_DELETE(self):
 		self.run(self.server.application)
 
 	def finish( self ):
@@ -313,14 +313,14 @@ Use request methods to create a response (request.respond, request.returns, ...)
 		"""This is the main function that runs a Retro application and
 		produces the response. This does not return anything, and the execution
 		will be asynchronous is a reactor is available and that the useReactor
-		parameter is True (this is the case by default)."""
+		parameter is True(this is the case by default)."""
 		self._state = self.STARTED
 		self._rendezvous = None
 		# When using the reactor, we simply submit the application for
-		# execution (we delegate the execution to the reactor)
+		# execution(we delegate the execution to the reactor)
 		if usesReactor():
 			getReactor().register(self, application)
-		# Otherwise we iterate on the application (one shot execution)
+		# Otherwise we iterate on the application(one shot execution)
 		else:
 			while self.next(application): continue
 
@@ -330,7 +330,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def next( self, application ):
 		"""This function should be called by the main thread, and allows to
-		process the request step by step (as opposed to one-shot processing).
+		process the request step by step(as opposed to one-shot processing).
 		This makes it easier to do streaming."""
 		res = False
 		if self._state == self.STARTED:
@@ -368,19 +368,19 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def _processStart( self, application ):
 		"""First step called in the processing of a request. It creates the
-		WSGI-compatible environment and passes the environment (which
+		WSGI-compatible environment and passes the environment(which
 		describes the request) and the function to output the response the
 		application request handler.
-		
+
 		The state of the server is set to PROCESSING or ERROR if the request
 		handler fails."""
-		protocol, host, path, parameters, query, fragment = urlparse.urlparse ('http://localhost%s' % self.path)
+		protocol, host, path, parameters, query, fragment = urlparse.urlparse('http://localhost%s' % self.path)
 		if not hasattr(application, "fromRetro"):
 			raise Exception("Retro embedded Web server can only work with Retro applications.")
 		script = application.app().config("root")
-		logging.info ("Running application with script name %s path %s" % (script, path))
+		logging.info("Running application with script name %s path %s" % (script, path))
 		env = {
-			'wsgi.version': (1,0)
+			'wsgi.version':(1,0)
 			,'wsgi.url_scheme': 'http'
 			,'wsgi.input': self.rfile
 			,'wsgi.errors': sys.stderr
@@ -393,16 +393,16 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			,'SCRIPT_NAME': script
 			,'PATH_INFO': path
 			,'QUERY_STRING': query
-			,'CONTENT_TYPE': self.headers.get ('Content-Type', '')
-			,'CONTENT_LENGTH': self.headers.get ('Content-Length', '')
+			,'CONTENT_TYPE': self.headers.get('Content-Type', '')
+			,'CONTENT_LENGTH': self.headers.get('Content-Length', '')
 			,'REMOTE_ADDR': self.client_address[0]
 			,'SERVER_NAME': self.server.server_address [0]
-			,'SERVER_PORT': str (self.server.server_address [1])
+			,'SERVER_PORT': str(self.server.server_address [1])
 			,'SERVER_PROTOCOL': self.request_version
 		}
 		for httpHeader, httpValue in list(self.headers.items()):
 			# FIXME: Slow!
-			env ['HTTP_%s' % httpHeader.replace ('-', '_').upper()] = httpValue
+			env ['HTTP_%s' % httpHeader.replace('-', '_').upper()] = httpValue
 		# Setup the state
 		self._sentHeaders = 0
 		self._headers = []
@@ -411,7 +411,7 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			self._state  = self.PROCESSING
 		except Exception as e:
 			self._result  = None
-			self._showError(e)
+			self._showError(e, env, application)
 			self._state = self.ERROR
 		return self._state
 
@@ -433,14 +433,14 @@ Use request methods to create a response (request.respond, request.returns, ...)
 			return self._processEnd()
 		except socket.error as socketErr:
 			# Catch common network errors and suppress them
-			if (socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
-				logging.debug ("Network error caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+			if(socketErr.args[0] in (errno.ECONNABORTED, errno.EPIPE)):
+				logging.debug("Network error caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 				# For common network errors we just return
 				self._state = self.ERROR
 				return False
 		except socket.timeout as socketTimeout:
 			# Socket time-out
-			logging.debug ("Socket timeout")
+			logging.debug("Socket timeout")
 			self._state = self.ERROR
 			return False
 		except Exception as e:
@@ -453,67 +453,73 @@ Use request methods to create a response (request.respond, request.returns, ...)
 
 	def _processEnd( self ):
 		self._state = self.ENDED
-		if (not self._sentHeaders):
+		if(not self._sentHeaders):
 			# If we have an exception here in the socket, we can safely ignore
 			# it, because the client stopped the connection anyway
 			try:
 				# We must write out something!
-				self._writeData (" ")
+				self._writeData(" ")
 			except:
 				pass
 		self._finish()
 		return self._state
 
-	def _startResponse (self, response_status, response_headers, exc_info=None):
-		if (self._sentHeaders):
-			raise Exception ("Headers already sent and start_response called again!")
+	def _startResponse(self, response_status, response_headers, exc_info=None):
+		if(self._sentHeaders):
+			raise Exception("Headers already sent and start_response called again!")
 		# Should really take a copy to avoid changes in the application....
-		self._headers = (response_status, response_headers)
+		self._headers =(response_status, response_headers)
 		return self._writeData
 
-	def _writeData (self, data):
-		if (not self._sentHeaders):
+	def _writeData(self, data):
+		if(not self._sentHeaders):
 			status, headers = self._headers
 			# Need to send header prior to data
 			# FIXME: Slow?
-			statusCode = status [:status.find (' ')]
-			statusMsg = status [status.find (' ') + 1:]
+			statusCode = status [:status.find(' ')]
+			statusMsg = status [status.find(' ') + 1:]
 			success   = False
 			try:
-				self.send_response (int (statusCode), statusMsg)
+				self.send_response(int (statusCode), statusMsg)
 				success = True
 			except socket.error as socketErr:
-				logging.debug ("Cannot send response caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+				logging.debug("Cannot send response caught: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 			if success:
 				try:
 					for header, value in headers:
-						self.send_header (header, value)
+						self.send_header(header, value)
 				except socket.error as socketErr:
-					logging.debug ("Cannot send headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+					logging.debug("Cannot send headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 			try:
 				self.end_headers()
 				self._sentHeaders = 1
 			except socket.error as socketErr:
-				logging.debug ("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+				logging.debug("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 		# Send the data
 		try:
-			self.wfile.write (data)
+			self.wfile.write(data)
 		except socket.error as socketErr:
-			logging.debug ("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
+			logging.debug("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 
-	def _showError( self, exception=None ):
+	def _showError( self, exception=None, env=None, callback=None ):
 		"""Generates a response that contains a formatted error message."""
-		error_msg = io.StringIO()
-		traceback.print_exc(file=error_msg)
-		error_msg = error_msg.getvalue()
-		logging.error (error_msg)
+		error_msg = u""
+		if env:
+			error_msg += u"{0} {1}\n|".format(
+				env.get("REQUEST_METHOD"),
+				env.get("PATH_INFO"),
+			)
+		# FIXME: The traceback does not include the trace from the callback,
+		# so it's a bit useless here
+		error_msg += "\n|".join(traceback.format_exc().split("\n")[:-1])
+		logging.error(error_msg)
 		if not self._sentHeaders:
 			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
 		# This might fail, so we just ignore if it does
 		error_msg = error_msg.replace("<", "&lt;").replace(">", "&gt;")
-		self._writeData(SERVER_ERROR % (SERVER_ERROR_CSS, error_msg))
+		self._writeData(SERVER_ERROR %(SERVER_ERROR_CSS, error_msg))
 		error(error_msg)
 		self._processEnd()
 
@@ -526,19 +532,19 @@ Use request methods to create a response (request.respond, request.returns, ...)
 # TODO: Easy restart/reload
 # TODO: Easy refresh/refresh of the templates
 # TODO: Easy access of the configuration
-# TODO: Easy debugging of the WSGI application (step by step, with a debugging
+# TODO: Easy debugging of the WSGI application(step by step, with a debugging
 #       component)
-class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
-#class WSGIServer (BaseHTTPServer.HTTPServer):
+class WSGIServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+#class WSGIServer(BaseHTTPServer.HTTPServer):
 	"""A simple extension of the base HTTPServer that forwards the handling to
 	the @WSGIHandler defined in this module.
-	
+
 	This server is multi-threaded, meaning the the application and its
 	components can be used at the same time by different thread. This allows
 	interleaving of handling of long processes, """
 
-	def __init__ (self, address, application, serveFiles=0):
-		BaseHTTPServer.HTTPServer.__init__ (self, address, WSGIHandler)
+	def __init__(self, address, application, serveFiles=0):
+		BaseHTTPServer.HTTPServer.__init__(self, address, WSGIHandler)
 		self.application        = application
 		self.serveFiles         = serveFiles
 		self.serverShuttingDown = 0
@@ -551,9 +557,9 @@ class WSGIServer (SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		exception = traceback.format_exc()
 		last_error = exception.rsplit("\n", 2)[-2]
 		if   last_error == "AttributeError: 'NoneType' object has no attribute 'recv'":
-			logging.error("[-] Connection closed by client %s:%s" % (client_address[0], client_address[1]))
+			logging.error("[-] Connection closed by client %s:%s" %(client_address[0], client_address[1]))
 		elif last_error.startswith("error: [Errno 32]"):
-			logging.error("[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1]))
+			logging.error("[-] Connection interrupted by client %s:%s" %(client_address[0], client_address[1]))
 		else:
 			logging.error("[-] Unsupported exception:{0}".format(exception))
 
