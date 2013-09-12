@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 24-Jul-2013
+# Last mod  : 12-Sep-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -32,6 +32,12 @@ except ImportError as e:
 
 try:
 	import wwwclient
+except ImportError as e:
+	pass
+
+
+try:
+	import reporter
 except ImportError as e:
 	pass
 
@@ -386,9 +392,11 @@ def createApp(config=(APPNAME.lower() + ".conf")):
 	"""Creates the application with given path as config file."""
 	return WebApp(config)
 
-def start( app=None, port=None, runCondition=True, method=STANDALONE ):
+def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
+	if debug and reporter:
+		reporter.register(reporter.StdoutReporter(color=color))
 	if method == STANDALONE:
 		info("Starting Web application")
 	if app is None: app = createApp()
