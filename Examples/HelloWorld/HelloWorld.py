@@ -16,11 +16,9 @@ from retro import *
 class Main(Component):
 	"""To use this, go to <http://localhost:8080/say/hello>"""
 
-	@on(GET="/say/{something:rest}")
-	def saySomething( self, request, something ):
-		return request.respond(
-			"<html><body>You said: <b>%s</b></body></html>" % (something)
-		)
+	@on(GET="{any:rest}")
+	def saySomething( self, request, any ):
+		return request.respond("Hello, World!")
 
 run( components=[Main()] )
 
