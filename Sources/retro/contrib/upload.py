@@ -45,11 +45,11 @@ class Upload:
 	def setStatus( self, status ):
 		if status in self.callbacks:
 			for _ in self.callbacks[status]:
-				try:
-					_(self)
-				except Exception, e:
-					self.fail(e)
-					raise e
+				#try:
+				_(self)
+				# except Exception, e:
+				# 	self.fail(e)
+				# 	raise e
 		# We only change the status once all the callbacks have been executed
 		self.status = status
 		return status
