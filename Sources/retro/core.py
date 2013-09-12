@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 24-Aug-2013
+# Last mod  : 12-Sep-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -79,7 +79,8 @@ def asJSON( value, **options ):
 		options["currentDepth"] = options["currentDepth"] + 1
 	else:
 		options["currentDepth"] = 0
-	if value in (True, False, None) or type(value) in (float, int, int, str, str):
+	# NOTE: There might be a better way to test if it's a primitive type
+	if value in (True, False, None) or type(value) in (bool, float, int, long, bytes, str, unicode):
 		res = json(value)
 	elif isinstance(value, str) or isinstance(value, unicode):
 		return json(value)
