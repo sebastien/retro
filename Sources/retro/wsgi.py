@@ -509,9 +509,9 @@ Use request methods to create a response(request.respond, request.returns, ...)
 				env.get("REQUEST_METHOD"),
 				env.get("PATH_INFO"),
 			)
-		# FIXME: The traceback does not include the trace from the callback,
-		# so it's a bit useless here
-		error_msg += "\n|".join(traceback.format_exc().split("\n")[:-1])
+		# FIXME: We use repr do work around encoding problems in the output
+		exception_format = repr(traceback.format_exc()).split("\\n")
+		error_msg += u"\n|".join(exception_format[:-1])
 		logging.error(error_msg)
 		if not self._sentHeaders:
 			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
