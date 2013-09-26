@@ -1,4 +1,9 @@
-import os, json, urllib.request, urllib.parse, urllib.error, logging, retro.core
+import os, json, logging, retro.core
+try:
+	import urllib.request as urllib_request
+except ImportError:
+	import urllib3.request as urllib_request
+
 
 class Robots:
 
@@ -15,7 +20,7 @@ class Robots:
 				with file(path) as f:
 					cls.DB = json.load(f)
 		return cls.DB
-	
+
 	@classmethod
 	def SaveDB( cls, path=None, db=None ):
 		db   = db   or cls.EnsureDB()
@@ -26,7 +31,7 @@ class Robots:
 
 	@classmethod
 	def ImportDB( cls, url="http://www.robotstxt.org/db/all.txt", encoding="latin-1"):
-		f  = urllib.request.urlopen(url)
+		f  = urllib_request.urlopen(url)
 		db_full   = {}
 		robot_id = None
 		for i, l in enumerate(f.readlines()):
