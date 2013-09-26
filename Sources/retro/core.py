@@ -268,6 +268,23 @@ class Event:
 	def __call__( self,  *args, **kwargs ):
 		self.trigger(*args,**kwargs)
 
+class Stream:
+
+	def length( self ):
+		raise NotImplementedError
+
+	def open( self, offset ):
+		raise NotImplementedError
+
+	def read( self, count ):
+		raise NotImplementedError
+
+def IteratorStream( stream ):
+
+	def __init__( self, iterator, length ):
+		self.iterator = iterator
+		self.length   = length
+
 # -----------------------------------------------------------------------------
 #
 # RENDEZ-VOUS
@@ -655,6 +672,22 @@ class Request:
 			self._bodyLoader.decode()
 		return self
 
+	def range( self ):
+		"""Returns the range header information as a couple (start, end) or None if
+		there is no range."""
+		content_range  = self.header("range")
+		if content_range:
+			content_range = content_range.split("=")
+			if len(content_range) > 1:
+				content_range = content_range[1].split("-")
+				range_start = int(content_range[0] or 0)
+				if content_range[1]:
+					range_end = int(content_range[1])
+				else:
+					range_end = None
+			return (range_start, range_end)
+		return None
+
 	def referer( self ):
 		"""Rerturns the HTTP referer for this request."""
 		return self.environ("HTTP_REFERER")
@@ -727,6 +760,84 @@ class Request:
 
 	# FIXME: This should be split in respondData or respondStream that would allow to have ranged request
 	# support for not only files but arbitrary data
+
+	def respondStream( self, stream, contentType="application/x-binary", status=200, contentLength=True, etag=True, lastModified=None, buffer=1024 * 256 ):
+		# FIXME: Attempt at abstracting that
+		content_range          = self.header("range")
+		range_start, range_end = self.range() or (None, None)
+		has_range              = range_start != None and range_end != None
+		# We start by looking at the file, if hasn't changed, we won't bother
+		# reading it from the filesystem
+		has_changed = True
+		headers     = []
+		# FIXME: Not sure why this would be necessary with etag
+		if has_range or (lastModified is not None): #or etag:
+			headers.append(("Last-Modified", cache_timestamp(lastModified)))
+			modified_since = self.header(self.HEADER_IF_MODIFIED_SINCE)
+			try:
+				modified_since = time.strptime(modified_since, "%a, %d %b %Y %H:%M:%S GMT")
+				if modified_since > lastModified:
+					has_changed = False
+			except Exception as e:
+				pass
+		# If the file has changed or if we request ranges or stream
+		# then we'll load it and do the whole she bang
+		data           = None
+		content_length = None
+		full_length    = None
+		content        = None
+		etag_sig       = None
+		# We now add the content-type
+		headers.append(("Content-Type", contentType))
+		if has_changed or has_range:
+			# We open the file to get its size and adjust the read length and range end
+			# accordingly
+			full_length = stream.length()
+			if not has_range:
+				content_length = full_length
+			else:
+				if range_end is None:
+					range_end      = full_length - 1
+					content_length = full_length - range_start
+				else:
+					content_length = min(range_end - range_start, full_length - range_start)
+			if has_range or etag:
+				# We don't use the content-type for ETag as we don't want to
+				# have to read the whole file, that would be too slow.
+				# NOTE: ETag is indepdent on the range and affect the file as a whole
+				etag_sig = '"' + stream.etag() + '"'
+				headers.append(("ETag",          etag_sig))
+			if contentLength is True:
+				headers.append(("Content-Length", str(content_length)))
+			if has_range:
+				headers.append(("Accept-Ranges", "bytes"))
+				#headers.append(("Connection",    "Keep-Alive"))
+				#headers.append(("Keep-Alive",    "timeout=5, max=100"))
+				headers.append(("Content-Range", "bytes %d-%d/%d" % (range_start, range_end, full_length)))
+			# This is the generator that will stream the file's content
+			def pipe_content(path=path, start=range_start, remaining=content_length):
+				stream.open(start or 0)
+				while remaining:
+					# FIXME: For some reason, we have to read the whole thing in Firefox
+					chunk      = stream.read(min(buffer, remaining))
+					read       = len(chunk)
+					remaining -= read
+					if read:
+						yield chunk
+					else:
+						break
+			content = pipe_content()
+		# File system modification date takes precendence (but for stream we'll test ETag instead)
+		if lastModified and not has_changed and not has_range:
+			return self.notModified(contentType=contentType)
+		# Otherwise we test ETag
+		elif etag is True and etag_sig and self.header(self.HEADER_IF_NONE_MATCH) == etag_sig:
+			return self.notModified(contentType=contentType)
+		# and if nothing works, we'll return the response
+		else:
+			if has_range: status = 206
+			return Response(content=content, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
+
 	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local

@@ -183,6 +183,7 @@ class PageServer(Component):
 		if lang is NOTHING: lang = LANGUAGE
 		if template in ("", "/", "/.html"): template == "index"
 		if template == "index":
+			properties["lang"]  = lang
 			properties["title"] = Translations.Get("site_title", lang)
 			meta = self.DEFAULTS["meta"].copy()
 			meta["description"] = Translations.Get("site_description", lang)
@@ -329,23 +330,27 @@ class WebApp( Application ):
 	# This is the default configuration for the sphere chat, which is created if an
 	# existing configuration is not found.
 	@classmethod
-	def DefaultConfig( cls ):
-		return {
-			"devmode"             : E("DEVMODE",            0,     int),
-			"base"                : E("BASE",               "/"),
-			"port"                : E("PORT",               PORT,  int),
-			"appname"             : E("APPNAME",            APPNAME),
-			"prefix"              : E("PREFIX",             ""),
-			"version"             : E("VERSION",            VERSION),
-			"build"               : E("BUILD",              "development"),
-			"data.path"           : E("DATA_PATH",          os.path.abspath("Data")),
-			"cache.path"          : E("CACHE_PATH",         os.path.abspath("Cache")),
-			"log.path"            : E("LOG_PATH",           os.path.abspath("Logs")),
-			"cache.api.path"      : E("CACHE_PATH",         os.path.abspath("Cache")) + "/api",
-			"workqueue.path"      : E("CACHE_PATH",         os.path.abspath("Data/_workqueue")),
-			"library.path"        : E("LIBRARY_PATH",       os.path.abspath("Library")),
-			"library.python.path" : E("LIBRARY_PYTHON_PATH",os.path.abspath(".")),
-		}
+	def DefaultConfig( cls, key=None ):
+		if key:
+			return cls.DefaultConfig().get(key)
+		else:
+			return {
+				"devmode"             : E("DEVMODE",            0,     int),
+				"base"                : E("BASE",               "/"),
+				"host"                : E("HOST",               "0.0.0.0"),
+				"port"                : E("PORT",               PORT,  int),
+				"appname"             : E("APPNAME",            APPNAME),
+				"prefix"              : E("PREFIX",             ""),
+				"version"             : E("VERSION",            VERSION),
+				"build"               : E("BUILD",              "development"),
+				"data.path"           : E("DATA_PATH",          os.path.abspath("Data")),
+				"cache.path"          : E("CACHE_PATH",         os.path.abspath("Cache")),
+				"log.path"            : E("LOG_PATH",           os.path.abspath("Logs")),
+				"cache.api.path"      : E("CACHE_PATH",         os.path.abspath("Cache")) + "/api",
+				"workqueue.path"      : E("CACHE_PATH",         os.path.abspath("Data/_workqueue")),
+				"library.path"        : E("LIBRARY_PATH",       os.path.abspath("Library")),
+				"library.python.path" : E("LIBRARY_PYTHON_PATH",os.path.abspath(".")),
+			}
 
 	def __init__( self, config=None, components=[], pageServer=None, libraryServer=None):
 		"""Creates a new webapp, setting the `isProduction` property if `$devmode` is enabled,
