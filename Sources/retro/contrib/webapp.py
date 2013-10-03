@@ -122,11 +122,14 @@ class Permissions:
 class PageServer(Component):
 
 	DEFAULTS = dict(
-		base    = "/",
+		base    = None,
+		prefix  = None,
+		build   = None,
+		version = None,
 		site    = APPNAME,
+		appname = APPNAME,
 		tagline = "",
 		year    = time.localtime()[0],
-		version = VERSION,
 		meta    = dict(
 			description = "TODO",
 			keywords    = "TODO,TODO,TODO",
@@ -137,11 +140,16 @@ class PageServer(Component):
 	def __init__( self ):
 		Component.__init__(self)
 		self._templates = {}
+		self.DEFAULTS   = {}
 
 	def start( self ):
-		self.DEFAULTS["version"] = self.app().config("version") or self.DEFAULTS.get("version")
-		self.DEFAULTS["build"]   = self.app().config("build")
-		self.DEFAULTS["prefix"]  = self.app().config("prefix")
+		for key in self.__class__.DEFAULTS:
+			if key not in self.DEFAULTS:
+				value = self.app().config(key)
+				if value is None or value is NOTHING:
+					self.DEFAULTS[key] = self.__class__.DEFAULTS[key]
+				else:
+					self.DEFAULTS[key] = value
 
 	# -------------------------------------------------------------------------
 	# MAIN PAGES
