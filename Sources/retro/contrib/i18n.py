@@ -62,7 +62,7 @@ def localize(handler):
 	You should use this decorator after the `@on` and `@expose`.
 	"""
 	@functools.wraps(handler)
-	def retro_i18n_localize_wrapper(inst, request, lang, *args, **kwargs):
+	def retro_i18n_localize_wrapper(inst, request, lang=None, *args, **kwargs):
 		if ENABLED and (not lang):
 			path = request.path()
 			for skip in LOCALIZE_SKIP:
