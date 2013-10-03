@@ -39,6 +39,7 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
 	a different hashlib `hashfunc` can be provided.
 	"""
 	hashfunc = hashfunc or hashlib.sha1
+	if type(data) is unicode: data = data.encode()
 	mac = hmac.new(data, None, hashfunc)
 	def _pseudorandom(x, mac=mac):
 		h = mac.copy()
@@ -80,11 +81,11 @@ def verify(password, encrypted):
 		diff |= ord(char_a) ^ ord(char_b)
 	return diff == 0
 
-def crypt_decrypt( text, password ):
+def crypt_decrypt( text, password, encoding="utf-8" ):
 	"""A simple XOR encryption, decryption"""
 	# FROM :http://www.daniweb.com/software-development/python/code/216632/text-encryptiondecryption-with-xor-python
-	old = io.StringIO(text)
-	new = io.StringIO(text)
+	old = io.BytesIO(text)
+	new = io.BytesIO(text)
 	for position in range(len(text)):
 		bias = ord(password[position % len(password)])  # Get next bias character from password
 		old_char = ord(old.read(1))
