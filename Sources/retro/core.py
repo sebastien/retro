@@ -34,8 +34,6 @@ try:
 except:
 	HAS_JSON = False
 
-NOTHING     = sys
-
 __doc__ = """\
 The Retro _core_ module defines classes that are at the basis of writing a
 server-side web application. In this respect, this module defines classes:

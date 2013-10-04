@@ -6,11 +6,11 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 12-Sep-2013
+# Last mod  : 04-Oct-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
-from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE, WSGI
+from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE, WSGI, NOTHING
 from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
@@ -35,7 +35,6 @@ try:
 except ImportError as e:
 	pass
 
-
 try:
 	import reporter
 except ImportError as e:
@@ -52,7 +51,6 @@ PORT          = 8080
 LANGUAGE      = DEFAULT_LANGUAGE
 E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME.upper() + "_" + v) or d)
 T             = lambda v,l=None: Translations.Get(v,l or LANGUAGE)
-NOTHING       = os
 API_CACHE     = FileCache()
 LIBRARY_CACHE = SignatureCache()
 ON_INIT       = []
@@ -142,14 +140,17 @@ class PageServer(Component):
 		self._templates = {}
 		self.DEFAULTS   = {}
 
-	def start( self ):
+	def mergeDefaults( self, app ):
 		for key in self.__class__.DEFAULTS:
 			if key not in self.DEFAULTS:
-				value = self.app().config(key)
+				value = app.config(key)
 				if value is None or value is NOTHING:
 					self.DEFAULTS[key] = self.__class__.DEFAULTS[key]
 				else:
 					self.DEFAULTS[key] = value
+
+	def start( self ):
+		self.mergeDefaults(self.app())
 
 	# -------------------------------------------------------------------------
 	# MAIN PAGES
@@ -161,7 +162,7 @@ class PageServer(Component):
 		if hasattr(self.app(), "getUser"):
 			return self.app().getUser(request)
 		else:
-			raise NotImplementedError
+			return None
 
 	def listLinks( self ):
 		"""Lists the links defined in the base templates"""
@@ -184,10 +185,10 @@ class PageServer(Component):
 	@on(GET=("{lang:lang}", "/{lang:lang}"), priority=-9)
 	@on(GET=("/{lang:lang}{template:rest}"), priority=-10)
 	@localize
-	def page( self, request, lang=NOTHING, template="index", templateType=None ):
+	def page( self, request, lang=NOTHING, template="index", templateType=None, properties=None ):
 		"""Renders the given `template` in the given `lang`. Templates
 		are located in `templates.path`"""
-		properties = {}
+		properties = properties.copy() if properties else {}
 		if lang is NOTHING: lang = LANGUAGE
 		if template in ("", "/", "/.html"): template == "index"
 		if template == "index":
@@ -380,20 +381,22 @@ class WebApp( Application ):
 		for d in (self.config("cache.path"), self.config("data.path"), self.config("cache.api.path")):
 			if not os.path.exists(d):
 				os.makedirs(d)
+		self.isProduction = is_production
 		if isinstance(API_CACHE, FileCache):
 			API_CACHE.setPath(self.config("cache.api.path"))
-		components = ([
-			pageServer    or PageServer(),
-			libraryServer or LibraryServer(
-				self.config("library.path"),
-				cache           = LIBRARY_CACHE,
-				cacheAggregates = is_production,
-				minify          = is_production,
-				compress        = is_production,
-				cacheDuration   = is_production and 60 * 60 or 0
-			),
-		] + components)
-		self.register(*components)
+		if components is not NOTHING and components is not None:
+			components = ([
+				(pageServer    or PageServer()) if pageServer is not NOTHING else None,
+				(libraryServer or LibraryServer(
+					self.config("library.path"),
+					cache           = LIBRARY_CACHE,
+					cacheAggregates = is_production,
+					minify          = is_production,
+					compress        = is_production,
+					cacheDuration   = is_production and 60 * 60 or 0
+				)) if libraryServer is not NOTHING else None,
+			] + components)
+			self.register(*components)
 
 # -----------------------------------------------------------------------------
 #

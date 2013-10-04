@@ -913,6 +913,7 @@ class Application(Component):
 		so, then the corresponding registration/initialization is made.
 		"""
 		for component in components:
+			if component is None: continue
 			if type(component) in (tuple, list):
 				self.register(*component)
 				continue

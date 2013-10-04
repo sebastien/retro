@@ -6,14 +6,13 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 09-May-2013
+# Last mod  : 04-Oct-2013
 # -----------------------------------------------------------------------------
-
 
 import sys, os
 import retro.wsgi
 from retro.wsgi import REACTOR, onShutdown, onError
-from retro.core import asJSON, asPrimitive, cut, escapeHTML
+from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING
 from retro.web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
@@ -26,11 +25,11 @@ This is the main Retro module. You can generally do the following:
 
 >	from retro import *
 >	class MyCompoment(Component):
->	
+>
 >		@on("/index.html")
 >		def main( self, request ):
 >			return request.respond("Hello World!")
->	
+>
 >	if __name__ == "__main__":
 >		run(Application(MyCompoment()), STANDALONE)
 
@@ -225,7 +224,7 @@ onError=None ):
 	# 	socket = server.socket.getsockname()
 	# 	print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
 	# 	try:
-	# 		while runCondition: server.handle_request() 
+	# 		while runCondition: server.handle_request()
 	# 	except KeyboardInterrupt:
 	# 		print "done"
 	#
