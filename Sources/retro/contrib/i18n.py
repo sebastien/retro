@@ -5,7 +5,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 12-Jun-2013
+# Last mod  : 10-Oct-2013
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
@@ -59,24 +59,43 @@ def localize(handler):
 	language (and settig the language cookie `COOKIE_LANGUAGE`) if
 	not already.
 
-	You should use this decorator after the `@on` and `@expose`.
+	If the `lang` query string is set, the localize function will automatically
+	redirect.
+
+	You should use this decorator after the `@on` and `@expose` (meaning it
+	needs to be the last on the chain of decorators.
 	"""
 	@functools.wraps(handler)
 	def retro_i18n_localize_wrapper(inst, request, lang=None, *args, **kwargs):
-		if ENABLED and (not lang):
-			path = request.path()
-			for skip in LOCALIZE_SKIP:
-				if path.startswith(skip):
-					return handler(inst, request, lang, *args, **kwargs)
-			lang = guessLanguage(request)
-			# Once guessed, set language for next requests
-			request.cookie(COOKIE_LANGUAGE,lang)
-			path = request.path()
-			# if path is like /LL or /LL-LL (ex /en /en-ca)
-			if (len(path) == 3 or len(path) == 6) and RE_LANG.match(path[1:]):
-				return request.redirect(path + "/")
-			else:
-				return request.redirect("/" + lang + request.path())
+		if ENABLED:
+			if not lang:
+				# There's no language specified, so we have to guess it
+				lang = request.param("lang") or lang
+				path = request.path()
+				for skip in LOCALIZE_SKIP:
+					if path.startswith(skip):
+						return handler(inst, request, lang, *args, **kwargs)
+				lang = guessLanguage(request)
+				# Once guessed, set language for next requests
+				request.cookie(COOKIE_LANGUAGE,lang)
+				path = request.path()
+				# if path is like /LL or /LL-LL (ex /en /en-ca)
+				if (len(path) == 3 or len(path) == 6) and RE_LANG.match(path[1:]):
+					return request.redirect(path + "/")
+				else:
+					return request.redirect("/" + lang + request.path())
+			elif request.param("lang") and request.param("lang") != lang:
+				# We override the current language, so we redirect to the url
+				path = request.path()
+				l    = request.param("lang")
+				if lang:
+					path = path.split(lang, 1)
+					path.insert(1, l)
+					path = "".join(path).replace("lang=" +  l, "").replace("&&","&")
+				else:
+					path = "/" + l + path
+				request.cookie(COOKIE_LANGUAGE,l)
+				return request.redirect(path)
 		return handler(inst, request, lang, *args, **kwargs)
 	return retro_i18n_localize_wrapper
 

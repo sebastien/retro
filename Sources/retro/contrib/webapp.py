@@ -183,22 +183,23 @@ class PageServer(Component):
 	# -------------------------------------------------------------------------
 
 	@on(GET=("{lang:lang}", "/{lang:lang}"), priority=-9)
-	@on(GET=("/{lang:lang}{template:rest}"), priority=-10)
+	@on(GET=("/{lang:lang}{path:rest}"), priority=-10)
 	@localize
-	def page( self, request, lang=NOTHING, template="index", templateType=None, properties=None ):
-		"""Renders the given `template` in the given `lang`. Templates
+	def page( self, request, lang=NOTHING, template=None, path="index", templateType=None, properties=None ):
+		"""Renders the given `template` (by default, will find it based on the path) in the given `lang`. Templates
 		are located in `templates.path`"""
 		properties = properties.copy() if properties else {}
 		if lang is NOTHING: lang = LANGUAGE
-		if template in ("", "/", "/.html"): template == "index"
-		if template == "index":
-			properties["lang"]  = lang
-			properties["title"] = Translations.Get("site_title", lang)
-			meta = self.DEFAULTS["meta"].copy()
-			meta["description"] = Translations.Get("site_description", lang)
-			meta["keywords"]    = Translations.Get("site_keywords",    lang)
-			properties["meta"]  = meta
-		res = self.render(request, template, lang, properties=properties, templateType=templateType)
+		if path in ("", "/", "/.html") and not template: template == "index"
+		properties.setdefault("lang", lang)
+		properties.setdefault("page",      path)
+		properties.setdefault("template",  template)
+		properties.setdefault("title",     Translations.Get("site_title", lang))
+		meta = self.DEFAULTS["meta"].copy()
+		meta["description"] = Translations.Get("site_description", lang)
+		meta["keywords"]    = Translations.Get("site_keywords",    lang)
+		properties.setdefault("meta",      meta)
+		res = self.render(request, path if not template else template, lang, properties=properties, templateType=templateType )
 		return res
 
 	@on(GET=("/favicon.ico"), priority=2)
