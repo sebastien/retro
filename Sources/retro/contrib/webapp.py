@@ -443,7 +443,8 @@ def application(environ, startReponse):
 	if not APPLICATION:
 		APPLICATION = start(method=WSGI)
 		for _ in ON_INIT: _(APPLICATION)
-	app = APPLICATION.stack.app()
+	# FIXME: Not sure why this is here
+	# app = APPLICATION.stack.app()
 	return APPLICATION(environ, startReponse)
 
 if __name__ == "__main__":
