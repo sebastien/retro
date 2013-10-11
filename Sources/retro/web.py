@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 26-May-2013
+# Last mod  : 11-Oct-2013
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io
@@ -574,6 +574,7 @@ class Component:
 		self._context   = {}
 		self._priority  = 0
 		self._isRunning = True
+		self.startTime  = None
 		if prefix:
 			self.PREFIX = prefix
 
@@ -792,6 +793,7 @@ class Application(Component):
 
 	def start( self ):
 		for component in self._components:
+			compoment.startTime = time.utcnow()
 			component.start()
 
 	def notFound(self, request):

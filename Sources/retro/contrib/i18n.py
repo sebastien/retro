@@ -92,6 +92,7 @@ def localize(handler):
 					path = path.split(lang, 1)
 					path.insert(1, l)
 					path = "".join(path).replace("lang=" +  l, "").replace("&&","&")
+					while path.endswith("?"): path.pop()
 				else:
 					path = "/" + l + path
 				request.cookie(COOKIE_LANGUAGE,l)
