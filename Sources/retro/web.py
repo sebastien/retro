@@ -9,7 +9,7 @@
 # Last mod  : 11-Oct-2013
 # -----------------------------------------------------------------------------
 
-import os, re, sys, time, functools, traceback, io
+import os, re, sys, time, functools, traceback, io, datetime
 from .core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
 
 LOG_ENABLED       = True
@@ -793,7 +793,7 @@ class Application(Component):
 
 	def start( self ):
 		for component in self._components:
-			compoment.startTime = time.utcnow()
+			compoment.startTime = datetime.datetime.utcnow()
 			component.start()
 
 	def notFound(self, request):
