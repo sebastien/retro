@@ -793,7 +793,7 @@ class Application(Component):
 
 	def start( self ):
 		for component in self._components:
-			compoment.startTime = datetime.datetime.utcnow()
+			component.startTime = datetime.datetime.utcnow()
 			component.start()
 
 	def notFound(self, request):
