@@ -10,14 +10,14 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 24-Aug-2013
+# Last mod  : 27-Oct-2013
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore or (better), Thor!
 # TODO: Test retro apps with another WSGI server
 # FIXME: Reactor is broken (and probably unnecessary)
 
-import traceback, logging
+import traceback, logging, time
 
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is
@@ -322,7 +322,11 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			getReactor().register(self, application)
 		# Otherwise we iterate on the application(one shot execution)
 		else:
-			while self.next(application): continue
+			while self.next(application):
+				# We do a time.sleep in the hope that this would yield to
+				# other threads
+				time.sleep(0)
+				continue
 
 	def nextWithReactor( self, application ):
 		if self.next(application):
@@ -447,7 +451,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			self._result = None
 			# FIXME: We're not capturing the traceback from the generator,
 			# alhought the problem actually happened within it
-			logging.error("[!] Exception in stream:", e)
+			logging.error("[!] Exception in stream: {0}".format(e))
 			logging.error(traceback.format_exc())
 			self._state = self.ERROR
 

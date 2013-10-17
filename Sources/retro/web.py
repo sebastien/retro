@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 11-Oct-2013
+# Last mod  : 17-Oct-2013
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime
@@ -496,9 +496,8 @@ class Dispatcher:
 					for _ in self._onException: _(e, self)
 					raise e
 			else:
-				response = Response("Not authorized",[],401)
-				#return response.asWSGI(start_response, self.app().config("charset"))
-				return response
+				handler = lambda request, **variables: Response("Not authorized",[],401)
+				return processor( request, handler, variables)
 		assert WebRuntimeError("No handler found")
 
 	def _processWSGI( self, request, handler, variables, start_response ):
