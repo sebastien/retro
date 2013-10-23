@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 19-Jul-2013
+# Last mod  : 23-Oct-2013
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -296,7 +296,10 @@ class LibraryServer(Component):
 
 	@on(GET="lib/fonts/{path:rest}")
 	def getFonts( self, request, path ):
-		return request.respondFile(os.path.join(self.library, "fonts", path)).cache(seconds=self.cacheDuration)
+		if path.endswith(".css"):
+			return self._getFromLibrary(request, "fonts", path, "text/css; charset=utf-8")
+		else:
+			return request.respondFile(os.path.join(self.library, "fonts", path)).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
