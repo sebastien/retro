@@ -5,7 +5,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 10-Oct-2013
+# Last mod  : 25-Oct-2013
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
@@ -92,7 +92,7 @@ def localize(handler):
 					path = path.split(lang, 1)
 					path.insert(1, l)
 					path = "".join(path).replace("lang=" +  l, "").replace("&&","&")
-					while path.endswith("?"): path.pop()
+					while path.endswith("?"): path = path[:-1]
 				else:
 					path = "/" + l + path
 				request.cookie(COOKIE_LANGUAGE,l)
