@@ -6,10 +6,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 15-Mar-2013
+# Last mod  : 04-Nov-2013
 # -----------------------------------------------------------------------------
 
-import re, os, stat, hashlib, threading,  pickle, time, functools
+import re, os, stat, hashlib, threading,  pickle, time, functools, types
 from   retro.web import cache_id, cache_signature
 try:
 	from urllib.parse import urlencode
@@ -59,13 +59,13 @@ class Cache:
 
 	def get( self, key ):
 		raise NotImplementedError
-	
+
 	def has( self, key ):
 		raise NotImplementedError
 
 	def set( self, key, value ):
 		raise NotImplementedError
-	
+
 	def clear( self, key ):
 		raise NotImplementedError
 
@@ -77,6 +77,18 @@ class Cache:
 
 	def cleanup( self ):
 		raise NotImplementedError
+
+	def invalidate( self, key ):
+		if type(key) in (str, unicode):
+			if self.has(key):
+				self.remove(key)
+		elif isinstance(key, types.FunctionType) or isinstance(key, types.MethodType):
+			prefix = key.__name__ + ":"
+			to_remove = [k for k in self.keys() if k.startswith(prefix)]
+			for k in to_remove: self.remove(k)
+		else:
+			raise Exception("Unsupported key type {0}: {1}".format(type(key), key))
+		return self
 
 	def wrap(self, keyExtractor):
 		def wrap_wrapper(function):
@@ -114,13 +126,13 @@ class NoCache(Cache):
 
 	def get( self, key ):
 		return False
-	
+
 	def has( self, key ):
 		return False
 
 	def set( self, key, value ):
 		return False
-	
+
 	def clear( self, key ):
 		return False
 
@@ -169,7 +181,7 @@ class MemoryCache(Cache):
 
 	def clear( self ):
 		self.data = {}
-	
+
 	def keys( self ):
 		return list(self.data.keys())
 
@@ -308,7 +320,7 @@ class TimeoutCache(Cache):
 		Cache.__init__(self)
 		self.cache   = cache or MemoryCache(limit=limit)
 		self.timeout = self.TIMEOUT if timeout is None else timeout
-	
+
 	def get( self, key ):
 		if self.cache.has(key):
 			value, insert_time = self.cache.get(key)
@@ -336,7 +348,7 @@ class TimeoutCache(Cache):
 	def set( self, key, value ):
 		self.cache.set(key, (value, time.time()))
 		return value
-	
+
 	def clear( self ):
 		self.cache.clear()
 
@@ -394,7 +406,7 @@ class FileCache(Cache):
 		self.keyProcessor = keys or self.NAME_KEY
 		self.enabled      = True
 		if expires != None:self.EXPIRES = expires
-	
+
 	def expire( self, value ):
 		self.EXPIRES = value
 		return self
@@ -411,7 +423,7 @@ class FileCache(Cache):
 	def withMD5Keys( self ):
 		self.setKeyProcessor(FileCache.SHA1_KEY)
 		return self
-	
+
 	def setKeyProcessor( self, keys ):
 		self.keyProcessor = keys
 		return self
@@ -450,14 +462,14 @@ class FileCache(Cache):
 
 	def clear( self ):
 		assert False, "Not implemented"
-		
+
 	def remove( self, key):
 		if self.has(key):
 			os.unlink(self.path + "/" + self._normKey(key) + self.EXTENSION)
 
 	def _normKey( self, key ):
 		return self.keyProcessor(key)
-	
+
 	def _save( self, fd, data ):
 		try:
 			return self.serializer(fd, data)
@@ -493,7 +505,7 @@ class SignatureCache(Cache):
 	def has( self, key, sig=0 ):
 		"""Tells if this cache has the value for the given key and signature."""
 		return key in self._cachedSig and (self._cachedSig.get(key) == sig)
-	
+
 	def get( self, key, sig=0 ):
 		"""Returns a couple (updaToDate, data) for the given key and
 		signature. If the signature is different, then (False, None) is returned

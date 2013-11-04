@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 04-Oct-2013
+# Last mod  : 04-Nov-2013
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -14,7 +14,7 @@ from retro                    import Dispatcher, Application, Component, on, exp
 from retro.contrib.localfiles import LibraryServer
 from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
 from retro.contrib.hash       import crypt_decrypt
-from retro.contrib.cache      import FileCache, SignatureCache
+from retro.contrib.cache      import FileCache, SignatureCache, NoCache, MemoryCache
 
 try:
 	import templating
@@ -51,7 +51,7 @@ PORT          = 8080
 LANGUAGE      = DEFAULT_LANGUAGE
 E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME.upper() + "_" + v) or d)
 T             = lambda v,l=None: Translations.Get(v,l or LANGUAGE)
-API_CACHE     = FileCache()
+API_CACHE     = MemoryCache   ()
 LIBRARY_CACHE = SignatureCache()
 ON_INIT       = []
 info          = lambda _:sys.stdout.write(str(_) + "\n")

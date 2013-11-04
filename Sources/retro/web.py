@@ -176,7 +176,7 @@ def cache_id(value):
 	except Exception:
 		return str(value)
 
-def cache_signature( prefix, args, kwargs ):
+def cache_signature( prefix, args=[], kwargs=dict() ):
 	"""Returns the cache signature for the given arguments and keyword arguments"""
 	base_key = ",".join(map(cache_id, args))
 	rest_key = ",".join([kv[0] + "=" + kv[1] for kv in list(map(cache_id, list(kwargs.items())))])
