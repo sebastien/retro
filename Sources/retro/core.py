@@ -475,7 +475,7 @@ class Request:
 		case of a POST."""
 		# Otherwise, if the parameters are empty
 		if not self._params:
-			query = self._environ[self.QUERY_STRING]
+			query = self._environ.get(self.QUERY_STRING)
 			if query:
 				# We try to parse the query string
 				query_params = cgi.parse_qs(query)
@@ -1196,7 +1196,7 @@ class Response:
 		self.status  = status
 		self.reason  = reason
 		if type(headers) == tuple: headers = list(headers)
-		self.headers = headers or [("Accept-Ranges", "bytes")]
+		self.headers = [(k,v) for k,v in headers] if headers else [("Accept-Ranges", "bytes")]
 		self.content = content
 		self.produceEventGuard = None
 		self.compression = compression

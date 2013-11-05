@@ -7,6 +7,7 @@
 		<h1>File upload test</h1>
 
 		<h2>The form</h2>
+		<button id="uploadButton">Upload</button>
 		<form id="uploadForm" method=POST enctype="multipart/form-data" action="/upload?id=1">
 			<input id="uploadInput" name=data type=file>
 		</form>
@@ -19,12 +20,16 @@
 			var upload_input  = $("#uploadInput");
 			var upload_iframe = $("#uploadIFrame");
 			var upload_form   = $("#uploadForm");
+			var upload_button = $("#uploadButton");
+			upload_button.click(function(){
+				upload_form.dialog();
+			});
 			upload_input.change(function(){
 				upload_form[0].target = upload_iframe.attr("id");
 				upload_form.submit();
 			});
 
 		</script>
-
+		<!-- SEE http://jsfiddle.net/djibouti33/uP7A9/ -->
 	</body>
 </html>

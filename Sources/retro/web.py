@@ -183,6 +183,7 @@ def cache_signature( prefix, args=[], kwargs=dict() ):
 	key      = prefix + ":" + (",".join((base_key, rest_key)))
 	return key
 
+# FIXME: Cache deos not seem to work well when there is an authentication
 def cache( store, signature=None ):
 	"""The @cache(store) decorator can be used to decorate request handlers and
 	cache the response into the given cache object that must have 'has', 'get'
