@@ -10,7 +10,7 @@
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime
-from .core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
+from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -185,28 +185,26 @@ def cache_signature( prefix, args=[], kwargs=dict() ):
 
 # FIXME: Cache deos not seem to work well when there is an authentication
 def cache( store, signature=None ):
-	"""The @cache(store) decorator can be used to decorate request handlers and
+	"""The @cache(store) decorator can be used to decorate functions (including request handlers)
 	cache the response into the given cache object that must have 'has', 'get'
 	and 'set' methods, and should be able to store response objects."""
-
-	if signature is None: signature = cache_signature.__name__
-	def decorator( requestHandler ):
+	def decorator( f ):
 		# FIXME: Cache should work with both @expose and @on
-		def wrapper( self, *args, **kwargs ):
-			key = cache_signature(requestHandler.__name__, args, kwargs)
+		def wrapper( *args, **kwargs ):
+			key = cache_signature(f.__name__, args, kwargs) if signature is None else signature(f, args, kwargs)
 			if store.enabled:
 				result   = None
 				if store.has(key):
 					result = store.get(key)
 				if not result:
-					response =  requestHandler(self, *args, **kwargs)
-					store.set(key, response)
-					return response
+					result = f(*args, **kwargs)
+					store.set(key, result)
+					return result
 				else:
 					return result
 			else:
-				return requestHandler(self, request, *args, **kwargs)
-		functools.update_wrapper(wrapper, requestHandler)
+				return f(*args, **kwargs)
+		functools.update_wrapper(wrapper, f)
 		return wrapper
 	return decorator
 
