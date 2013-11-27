@@ -24,7 +24,11 @@ except ImportError:
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
 
-NOTHING = re
+NOTHING    = re
+MIME_TYPES = dict(
+	bz2 = "application/x-bzip",
+	gz  = "application/x-gzip",
+)
 
 # FIXME: Date in cache support should be locale
 
@@ -836,6 +840,14 @@ class Request:
 			if has_range: status = 206
 			return Response(content=content, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
 
+	def guessContentType( self, path ):
+		ext    = path.rsplit(".",1)[-1]
+		if ext in MIME_TYPES:
+			return MIME_TYPES[ext]
+		else:
+			res, _ = mimetypes.guess_type(path)
+			return res
+
 	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256 ):
 		"""Responds with a local file. The content type is guessed using
 		the 'mimetypes' module. If the file is not found in the local
@@ -853,7 +865,7 @@ class Request:
 		if not contentType:
 			# FIXME: For some reason, sometimes the following call stalls the
 			# request (only in production mode!)
-			contentType, _ = mimetypes.guess_type(path)
+			contentType = self.guessContentType(path)
 		if not os.path.exists(path):
 			return self.notFound("File not found: %s" % (path))
 		# We start by guetting range information in case we want/need to do streaming
