@@ -32,9 +32,9 @@ class Proxy:
 	def requestAsString( self, method, server, port, uri, headers, body ):
 		headers = ("%s: %s" % (h[0], h[1]) for h in list(headers.items()) if h[1] != None)
 		return (
-			"%s %s:%s %s\n" 
-			"%s\n\n" 
-			"%s\n\n" 
+			"%s %s:%s %s\n"
+			"%s\n\n"
+			"%s\n\n"
 		) % (method, server, port, uri, "\n".join(headers), body)
 
 	def filterHeaders( self, headers ):
@@ -66,10 +66,10 @@ class Proxy:
 
 	def hasBackend( self ):
 		return True
-	
+
 	def httpRequest( self, server, port, method, url, body="", headers=None ):
-		import http.client
-		conn = http.client.HTTPConnection(server, int(port))
+		import httplib
+		conn = httplib.HTTPConnection(server, int(port))
 		conn.request(method, url, body, headers or {})
 		resp = conn.getresponse()
 		data = resp.read()
@@ -127,7 +127,7 @@ class ProxyService(Component, Proxy):
 	@on(DELETE="{rest:rest}?{parameters}", priority="10")
 	def proxyDelete( self, request, rest=None, parameters=None):
 		return self._proxy(request, "DELETE", rest, parameters)
-	
+
 	def _proxy( self, request, method, rest, parameters ):
 		rest     = rest or ""
 		dest_uri = self._uri + rest
@@ -210,7 +210,7 @@ class WWWClientProxy(ProxyService):
 
 def createProxies( args, options=None ):
 	"""Create proxy components from a list of arguments like
-	
+
 	>    {prefix}={url}
 	>    {prefix}={user}:{password}@{url}
 	"""
