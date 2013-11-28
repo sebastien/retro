@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Oct-2013
+# Last mod  : 28-Nov-2013
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -88,7 +88,9 @@ LIST_DIR_HTML = """
 
 class LocalFiles(Component):
 	"""The 'LocalFiles' component serves local files from the file system,
-	providing a directory-listing interface."""
+	providing a directory-listing interface. This component is designed
+	to be used in development environments, where you need direct access
+	to local files and live file translation (using `processors`)."""
 
 	LIST_DIR = True
 
@@ -160,11 +162,16 @@ class LocalFiles(Component):
 
 	@on(GET_POST_HEAD="/{path:any}")
 	def local( self, request, path ):
-		"""Serves the files located in the `Library` grand parent directory."""
+		"""Serves the files located in the `Library` grand parent directory. This will
+		look for a .gz version if the file is not already there."""
 		resolved_path = self.resolvePath(path)
 		processor     = self.processorFor(resolved_path)
 		if not os.path.exists(resolved_path):
-			return request.respond("File not found: %s" % (resolved_path), status=404)
+			# If the file is not found we're still going to look for a .gz
+			if path.endswith(".gz"):
+				return request.respond("File not found: %s" % (resolved_path), status=404)
+			else:
+				return self.local(request, path + ".gz")
 		elif os.path.isdir(resolved_path):
 			if self.LIST_DIR:
 				if request.param("format") == "json":
@@ -177,7 +184,10 @@ class LocalFiles(Component):
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
 		else:
-			return request.respondFile(resolved_path)
+			response = request.respondFile(resolved_path)
+			# If the file ends with ".gz", we add the content-encoding "gzip"
+			if resolved_path.endswith(".gz"): response.setHeader("Content-Encoding", "gzip")
+			return response
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""
