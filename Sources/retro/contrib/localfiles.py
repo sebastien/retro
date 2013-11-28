@@ -171,7 +171,7 @@ class LocalFiles(Component):
 			if path.endswith(".gz"):
 				return request.respond("File not found: %s" % (resolved_path), status=404)
 			else:
-				return self.local(request, path + ".gz")
+				return self.local(request, path + ".gz").setHeader("Content-Type", request.guessContentType(path)).setHeader("Content-Encoding", "gzip")
 		elif os.path.isdir(resolved_path):
 			if self.LIST_DIR:
 				if request.param("format") == "json":
@@ -184,10 +184,7 @@ class LocalFiles(Component):
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
 		else:
-			response = request.respondFile(resolved_path)
-			# If the file ends with ".gz", we add the content-encoding "gzip"
-			if resolved_path.endswith(".gz"): response.setHeader("Content-Encoding", "gzip")
-			return response
+			return request.respondFile(resolved_path)
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""

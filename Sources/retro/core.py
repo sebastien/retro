@@ -1250,10 +1250,11 @@ class Response:
 		for i in range(0, len(self.headers)):
 			header = self.headers[i]
 			if header[0].lower() == lower_name:
-				if not replace: return
+				if not replace: return self
 				self.headers[i] = (name, value)
-				return
+				return self
 		self.headers.append((name, value))
+		return self
 
 	def setCookie( self, name, value, path="/" ):
 		"""Sets the cookie with the given name and value."""
