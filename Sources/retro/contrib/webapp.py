@@ -12,7 +12,7 @@
 import os, time, sys, datetime, glob
 from retro                    import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE, WSGI, NOTHING
 from retro.contrib.localfiles import LibraryServer
-from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE
+from retro.contrib.i18n       import Translations, localize, guessLanguage, DEFAULT_LANGUAGE, setLocales
 from retro.contrib.hash       import crypt_decrypt
 from retro.contrib.cache      import FileCache, SignatureCache, NoCache, MemoryCache
 
@@ -49,6 +49,7 @@ APPNAME       = "webapp"
 VERSION       = "0.0.0"
 PORT          = 8080
 LANGUAGE      = DEFAULT_LANGUAGE
+LOCALES       = []
 E             = lambda v,d,f=(lambda _:_): f(os.environ.get(APPNAME.upper() + "_" + v) or d)
 T             = lambda v,l=None: Translations.Get(v,l or LANGUAGE)
 API_CACHE     = MemoryCache   ()
@@ -254,7 +255,7 @@ class PageServer(Component):
 		return response
 
 	def hasTemplate( self, name, type="paml" ):
-		path = os.path.join(self.app().config("library.path"), type, name + ext)
+		path = os.path.join(self.app().config("library.path"), type, name + type)
 		key  = type + ":" + name
 		return key in self._templates or os.path.exists(path)
 
@@ -388,16 +389,19 @@ class WebApp( Application ):
 		if components is not NOTHING and components is not None:
 			components = ([
 				(pageServer    or PageServer()) if pageServer is not NOTHING else None,
-				(libraryServer or LibraryServer(
-					self.config("library.path"),
-					cache           = LIBRARY_CACHE,
-					cacheAggregates = is_production,
-					minify          = is_production,
-					compress        = is_production,
-					cacheDuration   = is_production and 60 * 60 or 0
-				)) if libraryServer is not NOTHING else None,
+				(libraryServer or self.createDefaultLibraryServer()) if libraryServer is not NOTHING else None,
 			] + components)
 			self.register(*components)
+
+	def createDefaultLibraryServer( self ):
+		return LibraryServer(
+			self.config("library.path"),
+			cache           = LIBRARY_CACHE,
+			cacheAggregates = self.isProduction,
+			minify          = self.isProduction,
+			compress        = self.isProduction,
+			cacheDuration   = self.isProduction and 60 * 60 or 0
+		)
 
 # -----------------------------------------------------------------------------
 #
@@ -412,6 +416,7 @@ def createApp(config=(APPNAME.lower() + ".conf")):
 def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
+	setLocales (LOCALES)
 	if debug and reporter:
 		reporter.register(reporter.StdoutReporter(color=color))
 	if method == STANDALONE:

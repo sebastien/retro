@@ -5,7 +5,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 25-Oct-2013
+# Last mod  : 13-Dec-2013
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
@@ -18,9 +18,15 @@ A set of classes of functions to detect languages and manage translations.
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
 LOCALIZE_SKIP    = ["lib","api"]
+LOCALES          = []
 ENABLED          = True
 STRINGS          = {}
 RE_LANG          = re.compile("^\w\w(\-\w\w)?$")
+
+def setLocales( locales ):
+	global LOCALES
+	LOCALES = [] + locales
+	return LOCALES
 
 def T(text, lang=None ):
 	# FIXME: Use Translations instead
@@ -40,17 +46,32 @@ def guessLanguage( request ):
 	by detecting it from the browser info or by cookie."""
 	lang = request.param("lang") or request.param("language")
 	if lang and len(lang) == 2:
-		return lang.lower()
+		lang = lang.split("-")[0].lower().strip()
+		if lang in LOCALES:
+			return lang
+		else:
+			return DEFAULT_LANGUAGE
 	lang  = request.cookie(COOKIE_LANGUAGE)
 	if lang and len(lang) == 2:
-		return lang.lower()
+		lang = lang.split("-")[0].lower().strip()
+		if lang in LOCALES:
+			return lang
+		else:
+			return DEFAULT_LANGUAGE
 	languages = request.environ("HTTP_ACCEPT_LANGUAGE")
 	if languages:
 		# NOTE: This is a bit botchy, as we'd be supposed to parse the q=X to
 		# properly order the language, but we assume that languages are properly
 		# ordered.
 		# Accept-Language is like: 'fr,fr-fr;q=0.8,en-us;q=0.5,en;q=0.3'
-		return languages.split(",")[0].split("-")[0].lower()
+		languages = [_.split("-")[0].strip().lower() for _ in languages.split(",")]
+		if not LOCALES:
+			return languages[0]
+		else:
+			for language in languages:
+				if language in LOCALES:
+					return language
+			return DEFAULT_LANGUAGE
 	return DEFAULT_LANGUAGE
 
 def localize(handler):
