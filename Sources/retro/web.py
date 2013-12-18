@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 17-Oct-2013
+# Last mod  : 13-Oct-2013
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime
@@ -519,8 +519,10 @@ class Dispatcher:
 		elif response == None:
 			response = Response("",[],200)
 			return response.asWSGI(start_response, self.app().config("charset"))
-		else:
+		elif hasattr(response, "asWSGI"):
 			return response.asWSGI(start_response, self.app().config("charset"))
+		else:
+			raise WebRuntimeError("Handler {0} for {1} should return a Response object, got {2}".format(handler, request.path(), response))
 
 	def __call__(self, environ, start_response, request=None):
 		"""Delegate request to the appropriate Application. This is the main
