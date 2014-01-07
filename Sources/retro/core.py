@@ -208,6 +208,22 @@ def cut(text, separator="|"):
 def escapeHTML(text, quote=True):
 	return cgi.escape(text or "", quote)
 
+RE_SLUGIFY_STRIP     = re.compile(r'[^\w\s-]')
+RE_SLUGIFY_HYPHENATE = re.compile(r'[-\s]+')
+def slugify(value):
+	"""
+	Normalizes string, converts to lowercase, removes non-alpha characters,
+	and converts spaces to hyphens.
+
+	From Django's "django/template/defaultfilters.py".
+	"""
+	if not isinstance(value, unicode):
+		value = unicode(value)
+	value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore')
+	value = unicode(RE_SLUGIFY_STRIP.sub('', value).strip().lower())
+	return RE_SLUGIFY_HYPHENATE.sub('-', value)
+
+
 # -----------------------------------------------------------------------------
 #
 # EVENT
