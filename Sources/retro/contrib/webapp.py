@@ -254,7 +254,7 @@ class PageServer(Component):
 		return response
 
 	def hasTemplate( self, name, type="paml" ):
-		path = os.path.join(self.app().config("library.path"), type, name + ext)
+		path = os.path.join(self.app().config("library.path"), type, name + type)
 		key  = type + ":" + name
 		return key in self._templates or os.path.exists(path)
 
