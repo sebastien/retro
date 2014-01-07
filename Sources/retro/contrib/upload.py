@@ -168,10 +168,15 @@ class Uploader:
 
 	def cleanup( self ):
 		now = time.time()
+		to_remove = []
 		for key, value in list(self.uploads.items()):
 			if value.status == value.IS_COMPLETED or value.status == value.IS_FAILED:
-				del self.uploads[key]
+				to_remove.append(key)
 			# NOTE: Not sure about that
-			if now - value.updated > self.CLEANUP_THRESHOLD:
+			elif now - value.updated > self.CLEANUP_THRESHOLD:
+				to_remove.append(key)
+		for key in to_remove:
+			if key in self.uploads:
 				del self.uploads[key]
+		return len(to_remove)
 # EOF
