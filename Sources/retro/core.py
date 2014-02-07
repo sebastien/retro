@@ -13,7 +13,7 @@
 # TODO: Automatic suport for HEAD and cache requests
 
 import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
-import gzip, io, threading, locale, collections
+import gzip, io, threading, locale, collections, unicodedata
 try:
 	import urllib.request
 	import urllib.parse    as urllib_parse
