@@ -1051,4 +1051,7 @@ class Configuration:
 	def __repr__( self ):
 		return json(self._properties, sort_keys=True, indent=4)
 
+	def __call__( self, key ):
+		return self.get(key)
+
 # EOF - vim: tw=80 ts=4 sw=4 noet

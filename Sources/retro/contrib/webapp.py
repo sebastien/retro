@@ -338,6 +338,8 @@ class PageServer(Component):
 
 class WebApp( Application ):
 
+	CONFIG_EXT = ".json"
+
 	# This is the default configuration for the sphere chat, which is created if an
 	# existing configuration is not found.
 	@classmethod
@@ -370,7 +372,7 @@ class WebApp( Application ):
 		module `PageServer` and `LibraryServer` will be instanciated."""
 		Application.__init__(self,
 			defaults  = self.DefaultConfig(),
-			config    = config or APPNAME.lower(),
+			config    = config or APPNAME.lower() + self.CONFIG_EXT
 		)
 		is_production = self.isProduction = (self.config("devmode")!=1)
 		if not is_production:
@@ -413,12 +415,14 @@ def createApp(config=(APPNAME.lower() + ".conf")):
 	"""Creates the application with given path as config file."""
 	return WebApp(config)
 
-def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False ):
+def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False, log=False ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
 	setLocales (LOCALES)
-	if debug and reporter:
+	if (debug or log) and reporter:
 		reporter.register(reporter.StdoutReporter(color=color))
+		if debug:
+			reporter.setLevel(reporter.DEBUG)
 	if method == STANDALONE:
 		info("Starting Web application")
 	if app is None: app = createApp()
