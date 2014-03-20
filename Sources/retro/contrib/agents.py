@@ -2,7 +2,10 @@ import os, json, logging, retro.core
 try:
 	import urllib.request as urllib_request
 except ImportError:
-	import urllib3.request as urllib_request
+	try:
+		import urllib3.request as urllib_request
+	except ImportError, e:
+		import urllib as urllib_request
 
 
 class Robots:
