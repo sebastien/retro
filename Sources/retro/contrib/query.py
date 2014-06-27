@@ -16,15 +16,15 @@ def asAndOrList(text, union=",", intersection=" ", transform=lambda _:_):
 	"""Ensures that the given text which can be separated by union (or)
 	and intersection (and) delimiters is return as a list of AND lists,
 	in the following style:
-	
-	(a AND b) or (c) or (d AND e AND f)
+
+	```(a AND b) or (c) or (d AND e AND f)```
 
 	This data structure is used as the base for expressing all the queries in
 	this module.
 	"""
 	# NOTE: In URLs, the + is translated to space!
 	res = []
-	if type(text) in (str,str): text = (text,)
+	if isinstance(text, str): text = (text,)
 	for keywords in text:
 		for union_keywords in keywords.split(union):
 			# NOTE: Should support QUOTING
@@ -164,7 +164,8 @@ class QueryRange(QueryPredicate):
 # -----------------------------------------------------------------------------
 
 class Query:
-	"""Represents a query"""
+	"""Abstracts a query object that can be run on an iterator, yielding the
+	results that match the predicate defined in the query."""
 
 	INT       = QueryInt
 	SAME      = QuerySame
@@ -177,7 +178,7 @@ class Query:
 	def Parse( cls, query, format=None ):
 		"""Parses a query given as the a dictionary of strings using the given
 		format. For instance
-		
+
 		>    query  = dict(date=("20121011", "20121010", "20121009") ,articlesCount="0-100",)
 		>    format = dict(date=Query.DATE, articlesCount=Query.RANGE)
 
@@ -195,7 +196,7 @@ class Query:
 		`format`. See  `Query.Parse` for more details."""
 		if format: query = self.Parse(query, format)
 		self.query = query
-	
+
 	def predicate( self, value ):
 		"""Tells if the given value (given as a dictionary) matches the given query
 		predicates."""
@@ -236,20 +237,20 @@ class Query:
 
 	def matchSubstring( self, expected, *compared ):
 		return self._match(lambda e,c:e.find(c)!=-1, expected, compared )
-	
+
 	# if it's just A, then you need to give [[A]]
 	def _match( self, predicate, expected, compared ):
 		"""Returns true if it finds ANY of the elements of expected in ANY
 		of the elements of the compared list.
-		
-		Expected is a list of lists, such as 
-		
+
+		Expected is a list of lists, such as
+
 		>    [ [A], [B,C], [D] ]
 
 		would translate in
-		
+
 		>    (A) or (B and C) or (D)
-		
+
 		"""
 		# If nothing is expected, then we return True
 		if not expected: return True
