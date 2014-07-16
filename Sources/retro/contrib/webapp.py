@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 04-Nov-2013
+# Last mod  : 15-Jul-2014
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -307,15 +307,24 @@ class PageServer(Component):
 		"""Paml templates are converted to HTML templates in production,
 		so we only do the PAML conversion in dev mode"""
 		if self.app().config("devmode"):
+			# We assume that PAML is only used in devlopment.
 			assert pamela_engine, "retro.contrib.webapp.loadPAMLTemplate requires the pamela.engine module"
 			parser = pamela_engine.Parser()
 			path   = os.path.join(self.app().config("library.path"), "paml", name + ".paml")
+			# We load the template plain and parse it with PAML, so that we
+			# get a consistent result with the non-devmode HTML step. I
+			# tried adding the PAML expansion as a post-processing step
+			# but this break the consistency between using the .paml or
+			# the .html file (which would each yield a different result)
 			text   = self.loadPlainTemplate(name, True, "paml")
 			text   = parser.parseString(text, path)
 			# NOTE: We do not cache templates in dev mode
 			assert templating, "retro.contrib.webapp.templating must be defined to use templates"
 			return templating.Template(text)
 		else:
+			# We assume that paml files are simply pre-compiled to HTML in
+			# production, so they fall back to the plain template
+			# processing in that case.
 			return self.loadPlainTemplate(name, raw, "html")
 
 	def _createTemplate( self, text ):
