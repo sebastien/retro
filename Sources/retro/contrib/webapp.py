@@ -183,7 +183,7 @@ class PageServer(Component):
 	# MAIN PAGES
 	# -------------------------------------------------------------------------
 
-	@on(GET=("{lang:lang}", "/{lang:lang}"), priority=-9)
+	@on(GET=("{lang:lang}", "/{lang:lang}", "/{lang:lang}/"), priority=-9)
 	@on(GET=("/{lang:lang}{path:rest}"), priority=-10)
 	@localize
 	def page( self, request, lang=NOTHING, template=None, path="index", templateType=None, properties=None ):

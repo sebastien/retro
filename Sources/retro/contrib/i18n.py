@@ -5,7 +5,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 13-Dec-2013
+# Last mod  : 21-Jul-2014
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
@@ -22,6 +22,7 @@ LOCALES          = []
 ENABLED          = True
 STRINGS          = {}
 RE_LANG          = re.compile("^\w\w(\-\w\w)?$")
+RE_LANG_PREFIX   = re.compile("^/?(\w\w(\-\w\w)?)/?$")
 
 def setLocales( locales ):
 	global LOCALES
@@ -111,8 +112,9 @@ def localize(handler):
 				request.cookie(COOKIE_LANGUAGE,lang)
 				path = request.path()
 				# if path is like /LL or /LL-LL (ex /en /en-ca)
-				if (len(path) == 3 or len(path) == 6) and RE_LANG.match(path[1:]):
-					return request.redirect(path + "/")
+				m    = RE_LANG_PREFIX.match(path)
+				if m:
+					return request.redirect("/" + m.group(1) + "/index")
 				else:
 					return request.redirect("/" + lang + request.path())
 			elif request.param("lang") and request.param("lang") != lang:
