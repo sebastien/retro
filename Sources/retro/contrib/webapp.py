@@ -18,9 +18,9 @@ from retro.contrib.cache      import FileCache, SignatureCache, NoCache, MemoryC
 
 try:
 	import templating
-	templating.FORMATTERS["json"]       = asJSON
-	templating.FORMATTERS["primitive"]  = asPrimitive
-	templating.FORMATTERS["escapeHTML"] = escapeHTML
+	templating.FORMATTERS["json"]       = lambda v,o,t:asJSON(v)
+	templating.FORMATTERS["primitive"]  = lambda v,o,t:asPrimitive(v)
+	templating.FORMATTERS["escapeHTML"] = lambda v,o,t:escapeHTML(v)
 except ImportError as e:
 	pass
 	templating = None

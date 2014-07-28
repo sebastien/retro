@@ -40,14 +40,21 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 .retro-directory-listing li:hover{
 	background: #FFFFE0;
 }
+.retro-directory-listing li {
+	padding-top: 0.25em;
+	padding-bottom: 0.25em;
+}
 .retro-directory-listing li .bullet {
 	color: #AAAAAA;
-	position: absolute;
+	display: inline;
+	position: relative;
+	left: 0.5em;
 }
 
 .retro-directory-listing li a {
+	position: relative;
 	padding-left: 2.5em;
-	display: block;
+	display: inline;
 	padding-top: 0.10em;
 	padding-bottom: 0.10em;
 }
