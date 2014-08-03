@@ -234,8 +234,11 @@ class PageServer(Component):
 				return request.notFound()
 		else:
 			storable = None
+		path = request.path()
+		path = path[len(self.DEFAULTS["base"]):]
+		if path.startswith(language): path = path[len(language):]
 		context = dict(
-			path        = template,
+			path        = path,
 			title       = template,
 			language    = language,
 			isConnected = user and "true" or "false",

@@ -33,14 +33,15 @@ def T(text, lang=None ):
 	# FIXME: Use Translations instead
 	if lang is None: lang = DEFAULT_LANGUAGE
 	if isinstance(lang, Request): lang = guessLanguage(lang)
+	if isinstance(text, dict):
+		return text.get(lang) or None
 	if text not in STRINGS: STRINGS.setdefault(text, {})
 	if lang in STRINGS[text]:
 		return STRINGS[text][lang]
 	elif lang == DEFAULT_LANGUAGE:
 		return text
-	else:
-		logging.error("Missing {0} translation for string: {1}".format(lang, repr(text)))
-		return text
+	logging.error("Missing {0} translation for string: {1}".format(lang, repr(text)))
+	return text
 
 def guessLanguage( request ):
 	"""Detects the language code associated with the given browser, either
