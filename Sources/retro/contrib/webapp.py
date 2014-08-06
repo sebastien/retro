@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 15-Jul-2014
+# Last mod  : 06-Aug-2014
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -280,7 +280,7 @@ class PageServer(Component):
 		if self.app().config("devmode"):
 			path   = os.path.join(self.app().config("library.path"), type, name + ext)
 			text   = None
-			with file(path, "r") as f: text = f.read()
+			with open(path, "r") as f: text = f.read()
 			# NOTE: We do not cache templates in dev mode
 			if raw:
 				return text
@@ -291,7 +291,7 @@ class PageServer(Component):
 			if key not in self._templates:
 				path   = os.path.join(self.app().config("library.path"), type, name + ext)
 				text   = None
-				with file(path, "r") as f: text   = f.read()
+				with open(path, "r") as f: text   = f.read()
 				self._templates[key] = text
 			text = self._templates[key]
 			if raw:
@@ -423,9 +423,9 @@ class WebApp( Application ):
 #
 # -----------------------------------------------------------------------------
 
-def createApp(config=(APPNAME.lower() + ".conf")):
+def createApp(config=(APPNAME.lower() + ".conf"), components=[], pageServer=None, libraryServer=None):
 	"""Creates the application with given path as config file."""
-	return WebApp(config)
+	return WebApp(config, components, pageServer, libraryServer)
 
 def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False, log=False ):
 	"""Runs the given application (by default created by 'createApp()' as

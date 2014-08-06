@@ -303,11 +303,14 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		return
 
 	def _finish( self ):
-		try:
-			SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
-		except Exception as e:
-			# This sometimes throws an 'error: [Errno 32] Broken pipe'
-			pass
+		# NOTE: I am not sure this is necessary anymore, at least it causes
+		# problems with Python3
+		if False:
+			try:
+				SimpleHTTPServer.SimpleHTTPRequestHandler.finish(self)
+			except Exception as e:
+				# This sometimes throws an 'error: [Errno 32] Broken pipe'
+				pass
 
 	def run(self, application, useReactor=True):
 		"""This is the main function that runs a Retro application and
@@ -391,8 +394,9 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			,'wsgi.multithread': 1
 			,'wsgi.multiprocess': 0
 			,'wsgi.run_once': 0
+			,'retro.app':application.app()
 			,'extra.request': self.raw_requestline
-			,'extra.headers': self.headers.headers
+			,'extra.headers': self.headers.headers if hasattr(self.headers, "headers") else self.headers
 			,'REQUEST_METHOD': self.command
 			,'SCRIPT_NAME': script
 			,'PATH_INFO': path
@@ -501,6 +505,9 @@ Use request methods to create a response(request.respond, request.returns, ...)
 				logging.debug("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 		# Send the data
 		try:
+			if core.PYTHON3:
+				if not isinstance(data,bytes):
+					data = bytes(data, encoding="utf8")
 			self.wfile.write(data)
 		except socket.error as socketErr:
 			logging.debug("Cannot send data: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
@@ -518,7 +525,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		error_msg += u"\n|".join(exception_format[:-1])
 		logging.error(error_msg)
 		if not self._sentHeaders:
-			self._startResponse('500 Server Error', [('Content-type', 'text/html')])
+			self._startResponse("500 Server Error", [("Content-type", "text/html")])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
 		# This might fail, so we just ignore if it does

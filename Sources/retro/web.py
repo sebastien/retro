@@ -445,7 +445,9 @@ class Dispatcher:
 		if not matched_handlers:
 			fallback_handler = self.app().notSupported
 		if matched_handlers:
-			matched_handlers.sort(lambda a,b:cmp(b[0],a[0]))
+			# NOTE: Was matched_handlers.sort(lambda a,b:cmp(b[0],a[0]))
+			# Make sure this is the same order.
+			matched_handlers.sort(key=lambda _:_[0], reverse=True)
 			matched_handlers.append((-1, fallback_handler, {}, None))
 			return matched_handlers
 		elif path and path[0] == "/":
@@ -503,7 +505,7 @@ class Dispatcher:
 		# FIXME: Add a charset option
 		# We bind the component to the request
 		request.environ("retro.start_response", start_response)
-		request.environ("retro.variables", variables)
+		request.environ("retro.variables",      variables)
 		# TODO: ADD PROPER ERROR HANDLER
 		# The app is expected to produce a response object
 		try:
@@ -605,7 +607,8 @@ class Component:
 			for method in http_methods.split("_"):
 				# We need to set a component to the handler
 				if not hasattr(handler, "im_self"):
-					setattr(handler, "_component", self)
+					# NOTE: setattr was not working here
+					handler.__dict__["component"] = self
 				handlers[method.upper()] = handler
 				prefix = self.PREFIX
 				if prefix and prefix[0] != "/": self.PREFIX = prefix = "/" + prefix

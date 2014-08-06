@@ -9,11 +9,13 @@
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
-from   retro.core import Request
+from   retro.core import Request, PYTHON3
 
 __doc__ = """
 A set of classes of functions to detect languages and manage translations.
 """
+
+if PYTHON3: unicode = str
 
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"
@@ -23,6 +25,14 @@ ENABLED          = True
 STRINGS          = {}
 RE_LANG          = re.compile("^\w\w(\-\w\w)?$")
 RE_LANG_PREFIX   = re.compile("^/?(\w\w(\-\w\w)?)/?$")
+
+def disable():
+	global ENABLED
+	ENABLED = False
+
+def ensable():
+	global ENABLED
+	ENABLED = True
 
 def setLocales( locales ):
 	global LOCALES
@@ -100,7 +110,7 @@ def localize(handler):
 	"""
 	@functools.wraps(handler)
 	def retro_i18n_localize_wrapper(inst, request, lang=None, *args, **kwargs):
-		if ENABLED:
+		if ENABLED and request.environ("retro.app").config("i18n.localize") is not False:
 			if not lang:
 				# There's no language specified, so we have to guess it
 				lang = request.param("lang") or lang

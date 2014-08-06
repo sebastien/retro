@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 12-Sep-2013
+# Last mod  : 04-Aug-2014
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -23,6 +23,12 @@ except ImportError:
 	import urllib as urllib_parse
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
+
+PYTHON3 = sys.version_info[0] > 2
+
+if PYTHON3:
+	# Python3 only defines str
+	unicode = str
 
 NOTHING    = re
 MIME_TYPES = dict(
