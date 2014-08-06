@@ -5,17 +5,17 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 21-Jul-2014
+# Last mod  : 06-Aug-2014
 # -----------------------------------------------------------------------------
 
 import re, functools, logging
-from   retro.core import Request, PYTHON3
+from   retro.core import Request, IS_PYTHON3
 
 __doc__ = """
 A set of classes of functions to detect languages and manage translations.
 """
 
-if PYTHON3: unicode = str
+if IS_PYTHON3: unicode = str
 
 DEFAULT_LANGUAGE = "en"
 COOKIE_LANGUAGE  = "lang"

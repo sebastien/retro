@@ -876,7 +876,7 @@ class Application(Component):
 				t = os.read(fd, 128000)
 				data.append(t)
 				last_read = len(t)
-			data = "".join(data)
+			data = b"".join(data)
 			os.close(fd)
 		except Exception as e:
 			os.close(fd)

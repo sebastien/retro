@@ -505,7 +505,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 				logging.debug("Cannot end headers: (%s) %s" % (str (socketErr.args[0]), socketErr.args[1]))
 		# Send the data
 		try:
-			if core.PYTHON3:
+			if core.IS_PYTHON3:
 				if not isinstance(data,bytes):
 					data = bytes(data, encoding="utf8")
 			self.wfile.write(data)

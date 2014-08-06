@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 28-Nov-2013
+# Last mod  : 06-Aug-2014
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -356,8 +356,9 @@ class LibraryServer(Component):
 					self._toCache(path, data)
 				else:
 					data = self._fromCache(path)
-				result.append(data)
-			response_data = "\n".join(result)
+				# FIXME: Maybe we should do UTF8?
+				result.append(ensureBytes(data))
+			response_data = b"\n".join(result)
 			self._toCache(cache_path, response_data)
 		else:
 			response_data = self._fromCache(cache_path)

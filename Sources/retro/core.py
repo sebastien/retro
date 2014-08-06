@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 04-Aug-2014
+# Last mod  : 06-Aug-2014
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -24,9 +24,9 @@ except ImportError:
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
 
-PYTHON3 = sys.version_info[0] > 2
+IS_PYTHON3 = sys.version_info[0] > 2
 
-if PYTHON3:
+if IS_PYTHON3:
 	# Python3 only defines str
 	unicode = str
 
@@ -56,6 +56,18 @@ server-side web application. In this respect, this module defines classes:
 This module could be easily re-used in another application, as it is (almost)
 completely standalone and separated from Retro Web applications.
 """
+
+def ensureUnicode( t, encoding="utf8" ):
+	if IS_PYTHON3:
+		return t if isinstance(t, str) else str(t, encoding)
+	else:
+		return t if isinstance(t, unicode) else t.decode(encoding)
+
+def ensureBytes( t, encoding="utf8" ):
+	if IS_PYTHON3:
+		return t if isinstance(t, bytes) else bytes(t, encoding)
+	else:
+		return t
 
 # -----------------------------------------------------------------------------
 #
