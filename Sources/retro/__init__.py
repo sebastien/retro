@@ -6,13 +6,14 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 06-Aug-2014
+# Last mod  : 07-Aug-2014
 # -----------------------------------------------------------------------------
 
 import sys, os
 import retro.wsgi
 from retro.wsgi import REACTOR, onShutdown, onError
-from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, ensureBytes, ensureUnicode
+from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
+ensureBytes, ensureUnicode, ensureString
 from retro.web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous

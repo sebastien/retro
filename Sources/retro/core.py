@@ -57,6 +57,12 @@ This module could be easily re-used in another application, as it is (almost)
 completely standalone and separated from Retro Web applications.
 """
 
+def ensureString( t, encoding="utf8" ):
+	if IS_PYTHON3:
+		return t if isinstance(t, str) else str(t, encoding)
+	else:
+		t
+
 def ensureUnicode( t, encoding="utf8" ):
 	if IS_PYTHON3:
 		return t if isinstance(t, str) else str(t, encoding)
