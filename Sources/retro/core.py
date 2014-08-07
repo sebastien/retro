@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 06-Aug-2014
+# Last mod  : 07-Aug-2014
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -29,6 +29,7 @@ IS_PYTHON3 = sys.version_info[0] > 2
 if IS_PYTHON3:
 	# Python3 only defines str
 	unicode = str
+	long    = int
 
 NOTHING    = re
 MIME_TYPES = dict(
@@ -431,6 +432,7 @@ class Request:
 		self._environ          = environ
 		self._headers          = None
 		self._charset          = charset
+		# FIXME: Not sure while we create one directly
 		self._data             = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
 		self._component        = None
 		self._cookies          = None
@@ -1158,23 +1160,30 @@ class RequestBodyLoader:
 		if content_type.startswith('multipart'):
 			# TODO: Rewrite this, it fails with some requests
 			# Creates an email from the HTTP request body
-			lines     = ['Content-Type: %s' % self.request._environ.get(Request.CONTENT_TYPE, '')]
+			lines     = ["Content-Type: {0}".format(self.request._environ.get(Request.CONTENT_TYPE, ''))]
 			for key, value in list(self.request._environ.items()):
-				if key.startswith('HTTP_'): lines.append('%s: %s' % (key, value))
+				if key.startswith('HTTP_'):
+					lines.append("{0} : {1}".format(key, value))
 			# We use a spooled temp file to decode the body, in case the body
 			# is really big
 			raw_email = tempfile.SpooledTemporaryFile(max_size=64 * 1024)
-			raw_email.write('\r\n'.join(lines))
-			raw_email.write('\r\n\r\n')
+			raw_email.write(b'\r\n'.join(map(ensureBytes, lines)))
+			raw_email.write(b'\r\n\r\n')
 			# We copy the contents of the data file there to enable the decoding
 			# FIXME: This could maybe be optimized
 			dataFile.seek(0)
 			data = dataFile.read()
-			raw_email.write(data)
+			raw_email.write(ensureBytes(data))
 			raw_email.seek(0)
 			# And now we decode from the file
 			# FIXME: This will probably allocate the whole file in memory
-			message   = email.message_from_file(raw_email)
+			if not hasattr(raw_email, "readable"):
+				# For some reason, with Python 3, we'll need to add that
+				l = lambda: True
+				raw_email.__dict__["readable"] = l
+				raw_email.__dict__["writable"] = l
+				raw_email.__dict__["seekable"] = l
+			message   = email.message_from_binary_file(raw_email)
 			for part in message.get_payload():
 				# FIXME: Should remove that
 				part_meta = cgi.parse_header(part['Content-Disposition'])[1]
