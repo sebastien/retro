@@ -276,7 +276,7 @@ class FormData:
 		# The contentType is epxected to be
 		# >   Content-Type: multipart/form-data; boundary=<BOUNDARY>\r\n
 		assert "multipart/form-data" in contentType or "multipart/mixed" in contentType, "Expected multipart/form-data or multipart/mixed in content type"
-		boundary        = b"--" + contentType.split(b"boundary=",1)[1]
+		boundary        = b"--" + ensureBytes(contentType).split(b"boundary=",1)[1]
 		assert boundary, "No boundary found in content-type {0}".format(contentType)
 		boundary_length = len(boundary)
 		has_more        = True
@@ -305,7 +305,7 @@ class FormData:
 						if not line: continue
 						header = line.split(b":",1)
 						if len(header) == 2:
-							h[header[0].lower().strip()] = header[1].strip()
+							h[ensureString(header[0].lower().strip())] = ensureString(header[1].strip())
 					yield ("h", h)
 					chunk = chunk[i+4:]
 				else:
@@ -335,6 +335,7 @@ class FormData:
 
 		>   {"":"multipart/mixed", "boundary":"inner"}
 		"""
+		text = ensureString(text)
 		res = {}
 		# We normalize the content-disposition header
 		for v in text.split(";"):
@@ -593,7 +594,7 @@ class Request:
 			# This parses headers from the WSGI environment
 			for key in e:
 				if not key.startswith("HTTP_"): continue
-				header = "-".join(map(string.capitalize, key[len("HTTP_"):].split("_")))
+				header = "-".join(map(string.capwords, key[len("HTTP_"):].split("_")))
 				headers[header] = e[key]
 			i = 0
 			c = True
@@ -611,7 +612,7 @@ class Request:
 			return self._headers
 
 	def header( self, name ):
-		name = "-".join(map(string.capitalize, name.split("-")))
+		name = "-".join(map(string.capwords, name.split("-")))
 		return self.headers().get(name)
 
 	def method( self ):
@@ -764,16 +765,20 @@ class Request:
 	def files( self ):
 		return [_[0] for _ in self._files]
 
-	def file( self, name ):
+	def file( self, name=None ):
 		"""Returns the file (as a 'cgi.FieldStorage') which was submitted
 		as parameter with the given name. You will have more information
 		accessible than with 'get' or 'param', retured as a dict with
 		'param', 'filename', 'contentType' and 'data' fields."""
 		if not self._files: return None
-		for n, s in self._files:
-			if n == name:
-				return s
-		return None
+		if name is None: name = 0
+		if isinstance(name, int):
+			return self._files[name][1]
+		else:
+			for n, s in self._files:
+				if n == name:
+					return s
+			return None
 
 	def environ( self, name=NOTHING, value=NOTHING ):
 		"""Gets or sets the environment attached to this request"""
@@ -1100,7 +1105,7 @@ class Request:
 		if has_changed or has_range:
 			# We open the file to get its size and adjust the read length and range end
 			# accordingly
-			with file(path, 'rb') as f:
+			with open(path, 'rb') as f:
 				f.seek(0,2) ; full_length = f.tell()
 				if not has_range:
 					content_length = full_length
@@ -1125,7 +1130,7 @@ class Request:
 				headers.append(("Content-Range", "bytes %d-%d/%d" % (range_start, range_end, full_length)))
 			# This is the generator that will stream the file's content
 			def pipe_content(path=path, start=range_start, remaining=content_length):
-				with file(path, 'rb') as f:
+				with open(path, 'rb') as f:
 					f.seek(start or 0)
 					while remaining:
 						# FIXME: For some reason, we have to read the whole thing in Firefox
@@ -1323,7 +1328,7 @@ class RequestBodyLoader:
 					new_file= File(
 						# FIXME: Shouldnot use read here
 						data        = data.read(),
-						contentType = meta["content-type"],
+						contentType = meta["content-type"][""],
 						name        = name,
 					)
 					self.request._addFile (name, new_file)
