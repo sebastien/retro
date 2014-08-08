@@ -8,18 +8,22 @@
 
 		<h2>The form</h2>
 		<form id="uploadForm" method=POST enctype="multipart/form-data" action="/upload?id=1">
-			<input id="uploadInput" name=data type=file>
+			<input id="uploadInput1" name=data1 type=file>
+			<br>
+			<input id="uploadInput2" name=data2 type=file>
 		</form>
+		<button id="uploadSubmit">Submit</button>
+
 
 		<h2>The iframe</h2>
 		<p>The iframe is used for asynchronous posting</p>
 		<iframe id="uploadIFrame" name="uploadIFrame" style="height:10em;"></iframe>
 
 		<script type=text/javascript language=javascript>
-			var upload_input  = $("#uploadInput");
+			var upload_submit = $("#uploadSubmit");
 			var upload_iframe = $("#uploadIFrame");
 			var upload_form   = $("#uploadForm");
-			upload_input.change(function(){
+			upload_submit.click(function(){
 				upload_form[0].target = upload_iframe.attr("id");
 				upload_form.submit();
 			});

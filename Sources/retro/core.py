@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 07-Aug-2014
+# Last mod  : 08-Aug-2014
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -248,6 +248,150 @@ def slugify(value):
 	value = unicode(RE_SLUGIFY_STRIP.sub('', value).strip().lower())
 	return RE_SLUGIFY_HYPHENATE.sub('-', value)
 
+# -----------------------------------------------------------------------------
+#
+# FORM DATA
+#
+# -----------------------------------------------------------------------------
+
+class FormData:
+	"""A collection of functions to process form data."""
+
+	DATA_SPOOL_SIZE = 64 * 1024
+
+	# NOTE: We encountered some problems with the `email` module in Python 3.4,
+	# which lead to writing these functions.
+	# http://stackoverflow.com/questions/4526273/what-does-enctype-multipart-form-data-mean
+	@classmethod
+	def ParseMultipart( cls, file, contentType, bufferSize=64000 ):
+		"""Iterates on a multipart form data file with the given content type. This
+		will yield the following couples:
+
+		- `("b", boundary)` when a boundary is found
+		- `("h", headers)`  with an map of `header:value` when headers are encountered (header is stripper lowercased)
+		- `("d", data)`     with a bytes array of at maximum `bufferSize` bytes.
+
+		"""
+		# multipart/form-data
+		# The contentType is epxected to be
+		# >   Content-Type: multipart/form-data; boundary=<BOUNDARY>\r\n
+		assert "multipart/form-data" in contentType or "multipart/mixed" in contentType, "Expected multipart/form-data or multipart/mixed in content type"
+		boundary        = b"--" + contentType.split(b"boundary=",1)[1]
+		assert boundary, "No boundary found in content-type {0}".format(contentType)
+		boundary_length = len(boundary)
+		has_more        = True
+		rest            = b""
+		read_size       = bufferSize + boundary_length
+		state           = None
+		# We want this implementation to be efficient and stream the data, which
+		# is especially important when large files (imagine uploading a video)
+		# are processed.
+		while has_more:
+			# Here we read bufferSize + boundary_length, and will return at
+			# maximum bufferSize bytes per iteration. This ensure that if
+			# the read stop somewhere within a boundary we'll stil be able
+			# to find it at the next iteration.
+			chunk           = file.read(read_size)
+			chunk_read_size = len(chunk)
+			chunk           = rest + chunk
+			# If state=="b" it means we've found a boundary at the previous iteration
+			# and we need to find the headers
+			if state == "b":
+				i       = chunk.find(b"\r\n\r\n")
+				if i >= 0:
+					headers = chunk[:i]
+					h       = {}
+					for line in headers.split(b"\r\n"):
+						if not line: continue
+						header = line.split(b":",1)
+						if len(header) == 2:
+							h[header[0].lower().strip()] = header[1].strip()
+					yield ("h", h)
+					chunk = chunk[i+4:]
+				else:
+					yield ("h", None)
+			# Now we look for the next boundary
+			i = chunk.find(boundary)
+			if i == -1:
+				yield ("d", chunk[0:bufferSize])
+				rest = chunk[bufferSize:]
+				state = "d"
+			else:
+				# The body will end with \r\n + boundary
+				if i > 2:
+					yield ("d", chunk[0:i - 2])
+				rest = chunk[i+boundary_length:]
+				yield ("b", boundary)
+				state = "b"
+			has_more = len(chunk) > 0 or len(chunk) == read_size
+
+	@classmethod
+	def ParseHeaderValue( cls, text ):
+		"""Parses a header value and returns a dict.clear(
+
+		>   multipart/mixed; boundary=inner
+
+		will return
+
+		>   {"":"multipart/mixed", "boundary":"inner"}
+		"""
+		res = {}
+		# We normalize the content-disposition header
+		for v in text.split(";"):
+			v = v.strip().split("=", 1)
+			if len(v) == 1:
+				h = ""
+				v = v[0].strip()
+			else:
+				h = v[0].strip()
+				v = v[1].strip()
+			res[h] = v
+		return res
+
+	@classmethod
+	def DecodeMultipart( cls, file, contentType, bufferSize=64000 ):
+		"""Decodes the given multipart data, yielding `(meta, data)`
+		couples, where meta is a parsed dict of headers and data
+		is a file-like object."""
+		is_new       = False
+		content_type = None
+		disposition  = None
+		description  = None
+		data_file    = None
+		meta         = None
+		for state, data in FormData.ParseMultipart (file, contentType):
+			if state == "b":
+				# We encounter the boundary at the very beginning, or
+				# inbetween elements
+				if data_file:
+					# There might be 2 bytes of data, which will result in
+					# meta being None
+					if meta is None:
+						data_file.close()
+					else:
+						data_file.seek(0)
+						yield (meta, data_file)
+				is_new    = True
+				data_file = None
+				meta      = None
+			elif state == "h":
+				# The header comes next
+				assert is_new
+				is_new = False
+				if data:
+					meta = dict( (h, cls.ParseHeaderValue(v)) for h,v in data.items() )
+				else:
+					meta = None
+			elif state == "d":
+				assert not is_new
+				if not data_file:
+					data_file = tempfile.SpooledTemporaryFile(max_size=cls.DATA_SPOOL_SIZE)
+				data_file.write(data)
+			else:
+				raise Exception("State not recognized: {0}".format(state))
+		if data_file:
+			data_file.seek(0)
+			yield (meta, data_file)
 
 # -----------------------------------------------------------------------------
 #
@@ -1068,18 +1212,20 @@ class Request:
 class File:
 	"""Represents a File object as submitted as POSTED form-data."""
 
+	# TODO: We should improve the file object data to be a  reference
+	# to a SpooledTemporaryFile, not to the actual contents
 	def __init__( self, data, contentType=None, name=None):
 		self.data          = data
 		self.contentLength = len(self.data)
 		self.name          = name
 		self.contentType   = contentType
 
-	# NOTE: This is to keep compatibility with previous Retro API
-	def __getitem__( self, name ):
-		if hasattr(self, name):
-			return getattr(self, name)
-		else:
-			return None
+	# # NOTE: This is to keep compatibility with previous Retro API
+	# def __getitem__( self, name ):
+	# 	if hasattr(self, name):
+	# 		return getattr(self, name)
+	# 	else:
+	# 		return None
 
 # -----------------------------------------------------------------------------
 #
@@ -1136,6 +1282,7 @@ class RequestBodyLoader:
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		self.contentRead += to_read
 		assert len(read_data) == to_read
+		# NOTE: This  read bytes
 		if writeData: self.request._data.write(read_data)
 		return read_data
 
@@ -1150,67 +1297,39 @@ class RequestBodyLoader:
 
 		If the encoding is not recognized, then nothing will happen.
 		"""
+		# We won't decode a request that's already decoded.
 		if self.isDecoded(): return
-		dataFile = self.request._data if dataFile is None else dataFile
+		dataFile       = self.request._data if dataFile is None else dataFile
 		# NOTE: See http://www.cs.tut.fi/~jkorpela/forms/file.html
 		content_type   = self.request._environ[Request.CONTENT_TYPE] or "application/x-www-form-urlencoded"
 		params         = self.request.params(load=False)
 		files          = []
-		# We handle the case of a multi-part body
 		if content_type.startswith('multipart'):
-			# TODO: Rewrite this, it fails with some requests
-			# Creates an email from the HTTP request body
-			lines     = ["Content-Type: {0}".format(self.request._environ.get(Request.CONTENT_TYPE, ''))]
-			for key, value in list(self.request._environ.items()):
-				if key.startswith('HTTP_'):
-					lines.append("{0} : {1}".format(key, value))
-			# We use a spooled temp file to decode the body, in case the body
-			# is really big
-			raw_email = tempfile.SpooledTemporaryFile(max_size=64 * 1024)
-			raw_email.write(b'\r\n'.join(map(ensureBytes, lines)))
-			raw_email.write(b'\r\n\r\n')
-			# We copy the contents of the data file there to enable the decoding
-			# FIXME: This could maybe be optimized
+			# We handle the case of a multi-part body
 			dataFile.seek(0)
-			data = dataFile.read()
-			raw_email.write(ensureBytes(data))
-			raw_email.seek(0)
-			# And now we decode from the file
-			# FIXME: This will probably allocate the whole file in memory
-			if not hasattr(raw_email, "readable"):
-				# For some reason, with Python 3, we'll need to add that
-				l = lambda: True
-				raw_email.__dict__["readable"] = l
-				raw_email.__dict__["writable"] = l
-				raw_email.__dict__["seekable"] = l
-			message   = email.message_from_binary_file(raw_email)
-			for part in message.get_payload():
-				# FIXME: Should remove that
-				part_meta = cgi.parse_header(part['Content-Disposition'])[1]
-				if 'filename' in part_meta:
-					assert type([]) != type(part.get_payload()), 'Nested MIME Messages are not supported'
-					if not part_meta['filename'].strip(): continue
-					filename = part_meta['filename']
-					filename = filename[filename.rfind('\\') + 1:]
-					if 'Content-Type' in part:
-						part_content_type = part['Content-Type']
-					else:
-						part_content_type = None
-					param_name = part_meta['name']
-					# NOTE: This is also proably going to alloce the whole file in memory
-					new_file   = File(
-						data        = part.get_payload(),
-						contentType = part_content_type,
-						name        = filename,
+			# We're using the FormData
+			for meta, data in FormData.DecodeMultipart(dataFile, content_type):
+				# There is sometimes leading and trailing data (not sure
+				# exaclty why, but try the UploadModule example) to see
+				# with sample payloads.
+				if meta is None: continue
+				disposition = meta["content-disposition"]
+				# We expect to have a least one of these
+				name        = disposition.get("filename") or disposition.get("name") or meta["content-description"]
+				if name[0] == name[-1] and name[0] in "\"'": name = name[1:-1]
+				if "filename" in disposition:
+					# NOTE: This stores the whole data in memory, we don't want
+					# that.
+					new_file= File(
+						# FIXME: Shouldnot use read here
+						data        = data.read(),
+						contentType = meta["content-type"],
+						name        = name,
 					)
-					self.request._addFile (param_name, new_file)
-					self.request._addParam(param_name, new_file)
+					self.request._addFile (name, new_file)
+					self.request._addParam(name, new_file)
 				else:
-					value = part.get_payload()
-					# TODO: decode if charset
-					# value = value.decode(self._charset, 'ignore')
-					self.request._addParam(part_meta['name'], value)
-			raw_email.close()
+					self.request._addParam(value, value)
 		elif content_type.startswith("application/x-www-form-urlencoded"):
 			# Ex: "application/x-www-form-urlencoded; charset=UTF-8"
 			charset = content_type.split("charset=",1)

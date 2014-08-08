@@ -36,7 +36,7 @@ class Main(Component):
 		upload_id    = request.param("id")
 		block_size   = request.param("blocksize") or (64 * 1024)
 		upload       = self.uploader.upload(request, upload_id, block_size)
-		upload.onCompleted(lambda _:self.app().save("data.file",_.request.data()))
+		upload.onCompleted(self.onUploadComplete)
 		return request.respond((
 			"%s bytes read (%f%%)<br>" % (_.lastBytesRead, _.progress) for _ in upload
 		))
@@ -44,6 +44,14 @@ class Main(Component):
 	@expose(GET="upload/progress?{params}")
 	def uploadProgress(self, params):
 		return self.uploader.get(params["id"])
+
+	def onUploadComplete( self, upload ):
+		for name in upload.request.files():
+			file = upload.request.file(name)
+			name = "uploaded-" + file.name
+			print ("Saving uploaded file to: {0}".format(name))
+			with open(name, "wb") as f:
+				f.write(file.data)
 
 # ------------------------------------------------------------------------------
 #
@@ -80,4 +88,4 @@ if __name__ == "__main__":
 		sessions   = False,
 	)
 
-
+# EOF
