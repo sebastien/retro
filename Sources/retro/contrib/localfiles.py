@@ -43,18 +43,19 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 .retro-directory-listing li {
 	padding-top: 0.25em;
 	padding-bottom: 0.25em;
+	position: relative;
 }
 .retro-directory-listing li .bullet {
 	color: #AAAAAA;
 	display: inline;
-	position: relative;
+	position: absolute;
 	left: 0.5em;
 }
 
 .retro-directory-listing li a {
 	position: relative;
 	padding-left: 2.5em;
-	display: inline;
+	display: block;
 	padding-top: 0.10em;
 	padding-bottom: 0.10em;
 }
