@@ -1323,7 +1323,7 @@ class RequestBodyLoader:
 				if meta is None: continue
 				disposition = meta["content-disposition"]
 				# We expect to have a least one of these
-				name        = disposition.get("filename") or disposition.get("name") or meta["content-description"]
+				name        = disposition.get("name") or disposition.get("filename") or meta["content-description"]
 				if name[0] == name[-1] and name[0] in "\"'": name = name[1:-1]
 				if "filename" in disposition:
 					# NOTE: This stores the whole data in memory, we don't want
