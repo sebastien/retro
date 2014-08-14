@@ -472,10 +472,15 @@ class Dispatcher:
 			# 'function' object has no attribute 'im_self'), it is
 			# probably because the given handler is not a method
 			# from a component
+			component = None
 			if hasattr(handler, "_component"):
 				component = handler._component
-			else:
+			elif hasattr(handler, "_component"):
 				component = handler.__self__
+			else:
+				# NOTE: We might want to log an error for a missing
+				# component.
+				pass
 			request._component = component
 			# If there was a required parameter variables, we set the request
 			# parameters to it

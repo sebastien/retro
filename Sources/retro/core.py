@@ -62,7 +62,7 @@ def ensureString( t, encoding="utf8" ):
 	if IS_PYTHON3:
 		return t if isinstance(t, str) else str(t, encoding)
 	else:
-		t
+		return t
 
 def ensureUnicode( t, encoding="utf8" ):
 	if IS_PYTHON3:
@@ -300,13 +300,15 @@ class FormData:
 				i       = chunk.find(b"\r\n\r\n")
 				if i >= 0:
 					headers = chunk[:i]
-					h       = {}
+					parsed_headers = {}
 					for line in headers.split(b"\r\n"):
 						if not line: continue
 						header = line.split(b":",1)
 						if len(header) == 2:
-							h[ensureString(header[0].lower().strip())] = ensureString(header[1].strip())
-					yield ("h", h)
+							name  = header[0].lower().strip()
+							value = header[1].strip()
+							parsed_headers[ensureString(name)] = ensureString(value)
+					yield ("h", parsed_headers)
 					chunk = chunk[i+4:]
 				else:
 					yield ("h", None)
@@ -335,8 +337,9 @@ class FormData:
 
 		>   {"":"multipart/mixed", "boundary":"inner"}
 		"""
-		text = ensureString(text)
+		if not text: return None
 		res = {}
+		text = ensureString(text)
 		# We normalize the content-disposition header
 		for v in text.split(";"):
 			v = v.strip().split("=", 1)
