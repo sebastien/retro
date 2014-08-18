@@ -1122,7 +1122,8 @@ class Request:
 				# We don't use the content-type for ETag as we don't want to
 				# have to read the whole file, that would be too slow.
 				# NOTE: ETag is indepdent on the range and affect the file is a whole
-				etag_sig = '"' + hashlib.sha256("%s:%s" % (path, last_modified)).hexdigest() + '"'
+				etag_data = ensureBytes("%s:%s" % (path, last_modified))
+				etag_sig  = '"' + hashlib.sha256(etag_data).hexdigest() + '"'
 				headers.append(("ETag",          etag_sig))
 			if contentLength is True:
 				headers.append(("Content-Length", str(content_length)))

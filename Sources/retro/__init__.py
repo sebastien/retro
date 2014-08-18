@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Aug-2014
+# Last mod  : 15-Aug-2014
 # -----------------------------------------------------------------------------
 
 import sys, os
@@ -20,7 +20,7 @@ Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.6.1"
+__version__ = "2.6.2"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 

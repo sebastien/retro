@@ -43,6 +43,8 @@ class Upload:
 	def onProgress( self, callback ):  return self.onStatus(self.IS_IN_PROGRESS, callback)
 
 	def setStatus( self, status ):
+		# We change the status already
+		self.status = status
 		if status in self.callbacks:
 			for _ in self.callbacks[status]:
 				#try:
@@ -50,8 +52,6 @@ class Upload:
 				# except Exception, e:
 				# 	self.fail(e)
 				# 	raise e
-		# We only change the status once all the callbacks have been executed
-		self.status = status
 		return status
 
 	def reset( self ):
@@ -179,4 +179,5 @@ class Uploader:
 			if key in self.uploads:
 				del self.uploads[key]
 		return len(to_remove)
+
 # EOF

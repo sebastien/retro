@@ -6,10 +6,10 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 13-Oct-2013
+# Last mod  : 15-Aug-2014
 # -----------------------------------------------------------------------------
 
-import os, re, sys, time, functools, traceback, io, datetime
+import os, re, sys, time, functools, traceback, io, datetime, urllib
 from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
 
 LOG_ENABLED       = True
@@ -424,7 +424,7 @@ class Dispatcher:
 	def match(self, environ, path=None, method=None):
 		"""Figure out which handler to delegate to or send 404 or 405. This
 		returns the handler plus a map of variables to pass to the handler."""
-		if path == None: path     = environ['PATH_INFO']
+		if path == None: path     = urllib.parse.unquote(environ['PATH_INFO'])
 		if method == None: method = environ['REQUEST_METHOD']
 		fallback_handler = self.app().notFound
 		matched_handlers = []
