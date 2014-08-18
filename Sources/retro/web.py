@@ -10,7 +10,7 @@
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime, urllib
-from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING
+from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING, urllib_parse
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -424,7 +424,7 @@ class Dispatcher:
 	def match(self, environ, path=None, method=None):
 		"""Figure out which handler to delegate to or send 404 or 405. This
 		returns the handler plus a map of variables to pass to the handler."""
-		if path == None: path     = urllib.parse.unquote(environ['PATH_INFO'])
+		if path == None: path     = urllib_parse.unquote(environ['PATH_INFO'])
 		if method == None: method = environ['REQUEST_METHOD']
 		fallback_handler = self.app().notFound
 		matched_handlers = []
@@ -486,6 +486,7 @@ class Dispatcher:
 			# parameters to it
 			if params_name:
 				variables[params_name] = request.params()
+			environ["_variables"] = variables
 			if hasattr(handler, _RETRO_WHEN):
 				for predicate in getattr(handler, _RETRO_WHEN):
 					if isinstance(predicate, str):
@@ -878,6 +879,7 @@ class Application(Component):
 			last_read = 1
 			data      = []
 			while last_read > 0:
+				# FIXME: Should abstract that
 				t = os.read(fd, 128000)
 				data.append(t)
 				last_read = len(t)

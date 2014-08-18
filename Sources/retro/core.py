@@ -328,6 +328,15 @@ class FormData:
 			has_more = len(chunk) > 0 or len(chunk) == read_size
 
 	@classmethod
+	def Unquote( cls, text ):
+		text = text.strip() if text else text
+		if not text: return text
+		if text[0] == text[-1] and text[0] in "\"'":
+			return text[1:-1]
+		else:
+			return text
+
+	@classmethod
 	def ParseHeaderValue( cls, text ):
 		"""Parses a header value and returns a dict.clear(
 
@@ -345,10 +354,10 @@ class FormData:
 			v = v.strip().split("=", 1)
 			if len(v) == 1:
 				h = ""
-				v = v[0].strip()
+				v = cls.Unquote(v[0])
 			else:
-				h = v[0].strip()
-				v = v[1].strip()
+				h = cls.Unquote(v[0].strip())
+				v = cls.Unquote(v[1].strip())
 			res[h] = v
 		return res
 
@@ -744,8 +753,8 @@ class Request:
 		"""Returns the value of the given cookie or 'None', if a value is set,
 		will make sure that any generated response will set the given cookie."""
 		if value is NOTHING:
-			c = self.cookies().get(name)
-			if c: return c.value
+			c = self.cookies().get(urllib_parse.quote(name))
+			if c: return urllib_parse.unquote(c.value)
 			else: return None
 		else:
 			# NOTE: See also Response.setCookie
@@ -753,12 +762,12 @@ class Request:
 			i     = 0
 			for header in self._responseHeaders:
 				if header[0] == self.HEADER_SET_COOKIE:
-					self._responseHeaders[i] = (header[0], "%s=%s; path=%s" % (name, value, path))
+					self._responseHeaders[i] = (header[0], "%s=%s; path=%s" % (urllib_parse.quote(name), urllib_parse.quote(value), urllib_parse.quote(path)))
 					found = True
 				i += 1
 				break
 			if not found:
-				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s=%s; path=%s" % (name, value, path)))
+				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s=%s; path=%s" % (urllib_parse.quote(name), urllib_parse.quote(value), urllib_parse.quote(path))))
 
 	def has(self, name, load=False):
 		"""Tells if the request has the given parameter."""
