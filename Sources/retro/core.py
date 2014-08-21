@@ -30,6 +30,8 @@ if IS_PYTHON3:
 	# Python3 only defines str
 	unicode = str
 	long    = int
+else:
+	unicode = unicode
 
 NOTHING    = re
 MIME_TYPES = dict(
@@ -57,6 +59,9 @@ server-side web application. In this respect, this module defines classes:
 This module could be easily re-used in another application, as it is (almost)
 completely standalone and separated from Retro Web applications.
 """
+
+quote   = urllib_parse.quote
+unquote = urllib_parse.unquote
 
 def ensureString( t, encoding="utf8" ):
 	if IS_PYTHON3:
@@ -760,14 +765,17 @@ class Request:
 			# NOTE: See also Response.setCookie
 			found = False
 			i     = 0
+			cookie_name = urllib_parse.quote(name) + "="
+			cookie_path = "path=" + urllib_parse.quote(path)
+			# We'll only replace the cookies with the same name and path
 			for header in self._responseHeaders:
-				if header[0] == self.HEADER_SET_COOKIE:
-					self._responseHeaders[i] = (header[0], "%s=%s; path=%s" % (urllib_parse.quote(name), urllib_parse.quote(value), urllib_parse.quote(path)))
+				if header[0] == self.HEADER_SET_COOKIE and header[1].startswith(cookie_name) and  cookie_path in header[1]:
+					self._responseHeaders[i] = (header[0], "%s%s; %s" % (cookie_name, urllib_parse.quote(value), cookie_path))
 					found = True
 				i += 1
 				break
 			if not found:
-				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s=%s; path=%s" % (urllib_parse.quote(name), urllib_parse.quote(value), urllib_parse.quote(path))))
+				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s%s; %s" % (cookie_name, urllib_parse.quote(value), cookie_path)))
 
 	def has(self, name, load=False):
 		"""Tells if the request has the given parameter."""

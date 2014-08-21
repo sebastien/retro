@@ -11,6 +11,7 @@
 # FROM: https://github.com/mitsuhiko/python-pbkdf2/blob/master/pbkdf2.py
 
 import hmac, hashlib, io
+from   retro.core import unicode, IS_PYTHON3, ensureBytes, ensureString
 from   struct import Struct
 from   operator import xor
 from   itertools import starmap
@@ -43,8 +44,11 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
 	mac = hmac.new(data, None, hashfunc)
 	def _pseudorandom(x, mac=mac):
 		h = mac.copy()
-		h.update(x)
-		return list(map(ord, h.digest()))
+		h.update(ensureBytes(x))
+		if not IS_PYTHON3:
+			return list(map(ord, h.digest()))
+		else:
+			return list(h.digest())
 	buf = []
 	for block in range(1, -(-keylen // mac.digest_size) + 1):
 		rv = u = _pseudorandom(salt + _pack_int(block))
@@ -52,25 +56,29 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
 			u = _pseudorandom(''.join(map(chr, u)))
 			rv = starmap(xor, zip(rv, u))
 		buf.extend(rv)
-	return ''.join(map(chr, buf))[:keylen]
+	return ensureString(''.join(map(chr, buf))[:keylen])
+
+# FIXME: This does not work in Python3!
 
 # FROM:  https://exyr.org/2011/hashing-passwords/
-def encrypt(password):
+def shadow(password):
 	"""Generate a random salt and return a new hash for the password."""
 	if isinstance(password, str): password = password.encode('utf-8')
 	salt = b64encode(urandom(SALT_LENGTH))
+	p    = b64encode(ensureBytes(pbkdf2_bin(password, salt, COST_FACTOR, KEY_LENGTH, getattr(hashlib, HASH_FUNCTION))))
 	return 'PBKDF2${}${}${}${}'.format(
 		HASH_FUNCTION,
 		COST_FACTOR,
-		salt,
-		b64encode(pbkdf2_bin(password, salt, COST_FACTOR, KEY_LENGTH, getattr(hashlib, HASH_FUNCTION))))
+		ensureString(salt, "ascii"),
+		ensureString(p,    "ascii"),
+	)
 
-def verify(password, encrypted):
+def verify(password, shadow):
 	"""Check a password against an existing hash."""
-	if isinstance(password, str):
-		password = password.encode('utf-8')
-	algorithm, hash_function, cost_factor, salt, hash_a = encrypted.split('$')
+	password = ensureString(password)
+	algorithm, hash_function, cost_factor, salt, hash_a = shadow.split('$')
 	assert algorithm == 'PBKDF2'
+	salt   = ensureBytes(salt)
 	hash_a = b64decode(hash_a)
 	hash_b = pbkdf2_bin(password, salt, int(cost_factor), len(hash_a), getattr(hashlib, hash_function))
 	assert len(hash_a) == len(hash_b)  # we requested this from pbkdf2_bin()
@@ -78,7 +86,10 @@ def verify(password, encrypted):
 	# See http://carlos.bueno.org/2011/10/timing.html
 	diff = 0
 	for char_a, char_b in zip(hash_a, hash_b):
-		diff |= ord(char_a) ^ ord(char_b)
+		if IS_PYTHON3:
+			diff |= char_a ^ ord(char_b)
+		else:
+			diff |= ord(char_a) ^ ord(char_b)
 	return diff == 0
 
 def crypt_decrypt( text, password, encoding="utf-8" ):
