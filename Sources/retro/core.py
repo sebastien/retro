@@ -767,15 +767,16 @@ class Request:
 			i     = 0
 			cookie_name = urllib_parse.quote(name) + "="
 			cookie_path = "path=" + urllib_parse.quote(path)
+			cookie_value = urllib_parse.quote(unicode(value))
 			# We'll only replace the cookies with the same name and path
 			for header in self._responseHeaders:
 				if header[0] == self.HEADER_SET_COOKIE and header[1].startswith(cookie_name) and  cookie_path in header[1]:
-					self._responseHeaders[i] = (header[0], "%s%s; %s" % (cookie_name, urllib_parse.quote(value), cookie_path))
+					self._responseHeaders[i] = (header[0], "%s%s; %s" % (cookie_name, cookie_value, cookie_path))
 					found = True
 				i += 1
 				break
 			if not found:
-				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s%s; %s" % (cookie_name, urllib_parse.quote(value), cookie_path)))
+				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s%s; %s" % (cookie_name, cookie_value, cookie_path)))
 
 	def has(self, name, load=False):
 		"""Tells if the request has the given parameter."""
@@ -1240,8 +1241,9 @@ class File:
 
 	# TODO: We should improve the file object data to be a  reference
 	# to a SpooledTemporaryFile, not to the actual contents
-	def __init__( self, data, contentType=None, name=None):
+	def __init__( self, data, contentType=None, name=None, filename=None):
 		self.data          = data
+		self.filename      = filename
 		self.contentLength = len(self.data)
 		self.name          = name
 		self.contentType   = contentType
@@ -1351,6 +1353,7 @@ class RequestBodyLoader:
 						data        = data.read(),
 						contentType = meta["content-type"][""],
 						name        = name,
+						filename    = disposition.get("filename") or meta["content-description"]
 					)
 					self.request._addFile (name, new_file)
 					self.request._addParam(name, new_file)
