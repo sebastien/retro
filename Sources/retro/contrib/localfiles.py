@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 06-Aug-2014
+# Last mod  : 23-Aug-2014
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -188,7 +188,7 @@ class LocalFiles(Component):
 					return request.respond(self.directoryAsHtml(path, resolved_path))
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
-		if processor:
+		if processor and not request.has("raw"):
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
 		else:

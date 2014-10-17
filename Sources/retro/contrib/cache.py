@@ -54,6 +54,8 @@ def cached( store, prefix=None ):
 
 class Cache:
 
+	NEVER = 0
+
 	def __init__( self ):
 		self.enabled = True
 
@@ -215,7 +217,7 @@ class LRUCache(Cache):
 	VALUE      = 3
 	EXPIRES    = -1
 
-	def __init__( self, limit=100, expire=None ):
+	def __init__( self, limit=100, expires=None ):
 		Cache.__init__(self)
 		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
 		self.data    = {}
@@ -223,9 +225,9 @@ class LRUCache(Cache):
 		self.limit   = limit
 		self.lock    = threading.RLock()
 		self.enabled = True
-		if expire is not None: self.expire(expire)
+		if expires is not None: self.expires(expires)
 
-	def expire( self, value ):
+	def expires( self, value ):
 		self.EXPIRES = value
 		return self
 
@@ -398,16 +400,16 @@ class FileCache(Cache):
 		assert len(name) <= max_length, "Key is too long %d > %d, key=%s" % (len(name), max_length, repr(key))
 		return name
 
-	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None):
+	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None, createPath=True):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
-		self.setPath(path)
+		self.setPath(path, createPath)
 		self.keyProcessor = keys or self.NAME_KEY
 		self.enabled      = True
 		if expires != None:self.EXPIRES = expires
 
-	def expire( self, value ):
+	def expires( self, value ):
 		self.EXPIRES = value
 		return self
 
@@ -428,9 +430,10 @@ class FileCache(Cache):
 		self.keyProcessor = keys
 		return self
 
-	def setPath( self, path ):
+	def setPath( self, path , createPath=True):
 		path = path or "."
 		if len(path) > 1 and path[-1] == "/": path = path[:-1]
+		if createPath and not os.path.exists(path): os.makedirs(path)
 		assert os.path.exists(path), "Cache path does not exist: {0}".format(path)
 		assert os.path.isdir(path),  "Cache path is not a directory: {0}".format(path)
 		self.path = path
