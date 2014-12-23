@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Aug-2014
+# Last mod  : 23-Dec-2014
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -32,6 +32,10 @@ try:
 	import clevercss
 except:
 	clevercss = None
+try:
+	import pythoniccss
+except:
+	pythoniccss = None
 
 LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 .retro-directory-listing {
@@ -239,6 +243,7 @@ class LibraryServer(Component):
 
 	- CSS        ('lib/css')
 	- CleverCSS  ('lib/ccss')
+	- PythonicCSS('lib/pcss')
 	- JavaScript ('lib/js')
 	- Sugar      ('lib/sjs')
 	- Images     ('lib/images', of type 'png', 'gif', 'jpg', 'ico' and 'svg')
@@ -338,6 +343,10 @@ class LibraryServer(Component):
 	def getCCSS( self, request, paths ):
 		return self._getFromLibrary(request, "ccss", paths, "text/css; charset=utf-8")
 
+	@on(GET="lib/pcss/{paths:rest}")
+	def getPCSS( self, request, paths ):
+		return self._getFromLibrary(request, "pcss", paths, "text/css; charset=utf-8")
+
 	@on(GET="lib/{prefix:(js|sjs)}/{paths:rest}")
 	def getJavaScript( self, request, prefix, paths ):
 		return self._getFromLibrary(request, prefix, paths, "text/javascript; charset=utf-8")
@@ -371,6 +380,7 @@ class LibraryServer(Component):
 		if   path.endswith(".sjs"):  return self._processSJS(path)
 		elif path.endswith(".js"):   return self._processJS(path)
 		elif path.endswith(".ccss"): return self._processCCSS(path)
+		elif path.endswith(".pcss"): return self._processPCSS(path)
 		elif path.endswith(".css"):  return self._processCSS(path)
 		else: raise Exception("Format not supported: " + path)
 
@@ -386,6 +396,22 @@ class LibraryServer(Component):
 		data = self.app().load(path)
 		data = clevercss.convert(data)
 		if self.minify and cssmin: data = cssmin.cssmin(data)
+		return data
+
+	def _processPCSS( self, path ):
+		"""Processes a PCSS file, minifying it if `cssmin` is installed.
+		Requires `clevercss`"""
+		# FIXME: Use the mouel once ready
+		# data = self.app().load(path)
+		# data = pythoniccss.convert(data)
+		while (not data) and tries < 3:
+			command = "%s %s" % (self.commands["pythoniccss"], path)
+			cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+			data    = cmd.stdout.read()
+			tries  += 1
+			cmd.wait()
+		if data:
+			if self.minify and cssmin: data = cssmin.cssmin(data)
 		return data
 
 	def _processSJS( self, path ):
