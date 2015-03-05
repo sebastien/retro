@@ -68,12 +68,13 @@ class Proxy:
 		return True
 
 	def httpRequest( self, server, port, method, url, body="", headers=None ):
-		import httplib
-		conn = httplib.HTTPConnection(server, int(port))
-		conn.request(method, url, body, headers or {})
-		resp = conn.getresponse()
-		data = resp.read()
-		res  = data
+		# NOTE: This is not fast at all, but it works!
+		import wwwclient
+		s    = wwwclient.Session()
+		url  = "http://{0}:{1}{2}".format(server, port, url)
+		print "[PROXY] {0}".format(url)
+		t    = getattr(s,method.lower())(url)
+		data = t.data()
 		if self.THROTTLING > 0:
 			bytes_per_second = int(self.THROTTLING * 1000.0)
 			def throttling_wrapper():
@@ -85,7 +86,29 @@ class Proxy:
 					yield data[i:j]
 					i = j
 			res = throttling_wrapper()
-		return resp.status, resp.getheaders(), res
+		return 200, t.headers(), data
+
+	# NOTE: This does not  seem to work properly..., so disabled for now
+	#def _httpRequest( self, server, port, method, url, body="", headers=None ):
+	#	import httplib
+	#	conn = httplib.HTTPConnection(server, int(port))
+	#	conn.request(method, url, body, headers or {})
+	#	print "[PROXY] {0} {1}:{2}{3}".format(method, server, port, url)
+	#	resp = conn.getresponse()
+	#	data = resp.read()
+	#	res  = data
+	#	if self.THROTTLING > 0:
+	#		bytes_per_second = int(self.THROTTLING * 1000.0)
+	#		def throttling_wrapper():
+	#			i      = 0
+	#			while i < len(data):
+	#				if i > 0:
+	#					time.sleep(1)
+	#				j = min(len(data), i + bytes_per_second)
+	#				yield data[i:j]
+	#				i = j
+	#		res = throttling_wrapper()
+	#	return resp.status, resp.getheaders(), res
 
 # FIXME: Use Proxy properly
 class ProxyService(Component, Proxy):
@@ -98,8 +121,8 @@ class ProxyService(Component, Proxy):
 		"""Creates a new proxy that will proxy to the URL indicated by
 		'proxyTo'."""
 		Component.__init__(self, name="Proxy")
-		host, port = proxyTo.split(":", 1)
-		port, uri  = port.split("/",    1)
+		host, uri  = proxyTo.split("/", 1)
+		host, port = host.split(":", 1) if ":" in host else (host, 80)
 		self._host  = host
 		self._port  = port or 80
 		self._uri   = "/" + uri
