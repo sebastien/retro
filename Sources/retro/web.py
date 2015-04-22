@@ -783,7 +783,13 @@ class Application(Component):
 
 	def __init__( self, components=(), prefix='', config=None, defaults=None ):
 		Component.__init__(self)
-		self._config     = Configuration(path=config, defaults=defaults)
+		if isinstance(config, dict):
+			config = Configuration(defaults=defaults).merge(config)
+		elif config:
+			config = Configuration(path=config, defaults=defaults)
+		else:
+			config = Configuration(defaults=defaults)
+		self._config     = config
 		self._dispatcher = Dispatcher(self)
 		self._app        = self
 		self._components = []
@@ -1028,6 +1034,7 @@ class Configuration:
 		one."""
 		for key, value in list(config.items()):
 			self.set(key,value)
+		return self
 
 	def set( self, name, value ):
 		"""Sets the given property with the given value."""
