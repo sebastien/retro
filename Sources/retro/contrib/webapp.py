@@ -424,11 +424,11 @@ class WebApp( Application ):
 #
 # -----------------------------------------------------------------------------
 
-def createApp(config=(APPNAME.lower() + ".conf"), components=[], pageServer=None, libraryServer=None):
+def createApp(config=None, components=None, pageServer=None, libraryServer=None):
 	"""Creates the application with given path as config file."""
-	return WebApp(config, components, pageServer, libraryServer)
+	return WebApp(config or (APPNAME.lower() + ".json"), components or (), pageServer, libraryServer)
 
-def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False, log=False ):
+def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False, log=False, config=None ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
 	setLocales (LOCALES)
@@ -438,7 +438,7 @@ def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=Fals
 			reporter.setLevel(reporter.DEBUG)
 	if method == STANDALONE:
 		info("Starting Web application")
-	if app is None: app = createApp()
+	if app is None: app = createApp(config=config)
 	name     = app.config("appname")
 	lib_python_path = app.config("library.python.path")
 	if method == STANDALONE:
@@ -457,6 +457,18 @@ def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=Fals
 			# FIXME: withReactor doesn't work!!
 			withReactor  = False,
 		)
+
+def command():
+	"""Commmand-line handler for webapp"""
+	import argparse
+	parser = argparse.ArgumentParser(description="Web application command-line arguments")
+	parser.add_argument("-p", "--port"   , dest="port"    ,type=int,  default=8080, help="Port to run the webapp")
+	parser.add_argument("-d", "--debug"  , dest="debug"   ,type=bool, default=False,help="Enables debugging")
+	parser.add_argument("-C", "--color"  , dest="color"   ,type=bool, default=True, help="Enables color output")
+	parser.add_argument("-l", "--logging", dest="logging" ,type=bool, default=True, help="Enables logging")
+	parser.add_argument("-c", "--config" ,config="config" ,type=str, default=True, help="Path to JSON configuration file")
+	args = parser.parse_args()
+	start(port=args.port, debug=args.debug, color=args.color, log=args.logging, config=args.config)
 
 # This is wrapper to make the module GUnicorn-compatible
 APPLICATION = None
