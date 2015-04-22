@@ -71,6 +71,14 @@ class Upload:
 		self.setStatus(self.IS_STARTED)
 		return self
 
+	def getFiles( self, chunksize=None ):
+		"""Reads the request and generated `(self.progress, [request.core.File])`
+		couples until the load is complete."""
+		for _ in self.read(chunksize):
+			yield (self.progress, None)
+			if self.status == self.IS_COMPLETED:
+				yield (100, self.request.files())
+
 	def getFile( self, name, chunksize=None ):
 		"""Reads the request and generated `(self.progress, request.core.File)`
 		couples until the load is complete."""
