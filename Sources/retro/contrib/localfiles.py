@@ -104,16 +104,18 @@ class LocalFiles(Component):
 	to be used in development environments, where you need direct access
 	to local files and live file translation (using `processors`)."""
 
-	LIST_DIR = True
+	LIST_DIR          = True
+	USE_LAST_MODIFIED = True
 
-	def __init__( self, root="", name=None, processors={}, optsuffix=() ):
+	def __init__( self, root="", name=None, processors={}, optsuffix=(), lastModified=None ):
 		"""Creates a new LocalFiles, with the optional root, name and
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
 		Component.__init__(self, name="LocalFiles")
-		self._localRoot   = None
-		self._processors  = {}
-		self._optSuffixes = optsuffix
+		self._lastModified = self.USE_LAST_MODIFIED if lastModified is None else lastModified
+		self._localRoot    = None
+		self._processors   = {}
+		self._optSuffixes  = optsuffix
 		self.setRoot(root or ".")
 		for key, value in list(processors.items()):
 			self._processors[key] = value
@@ -196,7 +198,7 @@ class LocalFiles(Component):
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
 		else:
-			return request.respondFile(resolved_path)
+			return request.respondFile(resolved_path, lastModified=self._lastModified)
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""
@@ -401,11 +403,14 @@ class LibraryServer(Component):
 	def _processPCSS( self, path ):
 		"""Processes a PCSS file, minifying it if `cssmin` is installed.
 		Requires `clevercss`"""
-		# FIXME: Use the mouel once ready
+		data   = None
+		tries  = 0
+		# TODO: This does not work yet, but it is the best for an application
+		# Right now, we default to piping
 		# data = self.app().load(path)
 		# data = pythoniccss.convert(data)
 		while (not data) and tries < 3:
-			command = "%s %s" % (self.commands["pythoniccss"], path)
+			command = "%s %s" % (self.commands.get("pythoniccss", "pythoniccss"), path)
 			cmd     = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
 			data    = cmd.stdout.read()
 			tries  += 1

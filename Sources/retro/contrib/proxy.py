@@ -69,8 +69,8 @@ class Proxy:
 
 	def httpRequest( self, server, port, method, url, body="", headers=None ):
 		# NOTE: This is not fast at all, but it works!
-		import wwwclient
-		s    = wwwclient.Session()
+		import wwwclient, wwwclient.defaultclient
+		s    = wwwclient.Session(client=wwwclient.defaultclient.HTTPClient)
 		url  = "http://{0}:{1}{2}".format(server, port, url)
 		print "[PROXY] {0}".format(url)
 		t    = getattr(s,method.lower())(url)
@@ -182,7 +182,7 @@ class WWWClientProxy(ProxyService):
 	@on(GET="/{rest:rest}?{parameters}", priority="10")
 	def proxyGet( self, request, rest, parameters ):
 		uri = request.uri() ; i = uri.find(rest) ; assert i >= 0 ; uri = uri[i:]
-		wwwclient.browse.Session(self._proxyTo).get(uri)
+		wwwclient.browse.Session(self._proxyTo, client=wwwclient.curlclient.HTTPClient).get(uri)
 		# TODO: Add headers processing here
 		return request.respond(content=result,headers=[("Content-Type",ctype)],status=code)
 
