@@ -266,8 +266,10 @@ class LibraryServer(Component):
 		jpeg = "image/jpeg",
 	)
 
-	def __init__( self, library="", name="LibraryServer", cache=None, commands=dict(), minify=False, compress=False, cacheAggregates=True, cacheDuration=24*60*60 ):
-		Component.__init__(self, name=name)
+	def __init__( self, library="", name="LibraryServer", cache=None,
+			commands=dict(), minify=False, compress=False, cacheAggregates=True,
+			cacheDuration=24*60*60, prefix=None ):
+		Component.__init__(self, name=name, prefix=prefix)
 		self.library  = library
 		self.cache    = cache
 		self.minify   = minify

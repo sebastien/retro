@@ -110,27 +110,29 @@ def localize(handler):
 	"""
 	@functools.wraps(handler)
 	def retro_i18n_localize_wrapper(inst, request, lang=None, *args, **kwargs):
-		if ENABLED and request.environ("retro.app").config("i18n.localize") is not False:
+		app = request.environ("retro.app")
+		# NOTE: This should be super optimized as it's called each time
+		if ENABLED and app.config("i18n.localize") is not False:
+			prefix = app.config("base")
+			path   = request.path()
+			if path.startswith(prefix): path = path[len(prefix):]
+			if path[0] != "/": path = "/" + path
+			print (prefix, path)
 			if not lang:
 				# There's no language specified, so we have to guess it
 				lang = request.param("lang") or lang
-				path = request.path()
 				for skip in LOCALIZE_SKIP:
 					if path.startswith(skip):
 						return handler(inst, request, lang, *args, **kwargs)
 				lang = guessLanguage(request)
 				# Once guessed, set language for next requests
 				request.cookie(COOKIE_LANGUAGE,lang)
-				path = request.path()
 				# if path is like /LL or /LL-LL (ex /en /en-ca)
 				m    = RE_LANG_PREFIX.match(path)
-				if m:
-					return request.redirect("/" + m.group(1) + "/index")
-				else:
-					return request.redirect("/" + lang + request.path())
+				path = prefix + (m.group(1) + "/index" if m else lang + path)
+				return request.redirect(path)
 			elif request.param("lang") and request.param("lang") != lang:
 				# We override the current language, so we redirect to the url
-				path = request.path()
 				l    = request.param("lang")
 				if lang:
 					path = path.split(lang, 1)
@@ -138,7 +140,7 @@ def localize(handler):
 					path = "".join(path).replace("lang=" +  l, "").replace("&&","&")
 					while path.endswith("?"): path = path[:-1]
 				else:
-					path = "/" + l + path
+					path = prefix + l + path
 				request.cookie(COOKIE_LANGUAGE,l)
 				return request.redirect(path)
 		return handler(inst, request, lang, *args, **kwargs)

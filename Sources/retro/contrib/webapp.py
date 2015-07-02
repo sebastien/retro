@@ -136,8 +136,8 @@ class PageServer(Component):
 		)
 	)
 
-	def __init__( self ):
-		Component.__init__(self)
+	def __init__( self, prefix=None ):
+		Component.__init__(self, prefix=prefix )
 		self._templates = {}
 		self.DEFAULTS   = {}
 
@@ -411,6 +411,7 @@ class WebApp( Application ):
 	def createDefaultLibraryServer( self ):
 		return LibraryServer(
 			self.config("library.path"),
+			prefix          = self.config("base"),
 			cache           = LIBRARY_CACHE,
 			cacheAggregates = self.isProduction,
 			minify          = self.isProduction,

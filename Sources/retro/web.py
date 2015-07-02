@@ -575,7 +575,7 @@ class Component:
 				}))
 		return res
 
-	def __init__( self, name = None, prefix = None ):
+	def __init__( self, name=None, prefix=None ):
 		if name == None: name = self.__class__.__name__
 		self._name      = name
 		self._app       = None
