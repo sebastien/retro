@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 06-Aug-2014
+# Last mod  : 06-Jul-2015
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -418,6 +418,27 @@ class WebApp( Application ):
 			compress        = self.isProduction,
 			cacheDuration   = self.isProduction and 60 * 60 or 0
 		)
+
+# -----------------------------------------------------------------------------
+#
+# CATCHALL
+#
+# -----------------------------------------------------------------------------
+
+class Catchall(Component):
+	"""Catches all the requests and does a corresponding action"""
+
+	def __init__( self, redirect=None, handler=None, prefix=None ):
+		Component.__init__(self, prefix=prefix )
+		self.redirect = redirect
+		self.handler  = handler
+		assert redirect or handler
+
+	@on(GET=("", "{path:any}"), priority=-1)
+	def catchall( self, request, path=None ):
+		print "CATCH", request.path()
+		if self.handler:  return self.handler(request)
+		else: return request.redirect(self.redirect)
 
 # -----------------------------------------------------------------------------
 #
