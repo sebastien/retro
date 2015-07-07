@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 19-Aug-2014
+# Last mod  : 07-Jul-2015
 # -----------------------------------------------------------------------------
 
 import sys, os
@@ -20,7 +20,7 @@ Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.6.3"
+__version__ = "2.6.4"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
@@ -70,6 +70,10 @@ try:
 except ImportError:
 	WSGIREF = None
 	STANDALONE_WSGIREF = None
+
+BJOERN = "bjoern"
+ROCKET = "rocket"
+GEVENT = "gevent"
 
 FEATURES = [x for x in (FLUP, FCGI, STANDALONE, WSGIREF,) if x]
 def has( feature ):
@@ -123,7 +127,7 @@ onError=None ):
 		import _thread
 		return _thread.start_new_thread(run,(),locals())
 	if not (withReactor is None):
-		wsgi.USE_REACTOR = withReactor
+		retro.wsgi.USE_REACTOR = withReactor
 	if app == None:
 		app = Application(prefix=prefix,components=components)
 	else:
@@ -213,6 +217,48 @@ onError=None ):
 		if sessions:
 			sessions.close()
 	#
+	# == GEVENT
+	#
+	elif method == GEVENT:
+		try:
+			from gevent import wsgi
+		except ImportError:
+			raise ImportError("gevent is required to run `gevent` method")
+		host   = config.get("host")
+		port   = config.get("port")
+		def application(environ, startReponse):
+			# Gevent needs a wrapper
+			if "retro.app" not in environ: environ["retro.app"] = stack.app()
+			return environ["retro.app"](environ, startReponse)
+		# NOTE: This starts using gevent's WSGI server (faster!)
+		wsgi.WSGIServer((host,port), application, spawn=None).serve_forever()
+	#
+	# == BJOERN
+	#
+	elif method == BJOERN:
+		try:
+			import bjoern
+		except ImportError:
+			raise ImportError("bjoern is required to run `bjoern` method")
+		host   = config.get("host")
+		port   = config.get("port")
+		bjoern.run(app, host, port)
+	#
+	# == ROCKET
+	#
+	elif method == ROCKET:
+		try:
+			import rocket
+		except ImportError:
+			raise ImportError("rocket is required to run `rocket` method")
+		host   = config.get("host")
+		port   = config.get("port")
+		# FIXME: For some reason this is not working :(
+		def application(environ, startReponse):
+			# Gevent needs a wrapper
+			if "retro.app" not in environ: environ["retro.app"] = stack.app()
+			return environ["retro.app"](environ, startReponse)
+		rocket.Rocket((host, int(port)), "wsgi", {"wsgi_app":application}).start()
 	# == STANDALONE (WSGIREF)
 	#
 	# elif method == STANDALONE_WSGIREF:
@@ -263,4 +309,5 @@ onError=None ):
 		return retro_rendezvous_wrapper
 	else:
 		raise Exception("Unknown setup method:" + method)
+
 # EOF - vim: tw=80 ts=4 sw=4 noet

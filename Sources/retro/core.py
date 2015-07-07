@@ -1489,6 +1489,13 @@ class Response:
 		# FIXME: Ensure this is only called once
 		self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
 
+	def _normalizeHeaders( self, headers ):
+		"""WSGI Libraries need to have non-unicode strings for headers."""
+		return [(
+			k.encode("ascii") if isinstance(k,unicode) else k,
+			v.encode("ascii") if isinstance(v,unicode) else v
+		) for k,v in headers]
+
 	def asWSGI( self, startResponse, charset=None ):
 		"""This is the main WSGI function handler. This is what generates the
 		actual request and produces the response from the attached 'content'."""
@@ -1499,7 +1506,10 @@ class Response:
 		reason = self.REASONS.get(int(self.status)) or self.REASONS[500]
 		if reason: reason = reason[0]
 		status = "%s %s" % (self.status, self.reason or reason)
-		startResponse(status, self.headers)
+		# FIXME: This makes is unncessarily slow, but when using other
+		# WSGI libraries, we need to ensure that the headers are not UTF8
+		headers = self._normalizeHeaders(self.headers)
+		startResponse(status, headers)
 		def encode(v):
 			# The response needs to be str-encoded (binary and not unicode)
 			# SEE: File "/usr/lib/python2.7/socket.py", line 316, in write

@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 06-Jul-2015
+# Last mod  : 07-Jul-2015
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -383,6 +383,8 @@ class WebApp( Application ):
 		creates the `${cache.path}`, `${data.path}` and `${cache.api.path}` if necessary` and
 		registers the given `pageServer`, `libraryServer` and `components`. By default this
 		module `PageServer` and `LibraryServer` will be instanciated."""
+		global APPLICATION
+		APPLICATION = self
 		Application.__init__(self,
 			defaults  = self.DefaultConfig(),
 			config    = config or APPNAME.lower() + self.CONFIG_EXT
@@ -436,7 +438,6 @@ class Catchall(Component):
 
 	@on(GET=("", "{path:any}"), priority=-1)
 	def catchall( self, request, path=None ):
-		print "CATCH", request.path()
 		if self.handler:  return self.handler(request)
 		else: return request.redirect(self.redirect)
 
@@ -450,7 +451,7 @@ def createApp(config=None, components=None, pageServer=None, libraryServer=None)
 	"""Creates the application with given path as config file."""
 	return WebApp(config or (APPNAME.lower() + ".json"), components or (), pageServer, libraryServer)
 
-def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=False, color=False, log=False, config=None ):
+def start( app=None, port=None, runCondition=True, method=None, debug=False, color=False, log=False, config=None ):
 	"""Runs the given application (by default created by 'createApp()' as
 	standalone."""
 	setLocales (LOCALES)
@@ -458,11 +459,11 @@ def start( app=None, port=None, runCondition=True, method=STANDALONE, debug=Fals
 		reporter.register(reporter.StdoutReporter(color=color))
 		if debug:
 			reporter.setLevel(reporter.DEBUG)
-	if method == STANDALONE:
-		info("Starting Web application")
 	if app is None: app = createApp(config=config)
 	name     = app.config("appname")
 	lib_python_path = app.config("library.python.path")
+	method = method or app.config("method") or STANDALONE
+	info("Starting Web application {0} on {2}:{3} [{1}] ".format(name, method, app.config("host") or "0.0.0.0", app.config("port")))
 	if method == STANDALONE:
 		info(app.config())
 		info(app.info())
@@ -492,15 +493,15 @@ def command():
 	args = parser.parse_args()
 	start(port=args.port, debug=args.debug, color=args.color, log=args.logging, config=args.config)
 
-# This is wrapper to make the module GUnicorn-compatible
+# This is wrapper to make the module WSGI-compatible (like GUnicorn)
 APPLICATION = None
 def application(environ, startReponse):
 	global APPLICATION
 	if not APPLICATION:
 		APPLICATION = start(method=WSGI)
 		for _ in ON_INIT: _(APPLICATION)
-	# FIXME: Not sure why this is here
-	# app = APPLICATION.stack.app()
+	# We make sure the app is set
+	if "retro.app" not in environ: environ["retro.app"] = APPLICATION.stack.app()
 	return APPLICATION(environ, startReponse)
 
 if __name__ == "__main__":
