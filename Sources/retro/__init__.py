@@ -217,48 +217,49 @@ onError=None ):
 		if sessions:
 			sessions.close()
 	#
-	# == GEVENT
+	# == GEVENT, BJOERN, ROCKET & WSGI
 	#
-	elif method == GEVENT:
-		try:
-			from gevent import wsgi
-		except ImportError:
-			raise ImportError("gevent is required to run `gevent` method")
+	elif method in (GEVENT, BJOERN, ROCKET, WSGI):
+
 		host   = config.get("host")
 		port   = config.get("port")
 		def application(environ, startReponse):
 			# Gevent needs a wrapper
 			if "retro.app" not in environ: environ["retro.app"] = stack.app()
 			return environ["retro.app"](environ, startReponse)
-		# NOTE: This starts using gevent's WSGI server (faster!)
-		wsgi.WSGIServer((host,port), application, spawn=None).serve_forever()
-	#
-	# == BJOERN
-	#
-	elif method == BJOERN:
-		try:
-			import bjoern
-		except ImportError:
-			raise ImportError("bjoern is required to run `bjoern` method")
-		host   = config.get("host")
-		port   = config.get("port")
-		bjoern.run(app, host, port)
-	#
-	# == ROCKET
-	#
-	elif method == ROCKET:
-		try:
-			import rocket
-		except ImportError:
-			raise ImportError("rocket is required to run `rocket` method")
-		host   = config.get("host")
-		port   = config.get("port")
-		# FIXME: For some reason this is not working :(
-		def application(environ, startReponse):
-			# Gevent needs a wrapper
-			if "retro.app" not in environ: environ["retro.app"] = stack.app()
-			return environ["retro.app"](environ, startReponse)
-		rocket.Rocket((host, int(port)), "wsgi", {"wsgi_app":application}).start()
+		if method == "GEVENT":
+			try:
+				from gevent import wsgi
+			except ImportError:
+				raise ImportError("gevent is required to run `gevent` method")
+			# NOTE: This starts using gevent's WSGI server (faster!)
+			wsgi.WSGIServer((host,port), application, spawn=None).serve_forever()
+		elif method == BJOERN:
+			try:
+				import bjoern
+			except ImportError:
+				raise ImportError("bjoern is required to run `bjoern` method")
+			bjoern.run(application, host, port)
+		elif method == ROCKET:
+			try:
+				import rocket
+			except ImportError:
+				raise ImportError("rocket is required to run `rocket` method")
+			rocket.Rocket((host, int(port)), "wsgi", {"wsgi_app":application}).start()
+		elif method == WSGI:
+			# When using standalone WSGI, we make sure to wrap RendezVous objects
+			# that might be returned by the handlers, and make sure we wait for
+			# them -- we could use a callback version instead for specific web
+			# servers.
+			def retro_rendezvous_wrapper( environ, start_response, request=None):
+				results = stack(environ, start_response, request)
+				for result in results:
+					if isinstance(result, RendezVous):
+						result.wait()
+						continue
+					yield result
+			retro_rendezvous_wrapper.stack = stack
+			return retro_rendezvous_wrapper
 	# == STANDALONE (WSGIREF)
 	#
 	# elif method == STANDALONE_WSGIREF:
@@ -283,9 +284,9 @@ onError=None ):
 			int(port or app.config("port") or DEFAULT_PORT)
 		)
 		stack.fromRetro = True
-		stack.app          = lambda: app
-		server = wsgi.WSGIServer(server_address, stack)
-		wsgi.onError(onError)
+		stack.app       = lambda: app
+		server          = retro.wsgi.WSGIServer(server_address, stack)
+		retro.wsgi.onError(onError)
 		socket = server.socket.getsockname()
 		print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))
 		try:
@@ -293,21 +294,7 @@ onError=None ):
 				server.handle_request()
 		except KeyboardInterrupt:
 			print ("done")
-	elif method == WSGI:
-		# When using standalone WSGI, we make sure to wrap RendezVous objects
-		# that might be returned by the handlers, and make sure we wait for
-		# them -- we could use a callback version instead for specific web
-		# servers.
-		def retro_rendezvous_wrapper( environ, start_response, request=None):
-			results = stack(environ, start_response, request)
-			for result in results:
-				if isinstance(result, RendezVous):
-					result.wait()
-					continue
-				yield result
-		retro_rendezvous_wrapper.stack = stack
-		return retro_rendezvous_wrapper
 	else:
-		raise Exception("Unknown setup method:" + method)
+		raise Exception("Unknown retro setup method:" + method)
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
