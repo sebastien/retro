@@ -50,7 +50,7 @@ DEFAULT_ADDRESS = "0.0.0.0"
 FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
 WSGI = "WSGI"
-STANDALONE = "STANDALONE"
+STANDALONE = "standalone"
 
 try:
 	FLUP_FCGIServer = None
@@ -223,10 +223,18 @@ onError=None ):
 
 		host   = config.get("host")
 		port   = config.get("port")
-		def application(environ, startReponse):
+		try:
+			import reporter as logging
+		except:
+			import logging
+		def application(environ, startResponse):
 			# Gevent needs a wrapper
 			if "retro.app" not in environ: environ["retro.app"] = stack.app()
-			return environ["retro.app"](environ, startReponse)
+			return environ["retro.app"](environ, startResponse)
+		def logged_application(environ, startResponse):
+			logging.info("{0} {1}".format(environ["REQUEST_METHOD"], environ["PATH_INFO"]))
+			if "retro.app" not in environ: environ["retro.app"] = stack.app()
+			return environ["retro.app"](environ, startResponse)
 		if method == "GEVENT":
 			try:
 				from gevent import wsgi
@@ -239,7 +247,8 @@ onError=None ):
 				import bjoern
 			except ImportError:
 				raise ImportError("bjoern is required to run `bjoern` method")
-			bjoern.run(application, host, port)
+			if hasattr(logging, "install"): logging.install(level=logging.INFO)
+			bjoern.run(logged_application, host, port)
 		elif method == ROCKET:
 			try:
 				import rocket
