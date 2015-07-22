@@ -23,7 +23,7 @@ def cors(f):
 	functools.update_wrapper(wrapper, f)
 	return wrapper
 
-def setCORSHeaders(r, origin=None):
+def setCORSHeaders(r, origin=None, allowAll=False):
 	"""Takes the given request or response, and
 	return (a response) with the CORS headers set
 	properly.
@@ -33,7 +33,10 @@ def setCORSHeaders(r, origin=None):
 	if isinstance(r, retro.core.Request):
 		origin = origin or r.header("Origin")
 		r = r.respond()
-	r.setHeader("Access-Control-Allow-Origin", origin)
+	# SEE: https://remysharp.com/2011/04/21/getting-cors-working
+	# If the request returns a 0 status code, it's likely because of CORS
+	r.setHeader("Access-Control-Allow-Origin", origin if origin and not allowAll else "*")
+	r.setHeader("Access-Control-Allow-Headers", "X-Requested-With")
 	r.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, UPDATE")
 	return r
 

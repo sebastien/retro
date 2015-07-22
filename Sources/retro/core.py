@@ -63,6 +63,9 @@ completely standalone and separated from Retro Web applications.
 quote   = urllib_parse.quote
 unquote = urllib_parse.unquote
 
+def isString( t ):
+	return isinstance(t, unicode) or isinstance(t, str)
+
 def ensureString( t, encoding="utf8" ):
 	if IS_PYTHON3:
 		return t if isinstance(t, str) else str(t, encoding)
