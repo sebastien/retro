@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+# -----------------------------------------------------------------------------
+# Project           : Retro - HTTP Toolkit
+# -----------------------------------------------------------------------------
+# Author            : Sebastien Pierre                    <sebastien@ffctn.com>
+# License           : Revised BSD License
+# -----------------------------------------------------------------------------
+# Creation date     : 2015-07-21
+# Last modification : 2015-07-21
+# -----------------------------------------------------------------------------
+
+import retro.core
+import functools
+
+# SEE: http://stackoverflow.com/questions/16386148/why-browser-do-not-follow-redirects-using-xmlhttprequest-and-cors/20854800#20854800
+
+def cors(f):
+	"""A decorator for a request handler that will ensure
+	response."""
+	def wrapper( *args, **kwargs ):
+		response = f(*args, **kwargs)
+		return setCORSHeaders(response, args[1].header("Origin"))
+	functools.update_wrapper(wrapper, f)
+	return wrapper
+
+def setCORSHeaders(r, origin=None):
+	"""Takes the given request or response, and
+	return (a response) with the CORS headers set
+	properly.
+
+	See <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>
+	"""
+	if isinstance(r, retro.core.Request):
+		origin = origin or r.header("Origin")
+		r = r.respond()
+	r.setHeader("Access-Control-Allow-Origin", origin)
+	r.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, UPDATE")
+	return r
+
+# EOF - vim: ts=4 sw=4 noet
