@@ -10,7 +10,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Apr-2006
-# Last mod  : 27-Oct-2013
+# Last mod  : 22-Jul-2015
 # -----------------------------------------------------------------------------
 
 # TODO: Use AsynCore or (better), Thor!
@@ -288,6 +288,9 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		self.run(self.server.application)
 
 	def do_HEAD(self):
+		self.run(self.server.application)
+
+	def do_OPTIONS(self):
 		self.run(self.server.application)
 
 	def do_POST(self):
