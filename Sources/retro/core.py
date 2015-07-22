@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 08-Aug-2014
+# Last mod  : 22-Jul-2015
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -80,6 +80,9 @@ def ensureBytes( t, encoding="utf8" ):
 		return t if isinstance(t, bytes) else bytes(t, encoding)
 	else:
 		return t
+
+def normalizeHeader( h ):
+	return "-".join(_.capitalize() for _ in h.split("-"))
 
 # -----------------------------------------------------------------------------
 #
@@ -310,7 +313,7 @@ class FormData:
 						if not line: continue
 						header = line.split(b":",1)
 						if len(header) == 2:
-							name  = header[0].lower().strip()
+							name  = normalizeHeader(header[0]).strip()
 							value = header[1].strip()
 							parsed_headers[ensureString(name)] = ensureString(value)
 					yield ("h", parsed_headers)
@@ -765,6 +768,13 @@ class Request:
 			# NOTE: See also Response.setCookie
 			found = False
 			i     = 0
+			# We update the current cookie jar, so that the cookies can
+			# be retrieved. It might seem that you don't want to touch the
+			# request, but at the same time, the request actuall reflects
+			# the state of the session.
+			self._cookies[name]         = value
+			self._cookies[name]["path"] = path
+			# And now we update the response headers
 			cookie_name = urllib_parse.quote(name) + "="
 			cookie_path = "path=" + urllib_parse.quote(path)
 			cookie_value = urllib_parse.quote(unicode(value))
@@ -951,11 +961,11 @@ class Request:
 					yield ""
 		return Response(bodygenerator(), self._mergeHeaders(headers), 200, compression=self.compression())
 
-	def redirect( self, url, **kwargs ):
+	def redirect( self, url, content="", **kwargs ):
 		"""Responds to this request by a redirection to the following URL, with
 		the given keyword arguments as parameter."""
 		if kwargs: url += "?" + urllib_parse.urlencode(kwargs)
-		return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
+		return Response(content, self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
 
 	def bounce( self, **kwargs ):
 		url = self._environ.get("HTTP_REFERER")
@@ -1177,6 +1187,10 @@ class Request:
 
 	def notFound( self, content="Resource not found", status=404 ):
 		"""Returns an Error 404"""
+		return Response(content, status=status, compression=False)
+
+	def notAuthorized( self, content="Not authorized", status=401 ):
+		"""Returns an Error 501"""
 		return Response(content, status=status, compression=False)
 
 	def notModified( self, content="Not modified", status=304, contentType=None):
@@ -1431,9 +1445,9 @@ class Response:
 	def hasHeader(self, name):
 		"""Tells if the given header exists. If so, it returns its value (which
 		cannot be None), or None if it was not found"""
-		name = name.lower()
+		name = normalizeHeader(name)
 		for header in self.headers:
-			if header[0].lower() == name:
+			if normalizeHeader(header[0]) == name:
 				return header[1]
 		return None
 
@@ -1443,10 +1457,10 @@ class Response:
 	def setHeader( self, name, value, replace=True ):
 		"""Sets the given header with the given value. If there is already a
 		value and that replace is Fasle, nothing will be done."""
-		lower_name = name.lower()
+		header_name = normalizeHeader(name)
 		for i in range(0, len(self.headers)):
 			header = self.headers[i]
-			if header[0].lower() == lower_name:
+			if normalizeHeader(header[0]) == header_name:
 				if not replace: return self
 				self.headers[i] = (name, value)
 				return self
