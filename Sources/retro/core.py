@@ -775,8 +775,9 @@ class Request:
 			# be retrieved. It might seem that you don't want to touch the
 			# request, but at the same time, the request actuall reflects
 			# the state of the session.
-			self._cookies[name]         = value
-			self._cookies[name]["path"] = path
+			cookies = self.cookies()
+			cookies[name]         = value
+			cookies[name]["path"] = path
 			# And now we update the response headers
 			cookie_name = urllib_parse.quote(name) + "="
 			cookie_path = "path=" + urllib_parse.quote(path)
@@ -1353,14 +1354,15 @@ class RequestBodyLoader:
 			# We handle the case of a multi-part body
 			dataFile.seek(0)
 			# We're using the FormData
+			# FIXME: This assumes headers are Camel-Case
 			for meta, data in FormData.DecodeMultipart(dataFile, content_type):
 				# There is sometimes leading and trailing data (not sure
 				# exaclty why, but try the UploadModule example) to see
 				# with sample payloads.
 				if meta is None: continue
-				disposition = meta["content-disposition"]
+				disposition = meta["Content-Disposition"]
 				# We expect to have a least one of these
-				name        = disposition.get("name") or disposition.get("filename") or meta["content-description"]
+				name        = disposition.get("name") or disposition.get("filename") or meta["Content-Description"]
 				if name[0] == name[-1] and name[0] in "\"'": name = name[1:-1]
 				if "filename" in disposition:
 					# NOTE: This stores the whole data in memory, we don't want
@@ -1368,9 +1370,9 @@ class RequestBodyLoader:
 					new_file= File(
 						# FIXME: Shouldnot use read here
 						data        = data.read(),
-						contentType = meta["content-type"][""],
+						contentType = meta["Content-Type"][""],
 						name        = name,
-						filename    = disposition.get("filename") or meta["content-description"]
+						filename    = disposition.get("filename") or meta["Content-Description"]
 					)
 					self.request._addFile (name, new_file)
 					self.request._addParam(name, new_file)
