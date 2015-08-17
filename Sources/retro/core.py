@@ -1509,11 +1509,18 @@ class Response:
 		self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
 
 	def _normalizeHeaders( self, headers ):
-		"""WSGI Libraries need to have non-unicode strings for headers."""
-		return [(
-			k.encode("ascii") if isinstance(k,unicode) else k,
-			v.encode("ascii") if isinstance(v,unicode) else v
-		) for k,v in headers]
+		"""WSGI Libraries need to have non-unicode strings for headers.
+		This will skip duplicate headers."""
+		output = []
+		result = []
+		for i in range(len(headers) - 1, -1, -1):
+			k, v = headers[i]
+			k    = k.encode("ascii") if isinstance(k,unicode) else k
+			if k not in output:
+				v.encode("ascii") if isinstance(v,unicode) else v
+				output.append(k)
+				result.append((k,v))
+		return result
 
 	def asWSGI( self, startResponse, charset=None ):
 		"""This is the main WSGI function handler. This is what generates the
