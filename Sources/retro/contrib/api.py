@@ -14,16 +14,17 @@ import functools
 
 # SEE: http://stackoverflow.com/questions/16386148/why-browser-do-not-follow-redirects-using-xmlhttprequest-and-cors/20854800#20854800
 
-def cors(f):
+def cors(allowAll=True):
 	"""A decorator for a request handler that will ensure
 	response."""
-	def wrapper( *args, **kwargs ):
-		response = f(*args, **kwargs)
-		return setCORSHeaders(response, args[1].header("Origin"))
-	functools.update_wrapper(wrapper, f)
-	return wrapper
+	def decorator(f):
+		def wrapper( *args, **kwargs ):
+			response = f(*args, **kwargs)
+			return setCORSHeaders(response, args[1].header("Origin"), allowAll=allowAll)
+		functools.update_wrapper(wrapper, f)
+	return decorator
 
-def setCORSHeaders(r, origin=None, allowAll=False):
+def setCORSHeaders(r, origin=None, allowAll=True):
 	"""Takes the given request or response, and
 	return (a response) with the CORS headers set
 	properly.
