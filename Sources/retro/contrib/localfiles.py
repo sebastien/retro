@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 23-Dec-2014
+# Last mod  : 28-Aug-2015
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -152,6 +152,8 @@ class LocalFiles(Component):
 		path."""
 		if path.endswith(".json"):
 			return "application/json"
+		elif path.endswith(".mf"):
+			return "text/cache-manifest"
 		else:
 			return mimetypes.guess_type(path)[0] or "text/plain"
 
@@ -338,6 +340,10 @@ class LibraryServer(Component):
 	@on(GET="lib/pdf/{script:[^/]+\.pdf}")
 	def getPDF( self, request, script ):
 		return request.respondFile(os.path.join(self.library, "pdf", script)).cache(seconds=self.cacheDuration)
+
+	@on(GET="lib/{script:[^/]+\.mf}")
+	def getManifest( self, request, script ):
+		return request.respondFile(os.path.join(self.library,script), "text/cache-manifest").cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/css/{paths:rest}")
 	def getCSS( self, request, paths ):
