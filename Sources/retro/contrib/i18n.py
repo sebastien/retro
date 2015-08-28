@@ -116,7 +116,7 @@ def localize(handler):
 			prefix = app.config("base")
 			path   = request.path()
 			if path.startswith(prefix): path = path[len(prefix):]
-			if path[0] != "/": path = "/" + path
+			if path and path[0] != "/": path = "/" + path
 			if not lang:
 				# There's no language specified, so we have to guess it
 				lang = request.param("lang") or lang
