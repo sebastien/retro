@@ -1517,7 +1517,7 @@ class Response:
 			k, v = headers[i]
 			k    = k.encode("ascii") if isinstance(k,unicode) else k
 			if k not in output:
-				v.encode("ascii") if isinstance(v,unicode) else v
+				v = v.encode("ascii") if isinstance(v,unicode) else v
 				output.append(k)
 				result.append((k,v))
 		return result
