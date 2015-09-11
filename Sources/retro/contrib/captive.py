@@ -17,12 +17,12 @@ def captive(f):
 	"""A decorator that a captive portal query and returns the corresponding
 	response."""
 	def wrapper( self, request, *args, **kwargs ):
-		if not captiveHandler(request): return f(self, request, *args, **kwargs)
+		return captiveHandler(request) or f(self, request, *args, **kwargs)
 	functools.update_wrapper(wrapper, f)
 	return wrapper
 
 def setLoggedIn( request ):
-	return request.setCookie(CAPTIVE_COOKIE, "true")
+	return request.cookie(CAPTIVE_COOKIE, "true")
 
 def isLoggedIn( request ):
 	return request.cookie(CAPTIVE_COOKIE) == "true"
@@ -33,12 +33,18 @@ def captiveHandler( request ):
 	# Apple's Captive Network support
 	# SEE: http://stackoverflow.com/questions/12151218/dealing-with-ios-captive-network-support
 	if "CaptiveNetworkSupport" in request.header("User-Agent"):
-		return setLoggedIn(request.respond("<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"))
-	if isLoggedIn(request):
+		setLoggedIn(request)
+		return request.respond("<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>")
+	# If we're logged in already, we don't return anything, which should passs
+	# the requestt to the wrapper
+	elif isLoggedIn(request):
 		return None
-	# The generate_204 is generated on Android devices
-	if request.path() == "/generate_204":
-		return setLoggedIn(request.respond("OK", status=204).setCookie(CAPTIVE_COOKIE, "true"))
-	return None
+	# The generate_204 is generated on Android devices. We set the logged in
+	# cookie and then return the 204 status with no content
+	elif request.path() == "/generate_204":
+		setLoggedIn(request)
+		return request.respond(None, None, status=204)
+	else:
+		return None
 
 # EOF - vim: ts=4 sw=4 noet

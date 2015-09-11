@@ -123,6 +123,7 @@ class PageServer(Component):
 	DEFAULTS = dict(
 		base    = None,
 		prefix  = None,
+		lib     = None,
 		build   = None,
 		version = None,
 		site    = APPNAME,
@@ -194,6 +195,7 @@ class PageServer(Component):
 		if path in ("", "/", "/.html") and not template: template == "index"
 		properties.setdefault("lang", lang)
 		properties.setdefault("page",      path)
+		properties.setdefault("path",      path)
 		properties.setdefault("template",  template)
 		properties.setdefault("title",     Translations.Get("site_title", lang))
 		meta = self.DEFAULTS["meta"].copy()
@@ -363,6 +365,7 @@ class WebApp( Application ):
 			return {
 				"devmode"             : E("DEVMODE",            0,     int),
 				"base"                : E("BASE",               "/"),
+				"lib"                 : E("LIB",                E("BASE", "/") + "lib"),
 				"host"                : E("HOST",               "0.0.0.0"),
 				"port"                : E("PORT",               PORT,  int),
 				"appname"             : E("APPNAME",            APPNAME),

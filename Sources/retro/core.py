@@ -940,7 +940,7 @@ class Request:
 	def respond( self, content="", contentType=None, headers=None, status=200):
 		"""Responds to this request."""
 		if headers == None: headers = []
-		if contentType: headers.append(["Content-Type",str(contentType)])
+		if content and contentType: headers.append(["Content-Type",str(contentType)])
 		return Response(content, self._mergeHeaders(headers), status, compression=self.compression())
 
 	def respondMultiple( self, bodies='', contentType="text/html", headers=None, status=200):
@@ -1506,7 +1506,8 @@ class Response:
 	def prepare( self ):
 		"""Sets default headers for the request before sending it."""
 		# FIXME: Ensure this is only called once
-		self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
+		if self.content is not None:
+			self.setHeader("Content-Type", self.DEFAULT_CONTENT, replace=False)
 
 	def _normalizeHeaders( self, headers ):
 		"""WSGI Libraries need to have non-unicode strings for headers.
@@ -1515,9 +1516,9 @@ class Response:
 		result = []
 		for i in range(len(headers) - 1, -1, -1):
 			k, v = headers[i]
-			k    = k.encode("ascii") if isinstance(k,unicode) else k
+			k    = k.encode("ascii") if isinstance(k,unicode) else str(k)
 			if k not in output:
-				v = v.encode("ascii") if isinstance(v,unicode) else v
+				v = v.encode("ascii") if isinstance(v,unicode) else str(v)
 				output.append(k)
 				result.append((k,v))
 		return result
