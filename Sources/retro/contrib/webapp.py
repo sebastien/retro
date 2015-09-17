@@ -492,7 +492,7 @@ def command():
 	parser.add_argument("-d", "--debug"  , dest="debug"   ,type=bool, default=False,help="Enables debugging")
 	parser.add_argument("-C", "--color"  , dest="color"   ,type=bool, default=True, help="Enables color output")
 	parser.add_argument("-l", "--logging", dest="logging" ,type=bool, default=True, help="Enables logging")
-	parser.add_argument("-c", "--config" ,config="config" ,type=str, default=True, help="Path to JSON configuration file")
+	parser.add_argument("-c", "--config" , dest="config"  ,type=str,  default=None, help="Path to JSON configuration file")
 	args = parser.parse_args()
 	start(port=args.port, debug=args.debug, color=args.color, log=args.logging, config=args.config)
 
