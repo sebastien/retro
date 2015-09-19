@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 15-Aug-2014
+# Last mod  : 18-Sep-2015
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime, urllib
@@ -789,6 +789,7 @@ class Application(Component):
 			config = Configuration(path=config, defaults=defaults)
 		else:
 			config = Configuration(defaults=defaults)
+		self.isStarted   = False
 		self._config     = config
 		self._dispatcher = Dispatcher(self)
 		self._app        = self
@@ -808,8 +809,12 @@ class Application(Component):
 
 	def start( self ):
 		for component in self._components:
-			component.startTime = datetime.datetime.utcnow()
-			component.start()
+			self._startComponent(component)
+		self.isStarted = True
+
+	def _startComponent( self, component ):
+		component.startTime = datetime.datetime.utcnow()
+		component.start()
 
 	def notFound(self, request):
 		return Response("404 Not Found", [], 404)
@@ -922,7 +927,7 @@ class Application(Component):
 		return self.save(path,data,sync=sync,append=True)
 
 	def register( self, *components ):
-		"""Registeres the given component into this Web application. The
+		"""Registers the given component into this Web application. The
 		component handlers will be bound to the proper URLs, and the component
 		consistency will be checked against available resources.
 
@@ -951,6 +956,8 @@ class Application(Component):
 				)
 			if component not in self._components:
 				self._components.append(component)
+				if self.isStarted:
+					self._startComponent(component)
 
 	def shutdown( self ):
 		"""This will trigger 'onShutdown' in this application and in all the

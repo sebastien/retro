@@ -400,12 +400,13 @@ class FileCache(Cache):
 		assert len(name) <= max_length, "Key is too long %d > %d, key=%s" % (len(name), max_length, repr(key))
 		return name
 
-	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None, createPath=True):
+	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None, createPath=True, extension=None):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
 		self.setPath(path, createPath)
 		self.keyProcessor = keys or self.NAME_KEY
+		self.extension    = extension or self.EXTENSION
 		self.enabled      = True
 		if expires != None:self.EXPIRES = expires
 
@@ -439,7 +440,7 @@ class FileCache(Cache):
 		self.path = path
 
 	def has( self, key ):
-		path = self.path + "/" + self._normKey(key) + self.EXTENSION
+		path = self.path + "/" + self._normKey(key) + self.extension
 		if os.path.exists(path):
 			s = os.stat(path)
 			if self.EXPIRES > 0:
@@ -451,14 +452,14 @@ class FileCache(Cache):
 
 	def get( self, key ):
 		if self.has(key):
-			path = self.path + "/" + self._normKey(key) + self.EXTENSION
+			path = self.path + "/" + self._normKey(key) + self.extension
 			with file(path, 'r') as f:
 				return self._load(f)
 		else:
 			return None
 
 	def set( self, key, data ):
-		path = self.path + "/" + self._normKey(key) + self.EXTENSION
+		path = self.path + "/" + self._normKey(key) + self.extension
 		with file(path, 'w') as f:
 			self._save(f, data)
 		return data
@@ -468,7 +469,7 @@ class FileCache(Cache):
 
 	def remove( self, key):
 		if self.has(key):
-			os.unlink(self.path + "/" + self._normKey(key) + self.EXTENSION)
+			os.unlink(self.path + "/" + self._normKey(key) + self.extension)
 
 	def _normKey( self, key ):
 		return self.keyProcessor(key)
