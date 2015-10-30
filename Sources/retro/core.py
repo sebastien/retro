@@ -780,17 +780,17 @@ class Request:
 			cookies[name]["path"] = path
 			# And now we update the response headers
 			cookie_name = urllib_parse.quote(name) + "="
-			cookie_path = "path=" + urllib_parse.quote(path)
+			cookie_path = ("; path=" + urllib_parse.quote(path)) if path else ""
 			cookie_value = urllib_parse.quote(unicode(value))
 			# We'll only replace the cookies with the same name and path
 			for header in self._responseHeaders:
 				if header[0] == self.HEADER_SET_COOKIE and header[1].startswith(cookie_name) and  cookie_path in header[1]:
-					self._responseHeaders[i] = (header[0], "%s%s; %s" % (cookie_name, cookie_value, cookie_path))
+					self._responseHeaders[i] = (header[0], "%s%s%s" % (cookie_name, cookie_value, cookie_path))
 					found = True
 				i += 1
 				break
 			if not found:
-				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s%s; %s" % (cookie_name, cookie_value, cookie_path)))
+				self._responseHeaders.append((self.HEADER_SET_COOKIE, "%s%s%s" % (cookie_name, cookie_value, cookie_path)))
 
 	def has(self, name, load=False):
 		"""Tells if the request has the given parameter."""

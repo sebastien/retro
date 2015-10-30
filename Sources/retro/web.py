@@ -83,6 +83,24 @@ _RETRO_EXPOSE_COMPRESS      = "_retro_expose_compress"
 _RETRO_EXPOSE_CONTENT_TYPE  = "_retro_expose_content_type"
 _RETRO_WHEN                 = "_retro_when"
 _RETRO_IS_PREDICATE         = "_retro_isPredicate"
+_RETRO_EXTRA = (
+	_RETRO_ON                   ,
+	_RETRO_ON_PRIORITY          ,
+	_RETRO_EXPOSE               ,
+	_RETRO_EXPOSE_JSON          ,
+	_RETRO_EXPOSE_RAW           ,
+	_RETRO_EXPOSE_COMPRESS      ,
+	_RETRO_EXPOSE_CONTENT_TYPE  ,
+	_RETRO_WHEN                 ,
+	_RETRO_IS_PREDICATE         ,
+)
+
+def updateWrapper( wrapper, f):
+	functools.update_wrapper(wrapper, f)
+	for _ in _RETRO_EXTRA:
+		if hasattr(f, _):
+			setattr(wrapper, _, getattr(f, _))
+	return wrapper
 
 def on( priority=0, **methods ):
 	"""The @on decorator is one of the main important things you will use within
