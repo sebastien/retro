@@ -526,6 +526,9 @@ class SignatureCache(Cache):
 		self._backend.set(key, data)
 		return data
 
+	def keys( self ):
+		return self._cachedSig.keys()
+
 	@staticmethod
 	def sha1(  path ):
 		f = file(path, 'rb')

@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 22-Jul-2015
+# Last mod  : 08-Jan-2016
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
@@ -14,6 +14,7 @@
 
 import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
 import gzip, io, threading, locale, collections, unicodedata
+from   urllib3.util import parse_url as parseURL
 try:
 	import urllib.request
 	import urllib.parse    as urllib_parse

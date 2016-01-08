@@ -7,7 +7,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 10-Jul-2012
+# Last mod  : 08-Jan-2016
 # -----------------------------------------------------------------------------
 
 import os, sys, time
@@ -72,7 +72,7 @@ class Proxy:
 		import wwwclient, wwwclient.defaultclient
 		s    = wwwclient.Session(client=wwwclient.defaultclient.HTTPClient)
 		url  = "http://{0}:{1}{2}".format(server, port, url)
-		print "[PROXY] {0}".format(url)
+		print ("[PROXY] {0}".format(url))
 		t    = getattr(s,method.lower())(url)
 		data = t.data()
 		if self.THROTTLING > 0:
@@ -121,13 +121,15 @@ class ProxyService(Component, Proxy):
 		"""Creates a new proxy that will proxy to the URL indicated by
 		'proxyTo'."""
 		Component.__init__(self, name="Proxy")
-		host, uri  = proxyTo.split("/", 1)
-		host, port = host.split(":", 1) if ":" in host else (host, 80)
-		self._host  = host
-		self._port  = port or 80
-		self._uri   = "/" + uri
-		self.PREFIX = prefix
-		self.user   = user
+		# NOTE: parseURL is actually urllib3.util.parse_url, which is much
+		# better than urlparse.urlparse.
+		url          = parseURL(proxyTo)
+		self._scheme = url.scheme or "http"
+		self._host   = url.host   or "localhost"
+		self._port   = url.port   or 80
+		self._uri    = url.path   or "/"
+		self.PREFIX  = prefix
+		self.user    = user
 		self.THROTTLING = int(throttling)
 		if user and password: self.user += ":" + password
 

@@ -13,7 +13,7 @@ import sys, os
 import retro.wsgi
 from retro.wsgi import REACTOR, onShutdown, onError
 from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
-ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote
+ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote, parseURL
 from retro.web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
