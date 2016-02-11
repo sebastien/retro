@@ -17,7 +17,6 @@
 # TODO: Test retro apps with another WSGI server
 # FIXME: Reactor is broken (and probably unnecessary)
 
-import traceback, logging, time
 
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is
@@ -34,8 +33,14 @@ try:
 except ImportError:
 	import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 
-import sys, logging, socket, errno, time
-import traceback, io, threading
+import sys, socket, errno, time, traceback, io, threading
+try:
+	import reporter
+	logging = reporter.bind("Retro")
+except ImportError:
+	import logging
+	reporter = None
+
 from . import core
 
 # Jython has no signal module
@@ -278,10 +283,26 @@ Use request methods to create a response(request.respond, request.returns, ...)
 	ENDED      = "Ended"
 	ERROR      = "Error"
 
-	def logMessage(self, *args):
-		pass
+	def log_request(self, code="-", size=""):
+		line = "{0:60s} [{1}] {2}".format(self.requestline, code, size)
+		if code >= 400:
+			logging.error(line)
+		elif code >= 300 and code < 400:
+			if reporter:
+				logging.info(line, code=code, color=reporter.COLOR_DARK_GRAY)
+			else:
+				logging.info(line)
+		else:
+			logging.info(line)
 
-	def logRequest(self, *args):
+	def log_error( self, format, *args ):
+		logging.error("{0} - - [{1}] {2}".format(
+			self.client_address[0],
+			self.log_date_time_string(),
+			format % args,
+		))
+
+	def log_message( self, format, *args ):
 		pass
 
 	def do_GET(self):
@@ -388,7 +409,6 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		if not hasattr(application, "fromRetro"):
 			raise Exception("Retro embedded Web server can only work with Retro applications.")
 		script = application.app().config("root")
-		logging.info("Running application with script name %s path %s" % (script, path))
 		env = {
 			'wsgi.version':(1,0)
 			,'wsgi.url_scheme': 'http'
@@ -564,6 +584,8 @@ class WSGIServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		self.serverShuttingDown = 0
 
 	def serve( self ):
+		if reporter:
+			reporter.install()
 		while True:
 			self.handle_request()
 
