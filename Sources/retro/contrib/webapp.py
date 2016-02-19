@@ -464,6 +464,7 @@ def start( app=None, port=None, runCondition=True, method=None, debug=False, col
 			reporter.setLevel(reporter.DEBUG)
 	if app is None: app = createApp(config=config)
 	name     = app.config("appname")
+	port     = port or app.config("port") or PORT
 	lib_python_path = app.config("library.python.path")
 	method = method or app.config("method") or STANDALONE
 	info("Starting Web application {0} on {2}:{3} [{1}] ".format(name, method, app.config("host") or "0.0.0.0", app.config("port")))
@@ -488,7 +489,7 @@ def command():
 	"""Commmand-line handler for webapp"""
 	import argparse
 	parser = argparse.ArgumentParser(description="Web application command-line arguments")
-	parser.add_argument("-p", "--port"   , dest="port"    ,type=int,  default=8080, help="Port to run the webapp")
+	parser.add_argument("-p", "--port"   , dest="port"    ,type=int,  default=0,    help="Port to run the webapp (default is {0})".format(PORT))
 	parser.add_argument("-d", "--debug"  , dest="debug"   ,type=bool, default=False,help="Enables debugging")
 	parser.add_argument("-C", "--color"  , dest="color"   ,type=bool, default=True, help="Enables color output")
 	parser.add_argument("-l", "--logging", dest="logging" ,type=bool, default=True, help="Enables logging")
