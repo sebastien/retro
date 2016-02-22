@@ -36,7 +36,7 @@ except ImportError:
 import sys, socket, errno, time, traceback, io, threading
 try:
 	import reporter
-	logging = reporter.bind("Retro")
+	logging = reporter.bind("retro")
 except ImportError:
 	import logging
 	reporter = None
@@ -584,8 +584,6 @@ class WSGIServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		self.serverShuttingDown = 0
 
 	def serve( self ):
-		if reporter:
-			reporter.install()
 		while True:
 			self.handle_request()
 
