@@ -284,7 +284,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 	ERROR      = "Error"
 
 	def log_request(self, code="-", size=""):
-		line = "{0:60s} [{1}] {2}".format(self.requestline, code, size)
+		line = "{0:60s} [{1}] {2:0.3f}s".format(self.requestline, code, (time.time() - self._startTime))
 		if code >= 400:
 			logging.error(line)
 		elif code >= 300 and code < 400:
@@ -365,6 +365,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		This makes it easier to do streaming."""
 		res = False
 		if self._state == self.STARTED:
+			self._startTime = time.time()
 			self._processStart(application)
 			res = True
 		elif self._state == self.PROCESSING:
