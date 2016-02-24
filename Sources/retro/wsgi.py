@@ -33,7 +33,7 @@ try:
 except ImportError:
 	import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 
-import sys, socket, errno, time, traceback, io, threading
+import sys, socket, errno, time, traceback, io, threading, re
 try:
 	import reporter
 	logging = reporter.bind("retro")
@@ -41,7 +41,7 @@ except ImportError:
 	import logging
 	reporter = None
 
-from . import core
+from . import core, web
 
 # Jython has no signal module
 try:
@@ -56,6 +56,9 @@ except:
 #
 # ------------------------------------------------------------------------------
 
+RE_EXCEPTION_TRACEBACK = re.compile("^Traceback \([^)]+\):$")
+RE_EXCEPTION_FILE      = re.compile('^  File "([^"]+)", line (\d+), in ([^\s]+)$')
+RE_EXCEPTION_ERROR     = re.compile("^([\w_]+(\.[\w_]+)*):\s*$")
 SERVER_ERROR_CSS = """\
 html, body {
 		padding: 0;
@@ -81,18 +84,108 @@ body a img {
 	border: 0px;
 }
 body code, body pre {
-	font-size: 0.8em;
 	background: #F5E5E5;
+	font-family: monospace;
+	font-size: 80%;
+	line-height: 1.25em;
 }
+
 body pre {
 	padding: 5px;
 }
+
+
 .traceback {
-	font-size: 8pt;
-	border-left: 1px solid #f11111;
-	padding: 10px;
 }
+
+.prelude {
+	border-left: 1px solid #f11111;
+	background: #555555;
+	color: white;
+	padding: 1.25em;
+	margin-top: 1.25em;
+}
+
+.exception {
+	border-left: 1px solid #f11111;
+	padding: 1.25em;
+	color: white;
+	background: #FF6B48;
+	font-weight: bold;
+}
+.exception code {
+	padding: 0em;
+	background: transparent;
+}
+
+.traceback .output {
+	border-left: 1px solid #f11111;
+	padding: 1.25em;
+	background: #F5E5E5;
+}
+
+.traceback .stack ol {
+	padding: 0em;
+}
+
+.traceback .stack li {
+	list-style-type: none;
+	margin-top:    0.75em;
+	margin-bottom: 0.75em;
+	background: #F0F0F0;
+}
+
+.traceback .stack li .number {
+	display: inline-block;
+	background: #555555;
+	color: white;
+	padding: 0.5em;
+	padding-right: 0.75em;
+	width: 2.5em;
+	text-align: right;
+}
+
+.traceback .stack li.N0 .number {
+	background: #FF6B48;
+}
+
+.traceback .stack li .origin {
+	color: #808080;
+}
+
+.traceback .stack li .description {
+	padding: 0.5em;
+	padding-left: 1.25em;
+}
+.traceback .stack li .source {
+	padding: 1.25em;
+	margin: 0em;
+	color: #555555;
+}
+
+.traceback .stack .line {
+	font-weight: bold;
+}
+
+.traceback .stack .function {
+	padding: 0em;
+	font-weight: bold;
+	background: transparent;
+}
+
+.traceback .stack a,
+.traceback .stack a:hover
+{
+	color: #808080;
+	text-decoration: none;
+}
+
+.traceback .stack a:hover {
+	background-color: #F0F0F0;
+}
+
 """
+
 
 SERVER_ERROR = """\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
@@ -108,7 +201,9 @@ SERVER_ERROR = """\
 <body>
   <h1>Retro Application Error</h1>
    The following error has occurred in the current Retro Application
-   <pre class='traceback'>%s</pre>
+   <div class="prelude"><code>%s</code></div>
+   <div class="exception"><code>%s</code></div>
+   <div class='traceback'>%s</pre>
 </body>
 </html>
 """
@@ -457,7 +552,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 				self._rendezvous = data
 				self._state = self.WAITING
 			elif data:
-				self._writeData(data)
+				self._writeData(core.ensureString(data))
 			return self._state
 		except StopIteration:
 			if hasattr(self._result, 'close'):
@@ -538,25 +633,91 @@ Use request methods to create a response(request.respond, request.returns, ...)
 
 	def _showError( self, exception=None, env=None, callback=None ):
 		"""Generates a response that contains a formatted error message."""
+		prelude   = u""
 		error_msg = u""
+		error_txt = u""
 		if env:
-			error_msg += u"{0} {1}\n|".format(
+			prelude += u"<div class='request'>{0} {1}</div>\n".format(
 				env.get("REQUEST_METHOD"),
 				env.get("PATH_INFO"),
 			)
 		# FIXME: We use repr do work around encoding problems in the output
-		exception_format = repr(traceback.format_exc()).split("\\n")
-		error_msg += u"\n|".join(exception_format[:-1])
-		logging.error(error_msg)
+		if isinstance(exception, web.HandlerException):
+			error_txt    = str(exception.e)
+			exception_name, error_msg = self._formatException(exception.e)
+		else:
+			error_txt = repr(traceback.format_exc())
+			exception_name, error_msg = self._formatException(error_txt)
 		if not self._sentHeaders:
 			self._startResponse("500 Server Error", [("Content-type", "text/html")])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
-		# This might fail, so we just ignore if it does
-		error_msg = error_msg.replace("<", "&lt;").replace(">", "&gt;")
-		self._writeData(SERVER_ERROR %(SERVER_ERROR_CSS, error_msg))
-		error(error_msg)
+		self._writeData(SERVER_ERROR %( SERVER_ERROR_CSS, prelude, exception_name, error_msg))
+		logging.error(error_txt)
+		error(error_txt)
 		self._processEnd()
+
+	def _formatException( self, exception ):
+		result = []
+		lines  = str(exception).split("\n")
+		i      = 0
+		escape = lambda _:_.replace("<", "&lt;").replace(">", "&gt;")
+		output  = []
+		stack   = []
+		error   = None
+		name    = None
+		while i < len(lines):
+			line = lines[i]
+			m = RE_EXCEPTION_TRACEBACK.match(line)
+			if m:
+				# We skipt the traceback header
+				i += 1
+				continue
+			m = RE_EXCEPTION_FILE.match(line)
+			if m:
+				stack.append(dict(
+					path=m.group(1),
+					line=m.group(2),
+					function=m.group(3),
+					code=lines[i+1],
+					number=len(stack)
+				))
+				i += 2
+				continue
+			print (repr(line))
+			m = RE_EXCEPTION_ERROR.match(line)
+			if m:
+				error = line
+				name = m.group(1)
+				i += 1
+			else:
+				output.append(line)
+				i += 1
+		# We strip the output
+		while output and not output[0].strip():  output = output[1:]
+		while output and not output[-1].strip(): output = output[:-1]
+		result = [
+			"<div class='output'><pre>{0}</pre></div>".format("\n".join(output)),
+			"<div class='stack'><ol>",
+		]
+		stack.reverse()
+		for i, _ in enumerate(stack):
+			result.append(
+				("<li class=N{5}><div class=origin>"
+				"<span class=number>{4}</span>"
+				"<span class=description>"
+				"<span class=function>{2}(...)</span> in "
+				"<span class=file><a href='file://{0}'>{0}</a></span>"
+				", line <span class=line>{1}</span>"
+				"</span>"
+				"</div>"
+				"<pre class=source>{3}</pre>"
+				).format(
+					_["path"], _["line"], _["function"], escape(_["code"]),
+					_["number"], i
+				)
+			)
+		return name, u"\n".join(result)
 
 # ------------------------------------------------------------------------------
 #

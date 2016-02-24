@@ -236,9 +236,10 @@ class HandlerException(Exception):
 	"""Wraps an exception that occured within a handler. This allows to Test
 	for this specific type of error (when the callback of the dispatcher failed)."""
 
-	def __init__( self, e ):
-		self.e     = e
-		self.trace = "\n|".join(traceback.format_exc().split("\n"))
+	def __init__( self, e, request ):
+		self.e       = e
+		self.request = request
+		self.trace   = "\n|".join(traceback.format_exc().split("\n"))
 		Exception.__init__(self, str(self.e) + "\n" + self.trace)
 
 	def __str__( self ):
@@ -537,7 +538,7 @@ class Dispatcher:
 		except Exception as e:
 			# NOTE: We do this so that we actually intercept the stack
 			# trace where the error occured
-			raise HandlerException(e)
+			raise HandlerException(e, request)
 		if isinstance(response, Response):
 			result = response.asWSGI(start_response, self.app().config("charset"))
 			return result
