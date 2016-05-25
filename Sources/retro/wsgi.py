@@ -379,7 +379,10 @@ Use request methods to create a response(request.respond, request.returns, ...)
 	ERROR      = "Error"
 
 	def log_request(self, code="-", size=""):
-		line = "{0:60s} [{1}] {2:0.3f}s".format(self.requestline, code, (time.time() - self._startTime))
+		if hasattr(self, "_startTime"):
+			line = "{0:60s} [{1}] {2:0.3f}s".format(self.requestline, code, (time.time() - self._startTime))
+		else:
+			line = "{0:60s} [{1}]".format(self.requestline, code)
 		if code >= 400:
 			logging.error(line)
 		elif code >= 300 and code < 400:

@@ -199,6 +199,8 @@ class LocalFiles(Component):
 		if processor and not request.has("raw"):
 			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
 			return request.respond(content=content, contentType=content_type)
+		elif request.has("raw"):
+			return request.respondFile(resolved_path, contentType="text/plain", lastModified=self._lastModified)
 		else:
 			return request.respondFile(resolved_path, lastModified=self._lastModified)
 
