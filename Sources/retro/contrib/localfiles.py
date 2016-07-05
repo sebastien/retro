@@ -5,8 +5,8 @@
 # Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
-# Creation  : 12-Apr-2006
-# Last mod  : 28-Aug-2015
+# Creation  : 2006-04-12
+# Last mod  : 2016-07-05
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -107,7 +107,7 @@ class LocalFiles(Component):
 	LIST_DIR          = True
 	USE_LAST_MODIFIED = True
 
-	def __init__( self, root="", name=None, processors={}, optsuffix=(), lastModified=None ):
+	def __init__( self, root="", name=None, processors={}, resolver=None, optsuffix=(), lastModified=None ):
 		"""Creates a new LocalFiles, with the optional root, name and
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
@@ -115,6 +115,7 @@ class LocalFiles(Component):
 		self._lastModified = self.USE_LAST_MODIFIED if lastModified is None else lastModified
 		self._localRoot    = None
 		self._processors   = {}
+		self._resolver     = resolver
 		self._optSuffixes  = optsuffix
 		self.setRoot(root or ".")
 		for key, value in list(processors.items()):
@@ -137,7 +138,12 @@ class LocalFiles(Component):
 		"""Returns the root for this component"""
 		return self._localRoot
 
-	def resolvePath( self, path ):
+	def resolvePath( self, request, path ):
+		"""Forwards the call to the resolver if present or defaults to
+		`_resolvePath`."""
+		return self._resolver(self, request, path) if self._resolver else self._resolvePath(path)
+
+	def _resolvePath( self, path ):
 		"""Resolves the given path and returns an absolute file system
 		location for the given path (which is supposed to be relative)."""
 		real_path = self.app().localPath(os.path.join(self._localRoot, path))
@@ -164,11 +170,8 @@ class LocalFiles(Component):
 
 	def processorFor( self, path ):
 		"""Returns the processors for the given path."""
-		ext = os.path.splitext(path)[1][1:]
-		for key, value in list(self._processors.items()):
-			if ext == key:
-				return value
-		return None
+		matches = sorted([_ for _ in self._processors if path.endswith(_)])
+		return self._processors[matches[-1]] if matches else None
 
 	@on(GET_POST_HEAD="/")
 	def catchall( self, request ):
@@ -180,7 +183,7 @@ class LocalFiles(Component):
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory. This will
 		look for a .gz version if the file is not already there."""
-		resolved_path = self.resolvePath(path)
+		resolved_path = self.resolvePath(request, path)
 		processor     = self.processorFor(resolved_path)
 		if not os.path.exists(resolved_path):
 			# If the file is not found we're still going to look for a .gz
