@@ -662,7 +662,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 
 	def _formatException( self, exception ):
 		result = []
-		lines  = str(exception).split("\n")
+		lines  = core.ensureUnicode(exception).split("\n")
 		i      = 0
 		escape = lambda _:_.replace("<", "&lt;").replace(">", "&gt;")
 		output  = []
@@ -699,6 +699,8 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		# We strip the output
 		while output and not output[0].strip():  output = output[1:]
 		while output and not output[-1].strip(): output = output[:-1]
+		# FIXME: This still does not work properly for errors with weird UTF8
+		output = (core.safeEnsureString(_, "utf-8") for _ in output)
 		result = [
 			"<div class='output'><pre>{0}</pre></div>".format("\n".join(output)),
 			"<div class='stack'><ol>",

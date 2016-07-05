@@ -71,13 +71,19 @@ def ensureString( t, encoding="utf8" ):
 	if IS_PYTHON3:
 		return t if isinstance(t, str) else str(t, encoding)
 	else:
-		return t
+		return t.encode("utf8") if isinstance (t, unicode) else str(t)
+
+def safeEnsureString( t,  encoding="utf8" ):
+	if IS_PYTHON3:
+		return ensureString(t, encoding)
+	else:
+		return t.encode("utf8", "ignore") if isinstance (t, unicode) else str(t)
 
 def ensureUnicode( t, encoding="utf8" ):
 	if IS_PYTHON3:
 		return t if isinstance(t, str) else str(t, encoding)
 	else:
-		return t if isinstance(t, unicode) else t.decode(encoding)
+		return t if isinstance(t, unicode) else str(t).decode(encoding)
 
 def ensureBytes( t, encoding="utf8" ):
 	if IS_PYTHON3:
