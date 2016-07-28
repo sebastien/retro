@@ -895,7 +895,7 @@ class Application(Component):
 		if os.path.abspath(path) == path: return path
 		else: return os.path.abspath(os.path.join(self.rootPath(), path))
 
-	def load( self, path, sync=True ):
+	def load( self, path, sync=True, mustExist=False ):
 		"""Loads the file at the given path and returns its content."""
 		flags = os.O_RDONLY
 		# NOTE: On OSX, the following will fail
@@ -903,6 +903,7 @@ class Application(Component):
 			if sync: flags = flags | os.O_RSYNC
 		except AttributeError as e:
 			pass
+		if not mustExist and not os.path.exists(path): return None
 		fd    = os.open(path, flags)
 		data  = None
 		try:
@@ -920,9 +921,11 @@ class Application(Component):
 			raise e
 		return data
 
-	def save( self, path, data, sync=True, append=False ):
+	def save( self, path, data, sync=True, append=False, mkdir=True ):
 		"""Saves/appends to the file at the given path."""
-		flags = os.O_WRONLY | os.O_CREAT
+		flags  = os.O_WRONLY | os.O_CREAT
+		parent = os.path.dirname(path)
+		if not os.path.exists(parent) and mkdir: os.makedirs(parent)
 		# FIXME: The file is created a +x... weird!
 		try:
 			if sync:
