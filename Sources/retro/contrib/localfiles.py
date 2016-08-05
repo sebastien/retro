@@ -107,7 +107,7 @@ class LocalFiles(Component):
 	LIST_DIR          = True
 	USE_LAST_MODIFIED = True
 
-	def __init__( self, root="", name=None, processors={}, resolver=None, optsuffix=(), lastModified=None ):
+	def __init__( self, root="", name=None, processors={}, resolver=None, optsuffix=(), lastModified=None, writable=False):
 		"""Creates a new LocalFiles, with the optional root, name and
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
@@ -117,6 +117,7 @@ class LocalFiles(Component):
 		self._processors   = {}
 		self._resolver     = resolver
 		self._optSuffixes  = optsuffix
+		self.isWritable    = writable
 		self.setRoot(root or ".")
 		for key, value in list(processors.items()):
 			self._processors[key] = value
@@ -206,6 +207,33 @@ class LocalFiles(Component):
 			return request.respondFile(resolved_path, contentType="text/plain", lastModified=self._lastModified)
 		else:
 			return request.respondFile(resolved_path, lastModified=self._lastModified)
+
+	@on(PUT_PATCH="/{path:any}")
+	def write( self, request, path ):
+		if self.isWritable:
+			# NOTE: We don't use self.resolvePath, as we want to bypass resolvers
+			local_path = self._resolvePath(path)
+			dirname = os.path.dirname(local_path)
+			if not os.path.exists(dirname): os.makedirs(dirname)
+			request.load()
+			data = request.data()
+			self.app().save(local_path, ensureBytes(data))
+			return request.returns(True)
+		else:
+			return self.local(request, path)
+
+	@on(DELETE="/{path:any}")
+	def delete( self, request, path ):
+		if self.isWritable:
+			# NOTE: We don't use self.resolvePath, as we want to bypass resolvers
+			local_path = self._resolvePath(path)
+			if os.path.exists(local_path):
+				os.unlink(local_path)
+				return request.returns(True)
+			else:
+				return request.returns(False)
+		else:
+			return self.local(request, path)
 
 	def directoryAsHtml( self, path, localPath ):
 		"""Returns a directory as HTML"""
