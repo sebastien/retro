@@ -161,7 +161,6 @@ class MemoryCache(Cache):
 		Cache.__init__(self)
 		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
 		self.data     = {}
-		self._history = []
 		self.limit    = limit
 		self.enabled  = True
 
@@ -179,16 +178,12 @@ class MemoryCache(Cache):
 		return res and True
 
 	def set( self, key, data ):
-		self.data[key] = data
-		if key not in self._history:
-			self._history.append(key)
 		self.cleanup()
+		self.data[key] = data
 		return data
 
 	def clear( self ):
 		self.data = {}
-		self.history = []
-		return self
 
 	def keys( self ):
 		return list(self.data.keys())
@@ -198,12 +193,14 @@ class MemoryCache(Cache):
 			del self.data[key]
 
 	def cleanup( self ):
-		while len(self._history) > self.limit:
-			oldest = self._history[0]
-			self._history = self._history[1:]
-		self.data = dict( (key,self.data[key]) for key in self._history)
-		return self
-
+		if len(self.data) >= self.limit:
+			keys = []
+			for k in self.data:
+				keys.append(k)
+				if len(self.data) - len(keys) < self.limit:
+					break
+			for k in keys:
+				del self.data[k]
 # -----------------------------------------------------------------------------
 #
 # LRU CACHE
