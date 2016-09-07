@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 04-Nov-2013
+# Last mod  : 07-Sep-2016
 # -----------------------------------------------------------------------------
 
 import re, os, stat, hashlib, threading,  pickle, time, functools, types
@@ -154,14 +154,16 @@ class NoCache(Cache):
 # -----------------------------------------------------------------------------
 
 class MemoryCache(Cache):
-	"""A simple cache that wraps a dictionary with a limit."""
+	"""A simple cache that wraps a dictionary with a limit. Oldest entries
+	are automatically removed."""
 
-	def __init__( self, limit=100 ):
+	def __init__( self, limit=10 ):
 		Cache.__init__(self)
 		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
-		self.data    = {}
-		self.limit   = limit
-		self.enabled = True
+		self.data     = {}
+		self._history = []
+		self.limit    = limit
+		self.enabled  = True
 
 	def enable( self ):
 		self.enabled = True
@@ -177,12 +179,16 @@ class MemoryCache(Cache):
 		return res and True
 
 	def set( self, key, data ):
-		self.cleanup()
 		self.data[key] = data
+		if key not in self._history:
+			self._history.append(key)
+		self.cleanup()
 		return data
 
 	def clear( self ):
 		self.data = {}
+		self.history = []
+		return self
 
 	def keys( self ):
 		return list(self.data.keys())
@@ -192,14 +198,11 @@ class MemoryCache(Cache):
 			del self.data[key]
 
 	def cleanup( self ):
-		if len(self.data) >= self.limit:
-			keys = []
-			for k in self.data:
-				keys.append(k)
-				if len(self.data) - len(keys) < self.limit:
-					break
-			for k in keys:
-				del self.data[k]
+		while len(self._history) > self.limit:
+			oldest = self._history[0]
+			self._history = self._history[1:]
+		self.data = dict( (key,self.data[key]) for key in self._history)
+		return self
 
 # -----------------------------------------------------------------------------
 #
@@ -511,10 +514,10 @@ class SignatureCache(Cache):
 		return key in self._cachedSig and (self._cachedSig.get(key) == sig)
 
 	def get( self, key, sig=0 ):
-		"""Returns a couple (updaToDate, data) for the given key and
+		"""Returns a couple (upToDate, data) for the given key and
 		signature. If the signature is different, then (False, None) is returned
 		and the previous data is cleared from the cache."""
-		if self._cachedSig.get(key) != sig:
+		if self._cachedSig.get(key) != sig or not self._backend.has(key):
 			self._backend.remove(key)
 			return False, None
 		else:
