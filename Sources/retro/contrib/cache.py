@@ -157,7 +157,7 @@ class MemoryCache(Cache):
 	"""A simple cache that wraps a dictionary with a limit. Oldest entries
 	are automatically removed."""
 
-	def __init__( self, limit=10 ):
+	def __init__( self, limit=100 ):
 		Cache.__init__(self)
 		# Data is key => [WEIGHT, HITS, TIMESTAMP VALUE]
 		self.data     = {}
