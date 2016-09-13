@@ -924,7 +924,7 @@ class Application(Component):
 	def save( self, path, data, sync=True, append=False, mkdir=True ):
 		"""Saves/appends to the file at the given path."""
 		flags  = os.O_WRONLY | os.O_CREAT
-		parent = os.path.dirname(path)
+		parent = os.path.dirname(os.path.abspath(path))
 		if not os.path.exists(parent) and mkdir: os.makedirs(parent)
 		# FIXME: The file is created a +x... weird!
 		try:
