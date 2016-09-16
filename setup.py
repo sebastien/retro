@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # Encoding: ISO-8859-1
-# vim: tw=80 ts=4 sw=4 fenc=latin-1 noet
 # -----------------------------------------------------------------------------
 # Project           :   Retro             ttp://www.github.com/sebastien/retro>
 # -----------------------------------------------------------------------------
@@ -30,9 +29,9 @@ into a web application or to write new ones.
 # ------------------------------------------------------------------------------
 
 setup(
-    name        = "Retro",
+    name        = "retro",
     version     = VERSION,
-    author      = "Sebastien Pierre", author_email = "sebastien@type-z.org",
+    author      = "Sebastien Pierre", author_email = "sebastien.pierre@gmail.com",
     description = SUMMARY, long_description = DESCRIPTION,
     license     = "Revised BSD License",
     keywords    = "web lightweight framework http declarative".split(),
@@ -53,4 +52,4 @@ setup(
       "Programming Language :: Python",
     ]
 )
-# EOF
+# EOF - vim: tw=80 ts=4 sw=4 fenc=latin-1 noet
