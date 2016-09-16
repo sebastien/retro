@@ -29,7 +29,7 @@ into a web application or to write new ones.
 # ------------------------------------------------------------------------------
 
 setup(
-    name        = "retro",
+    name        = "Retro",
     version     = VERSION,
     author      = "Sebastien Pierre", author_email = "sebastien.pierre@gmail.com",
     description = SUMMARY, long_description = DESCRIPTION,
