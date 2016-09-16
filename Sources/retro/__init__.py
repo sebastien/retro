@@ -20,7 +20,7 @@ Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.6.5"
+__version__ = "2.7.0"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
