@@ -26,9 +26,9 @@ except ImportError as e:
 	templating = None
 
 try:
-	import pamela.engine as pamela_engine
+	import paml.engine as paml_engine
 except ImportError as e:
-	pamela_engine = None
+	paml_engine = None
 
 try:
 	import wwwclient
@@ -314,8 +314,8 @@ class PageServer(Component):
 		so we only do the PAML conversion in dev mode"""
 		if self.app().config("devmode"):
 			# We assume that PAML is only used in devlopment.
-			assert pamela_engine, "retro.contrib.webapp.loadPAMLTemplate requires the pamela.engine module"
-			parser = pamela_engine.Parser()
+			assert paml_engine, "retro.contrib.webapp.loadPAMLTemplate requires the paml.engine module"
+			parser = paml_engine.Parser()
 			path   = os.path.join(self.app().config("library.path"), "paml", name + ".paml")
 			# We load the template plain and parse it with PAML, so that we
 			# get a consistent result with the non-devmode HTML step. I
