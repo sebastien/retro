@@ -171,11 +171,9 @@ class LocalFiles(Component):
 
 	def processorFor( self, path ):
 		"""Returns the processors for the given path."""
-		if isinstance(path, list) or isinstance(path, tuple):
-			return self._multipleFilesProcessor
-		else:
-			matches = sorted([_ for _ in self._processors if path.endswith(_)])
-			return self._processors[matches[-1]] if matches else None
+		if isinstance(path, list) or isinstance(path, tuple): path = path[0]
+		matches = sorted([_ for _ in self._processors if path.endswith(_)])
+		return self._processors[matches[-1]] if matches else None
 
 	@on(GET_POST_HEAD="/")
 	def catchall( self, request ):
@@ -192,16 +190,11 @@ class LocalFiles(Component):
 		together and use the first content type.
 		"""
 		resolved_path = self.resolvePath(request, path)
+		multi_paths   = None
 		processor     = self.processorFor(resolved_path)
 		if isinstance(resolved_path, list) or isinstance(resolved_path, tuple):
-			# This is support for multiple files served
-			contents = []
-			types    = []
-			for _ in resolved_path:
-				content, content_type = self.processorFor(_)(self.getContent(_), _, request)
-				contents.append(content)
-				types.append(type)
-			return request.respond("".join(contents), contentType=types[0])
+			multi_paths   = resolved_path
+			resolved_path = resolved_path[0]
 		elif not os.path.exists(resolved_path):
 			# If the file is not found we're still going to look for a .gz
 			if path.endswith(".gz"):
@@ -217,8 +210,12 @@ class LocalFiles(Component):
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		if processor and not request.has("raw"):
-			content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
-			return request.respond(content=content, contentType=content_type)
+			if not multi_paths:
+				content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
+				return request.respond(content=content, contentType=content_type)
+			else:
+				content, content_type = processor(None, multi_paths, request)
+				return request.respond(content=content, contentType=content_type)
 		elif request.has("raw"):
 			return request.respondFile(resolved_path, contentType="text/plain", lastModified=self._lastModified)
 		else:
@@ -283,9 +280,6 @@ class LocalFiles(Component):
 		local_files = list(os.path.join(parent, p) for p in os.listdir(localPath))
 		local_files.sort()
 		return local_files
-
-	def _multipleFilesProcessor( self, text, path, request=None ):
-		return path, "text/plain"
 
 # ------------------------------------------------------------------------------
 #
