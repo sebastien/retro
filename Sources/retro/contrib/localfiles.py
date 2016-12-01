@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 2006-04-12
-# Last mod  : 2016-07-05
+# Last mod  : 2016-12-01
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -171,8 +171,11 @@ class LocalFiles(Component):
 
 	def processorFor( self, path ):
 		"""Returns the processors for the given path."""
-		matches = sorted([_ for _ in self._processors if path.endswith(_)])
-		return self._processors[matches[-1]] if matches else None
+		if isinstance(path, list) or isinstance(path, tuple):
+			return self._multipleFilesProcessor
+		else:
+			matches = sorted([_ for _ in self._processors if path.endswith(_)])
+			return self._processors[matches[-1]] if matches else None
 
 	@on(GET_POST_HEAD="/")
 	def catchall( self, request ):
@@ -183,10 +186,23 @@ class LocalFiles(Component):
 	@on(GET_POST_HEAD="/{path:any}")
 	def local( self, request, path ):
 		"""Serves the files located in the `Library` grand parent directory. This will
-		look for a .gz version if the file is not already there."""
+		look for a .gz version if the file is not already there.
+
+		If `path` is a list or tuple, it will aggregate all the responses
+		together and use the first content type.
+		"""
 		resolved_path = self.resolvePath(request, path)
 		processor     = self.processorFor(resolved_path)
-		if not os.path.exists(resolved_path):
+		if isinstance(resolved_path, list) or isinstance(resolved_path, tuple):
+			# This is support for multiple files served
+			contents = []
+			types    = []
+			for _ in resolved_path:
+				content, content_type = self.processorFor(_)(self.getContent(_), _, request)
+				contents.append(content)
+				types.append(type)
+			return request.respond("".join(contents), contentType=types[0])
+		elif not os.path.exists(resolved_path):
 			# If the file is not found we're still going to look for a .gz
 			if path.endswith(".gz"):
 				return request.respond("File not found: %s" % (resolved_path), status=404)
@@ -267,6 +283,9 @@ class LocalFiles(Component):
 		local_files = list(os.path.join(parent, p) for p in os.listdir(localPath))
 		local_files.sort()
 		return local_files
+
+	def _multipleFilesProcessor( self, text, path, request=None ):
+		return path, "text/plain"
 
 # ------------------------------------------------------------------------------
 #
