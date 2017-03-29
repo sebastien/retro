@@ -474,16 +474,15 @@ def start( app=None, port=None, runCondition=True, method=None, debug=False, col
 		Dispatcher.EnableLog()
 	if not lib_python_path in sys.path:
 		sys.path.insert(0, lib_python_path)
-	else:
-		return run(
-			app          = app,
-			port         = port,
-			name         = name,
-			method       = method,
-			sessions     = False,
-			# FIXME: withReactor doesn't work!!
-			withReactor  = False,
-		)
+	return run(
+		app          = app,
+		port         = port,
+		name         = name,
+		method       = method,
+		sessions     = False,
+		# FIXME: withReactor doesn't work!!
+		withReactor  = False,
+	)
 
 def command():
 	"""Commmand-line handler for webapp"""

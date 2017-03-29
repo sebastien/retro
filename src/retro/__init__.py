@@ -9,7 +9,7 @@
 # Last mod  : 14-Oct-2016
 # -----------------------------------------------------------------------------
 
-import sys, os
+import sys, os, socket
 import retro.wsgi
 from retro.wsgi import REACTOR, onShutdown, onError
 from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
@@ -288,16 +288,24 @@ onError=None ):
 	# == STANDALONE (Retro WSGI server)
 	#
 	elif method == STANDALONE:
+		try:
+			import reporter as logging
+		except:
+			import logging
 		server_address     = (
 			address or app.config("address") or DEFAULT_ADDRESS,
 			int(port or app.config("port") or DEFAULT_PORT)
 		)
 		stack.fromRetro = True
 		stack.app       = lambda: app
-		server          = retro.wsgi.WSGIServer(server_address, stack)
-		retro.wsgi.onError(onError)
-		socket = server.socket.getsockname()
-		print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))
+		try:
+			server          = retro.wsgi.WSGIServer(server_address, stack)
+			retro.wsgi.onError(onError)
+			socket = server.socket.getsockname()
+			print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))
+		except Exception as e:
+			logging.error("Retro: Cannot bind to {0}:{1}, error: {2}".format(server_address[0], server_address[1], e))
+			return -1
 		try:
 			while runCondition():
 				server.handle_request()
