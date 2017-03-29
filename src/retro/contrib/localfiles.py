@@ -418,7 +418,11 @@ class LibraryServer(Component):
 				root = self.library
 				path = os.path.join(root, prefix, path)
 				if not self._inCache(path):
+					if not os.path.exists(path):
+						return request.notFound()
 					data = self._processPath(path)
+					if data is None:
+						raise Exception("Processing path {0} returned None".format(path))
 					self._toCache(path, data)
 				else:
 					data = self._fromCache(path)

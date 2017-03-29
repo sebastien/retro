@@ -972,17 +972,17 @@ class Request:
 					yield ""
 		return Response(bodygenerator(), self._mergeHeaders(headers), 200, compression=self.compression())
 
-	def redirect( self, url, content="", **kwargs ):
+	def redirect( self, url, content="", temporary=False, **kwargs ):
 		"""Responds to this request by a redirection to the following URL, with
 		the given keyword arguments as parameter."""
 		if kwargs: url += "?" + urllib_parse.urlencode(kwargs)
-		return Response(content, self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
+		return Response(content, self._mergeHeaders([("Location", url)]), 302 if temporary else 301, compression=self.compression())
 
-	def bounce( self, **kwargs ):
+	def bounce( self, temporary=False, **kwargs ):
 		url = self._environ.get("HTTP_REFERER")
 		if url:
 			if kwargs: url += "?" + urllib_parse.urlencode(kwargs)
-			return Response("", self._mergeHeaders([("Location", url)]), 302, compression=self.compression())
+			return Response("", self._mergeHeaders([("Location", url)]), 302 if temporary else 301, compression=self.compression())
 		else:
 			assert not kwargs
 			return Response("", [], 200, compression=self.compression())
