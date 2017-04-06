@@ -679,6 +679,9 @@ class Component:
 	def app( self ):
 		return self._app
 
+	def config( self, name=re, value=re ):
+		return self._app.config(name,value)
+
 	def name( self ):
 		"""Returns the name for the component."""
 		return self._name
@@ -696,65 +699,66 @@ class Component:
 		"""Tells if the component is running."""
 		return self._isRunning
 
-	@on(POST="/channels:burst", priority=0)
-	def processBurstChannel( self, request ):
-		"""The `postRequest` method implements a mechanism that allows the
-		Retro _burst channel_ to work properly. It allows to put multiple
-		requests into a single request, and then put the corresponding responses
-		withing the body of this request."""
-		boundary       = request.header("X-Channel-Boundary") or "8<-----BURST-CHANNEL-REQUEST-------"
-		channel_type   = request.header("X-Channel-Type")
-		requests_count = request.header("X-Channel-Requests")
-		requests       = request.body().split(boundary + "\n")
-		# We create a fake start response that will simply yield the results
-		# The iterate method is a generator that will produce the result
-		response_boundary = "8<-----BURST-CHANNEL-RESPONSE-------"
-		def iterate(self=self,request=request):
-			context = {}
-			# When the fake_start_response gets called, we will update the
-			# context dict with the response status and header info, so that we
-			# can output it within the aggregate response
-			def fake_start_response(status, header,context=context):
-				s, r = status.split(" ", 1)
-				context['status'] = int(s)
-				context['reason'] = r
-				context['headers'] = header
-			has_responded = False
-			dispatcher    = self.app()._dispatcher
-			# We iterate on each request embedded within the body of this
-			# request
-			origin = request.uri()
-			for request_string in requests:
-				req, headers, body = request_string.split("\r\n", 2)
-				method, url = req.split(" ",1)
-				# We update the current request object (instead of creating one
-				# new)
-				if not url or url[0] != "/": url = os.path.dirname(origin) + url
-				request._environ[request.REQUEST_METHOD]=method
-				request._environ[request.REQUEST_URI]=url
-				# FIXME: PATH_INFO should be computed properly
-				request._environ[request.PATH_INFO]=url
-				request.body(body)
-				# If we already generated a response, we add the response
-				# spearator
-				if has_responded:
-					yield response_boundary
-				# And now we generate the body of the request
-				for res in dispatcher(request.environ(), fake_start_response, request):
-					if list(context.items()):
-						yield "{'status':%s,'reason':%s,'headers':%s,'body':%s}\n\n" % (
-							asJSON(context['status']),
-							asJSON(context['reason']),
-							asJSON(context['headers']),
-							asJSON(res)
-						)
-						del context['status']
-						del context['reason']
-						del context['headers']
-						assert not list(context.items())
-				has_responded = True
-		# We respond using the given iterator
-		return request.respond(iterate(),headers=[["X-Channel-Boundary", response_boundary]])
+	# NOTE: Disabled because of HTTP/2
+	# @on(POST="/channels:burst", priority=0)
+	# def processBurstChannel( self, request ):
+	# 	"""The `postRequest` method implements a mechanism that allows the
+	# 	Retro _burst channel_ to work properly. It allows to put multiple
+	# 	requests into a single request, and then put the corresponding responses
+	# 	withing the body of this request."""
+	# 	boundary       = request.header("X-Channel-Boundary") or "8<-----BURST-CHANNEL-REQUEST-------"
+	# 	channel_type   = request.header("X-Channel-Type")
+	# 	requests_count = request.header("X-Channel-Requests")
+	# 	requests       = request.body().split(boundary + "\n")
+	# 	# We create a fake start response that will simply yield the results
+	# 	# The iterate method is a generator that will produce the result
+	# 	response_boundary = "8<-----BURST-CHANNEL-RESPONSE-------"
+	# 	def iterate(self=self,request=request):
+	# 		context = {}
+	# 		# When the fake_start_response gets called, we will update the
+	# 		# context dict with the response status and header info, so that we
+	# 		# can output it within the aggregate response
+	# 		def fake_start_response(status, header,context=context):
+	# 			s, r = status.split(" ", 1)
+	# 			context['status'] = int(s)
+	# 			context['reason'] = r
+	# 			context['headers'] = header
+	# 		has_responded = False
+	# 		dispatcher    = self.app()._dispatcher
+	# 		# We iterate on each request embedded within the body of this
+	# 		# request
+	# 		origin = request.uri()
+	# 		for request_string in requests:
+	# 			req, headers, body = request_string.split("\r\n", 2)
+	# 			method, url = req.split(" ",1)
+	# 			# We update the current request object (instead of creating one
+	# 			# new)
+	# 			if not url or url[0] != "/": url = os.path.dirname(origin) + url
+	# 			request._environ[request.REQUEST_METHOD]=method
+	# 			request._environ[request.REQUEST_URI]=url
+	# 			# FIXME: PATH_INFO should be computed properly
+	# 			request._environ[request.PATH_INFO]=url
+	# 			request.body(body)
+	# 			# If we already generated a response, we add the response
+	# 			# spearator
+	# 			if has_responded:
+	# 				yield response_boundary
+	# 			# And now we generate the body of the request
+	# 			for res in dispatcher(request.environ(), fake_start_response, request):
+	# 				if list(context.items()):
+	# 					yield "{'status':%s,'reason':%s,'headers':%s,'body':%s}\n\n" % (
+	# 						asJSON(context['status']),
+	# 						asJSON(context['reason']),
+	# 						asJSON(context['headers']),
+	# 						asJSON(res)
+	# 					)
+	# 					del context['status']
+	# 					del context['reason']
+	# 					del context['headers']
+	# 					assert not list(context.items())
+	# 			has_responded = True
+	# 	# We respond using the given iterator
+	# 	return request.respond(iterate(),headers=[["X-Channel-Boundary", response_boundary]])
 
 # ------------------------------------------------------------------------------
 #
