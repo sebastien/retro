@@ -20,7 +20,7 @@ class Robots:
 			if not os.path.exists(path):
 				cls.DB = cls.SaveDB(path, cls.ImportDB())
 			else:
-				with file(path) as f:
+				with open(path) as f:
 					cls.DB = json.load(f)
 		return cls.DB
 
@@ -28,7 +28,7 @@ class Robots:
 	def SaveDB( cls, path=None, db=None ):
 		db   = db   or cls.EnsureDB()
 		path = path or cls.DB_PATH
-		with file(path, "wb") as f:
+		with open(path, "wb") as f:
 			json.dump(db, f)
 		return db
 

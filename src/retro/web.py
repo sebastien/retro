@@ -1042,17 +1042,16 @@ class Configuration:
 			self.merge(self.load(path))
 
 	def save( self, path ):
-		f = file(path, 'w')
-		f.write(json(self._properties, sort_keys=True, indent=4))
-		f.close()
+		with open(path, 'w') as f:
+			f.write(json(self._properties, sort_keys=True, indent=4))
 
 	def load( self, path):
 		if os.path.exists(path):
-			f = file(path, 'r')
-			d = f.read()
-			p = {}
-			if d:
-				p = unjson(d)
+			with open(path, 'r') as f:
+				d = f.read()
+				p = {}
+				if d:
+					p = unjson(d)
 			f.close()
 			return p
 		else:
