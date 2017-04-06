@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 17-Dec-2012
-# Last mod  : 21-Jul-2015
+# Last mod  : 21-Apr-2017
 # -----------------------------------------------------------------------------
 
 import os, time, sys, datetime, glob
@@ -372,12 +372,12 @@ class WebApp( Application ):
 				"prefix"              : E("PREFIX",             ""),
 				"version"             : E("VERSION",            VERSION),
 				"build"               : E("BUILD",              "development"),
-				"data.path"           : E("DATA_PATH",          os.path.abspath("Data")),
-				"cache.path"          : E("CACHE_PATH",         os.path.abspath("Cache")),
-				"log.path"            : E("LOG_PATH",           os.path.abspath("Logs")),
-				"cache.api.path"      : E("CACHE_PATH",         os.path.abspath("Cache")) + "/api",
-				"workqueue.path"      : E("CACHE_PATH",         os.path.abspath("Data/_workqueue")),
-				"library.path"        : E("LIBRARY_PATH",       os.path.abspath("Library")),
+				"data.path"           : E("DATA_PATH",          os.path.abspath("data")),
+				"cache.path"          : E("CACHE_PATH",         os.path.abspath("cache")),
+				"log.path"            : E("LOG_PATH",           os.path.abspath("logs")),
+				"cache.api.path"      : E("CACHE_PATH",         os.path.abspath("cache")) + "/api",
+				"workqueue.path"      : E("CACHE_PATH",         os.path.abspath("data/_workqueue")),
+				"library.path"        : E("LIBRARY_PATH",       os.path.abspath("library")),
 				"library.python.path" : E("LIBRARY_PYTHON_PATH",os.path.abspath(".")),
 			}
 
