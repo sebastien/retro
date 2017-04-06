@@ -15,7 +15,7 @@ __doc__ = """
 The 'localfiles' module defines `LocalFiles` and `Library` component that can
 be added to any application to serve local files and assets"""
 
-import os, sys, mimetypes, subprocess
+import os, sys, stat, mimetypes, subprocess
 from retro import *
 from retro.wsgi import SERVER_ERROR_CSS
 from retro.contrib.cache import SignatureCache
@@ -32,6 +32,10 @@ try:
 	import clevercss
 except:
 	clevercss = None
+try:
+	import paml
+except:
+	paml = None
 try:
 	import pythoniccss
 except:
@@ -279,7 +283,23 @@ class LocalFiles(Component):
 		parent = os.path.dirname(path)
 		local_files = list(os.path.join(parent, p) for p in os.listdir(localPath))
 		local_files.sort()
-		return local_files
+		return [self._describePath(_) for _ in local_files]
+
+	def _describePath( self, path ):
+		s = os.stat(path)
+		return {
+			"name" : os.path.basename(path),
+			"path" : path,
+			"isDirectory" : os.path.isdir(path),
+			"isFile" : os.path.isfile(path),
+			"isLink" : os.path.islink(path),
+			"mtime"  : s[stat.ST_MTIME],
+			"atime"  : s[stat.ST_ATIME],
+			"mode"   : s[stat.ST_MODE],
+			"size"   : s[stat.ST_SIZE],
+			"uid"    : s[stat.ST_UID],
+			"gid"    : s[stat.ST_GID],
+		}
 
 # ------------------------------------------------------------------------------
 #
@@ -300,6 +320,7 @@ class LibraryServer(Component):
 	- Flash      ('lib/swf' and 'crossdomain.xml')
 	- PDF        ('lib/pdf')
 	- Fonts      ('lib/fonts')
+	- XSL        ('lib/xsl')
 
 	The implementation is not that flexible, but it's a very good start
 	for most web applications. You can specialize this class later if you
@@ -403,6 +424,10 @@ class LibraryServer(Component):
 	def getPCSS( self, request, paths ):
 		return self._getFromLibrary(request, "pcss", paths, "text/css; charset=utf-8")
 
+	@on(GET="lib/xsl/{paths:rest}")
+	def getXSL( self, request, paths ):
+		return self._getFromLibrary(request, "xsl", paths, "text/xsl; charset=utf-8")
+
 	@on(GET="lib/{prefix:(js|sjs)}/{paths:rest}")
 	def getJavaScript( self, request, prefix, paths ):
 		return self._getFromLibrary(request, prefix, paths, "text/javascript; charset=utf-8")
@@ -442,6 +467,8 @@ class LibraryServer(Component):
 		elif path.endswith(".ccss"): return self._processCCSS(path)
 		elif path.endswith(".pcss"): return self._processPCSS(path)
 		elif path.endswith(".css"):  return self._processCSS(path)
+		elif path.endswith(".paml"): return self._processPAML(path)
+		elif path.endswith(".xsl"):  return self._processXSL(path)
 		else: raise Exception("Format not supported: " + path)
 
 	def _processCSS( self, path ):
@@ -494,6 +521,15 @@ class LibraryServer(Component):
 		if data:
 			if self.minify and jsmin: data = jsmin.jsmin(data)
 		return data
+
+	def _processPAML( self, path ):
+		"""Processes a JS file, minifying it if `jsmin` is installed."""
+		data = self.app().load(path)
+		return paml.process(data)
+
+	def _processXSL( self, path ):
+		"""Processes a JS file, minifying it if `jsmin` is installed."""
+		return self.app().load(path)
 
 	def _processJS( self, path ):
 		"""Processes a JS file, minifying it if `jsmin` is installed."""
