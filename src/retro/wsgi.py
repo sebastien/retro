@@ -33,6 +33,8 @@ try:
 except ImportError:
 	import SimpleHTTPServer, SocketServer, BaseHTTPServer, urlparse
 
+from .core import ensureUnicode
+
 import sys, socket, errno, time, traceback, io, threading, re
 try:
 	import reporter
@@ -687,7 +689,6 @@ Use request methods to create a response(request.respond, request.returns, ...)
 				))
 				i += 2
 				continue
-			print (repr(line))
 			m = RE_EXCEPTION_ERROR.match(line)
 			if m:
 				error = line
@@ -722,7 +723,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 					_["number"], i
 				)
 			)
-		return name, u"\n".join(result)
+		return name, u"\n".join(ensureUnicode(result))
 
 # ------------------------------------------------------------------------------
 #
