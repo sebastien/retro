@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 2006-04-12
-# Last mod  : 2016-12-01
+# Last mod  : 2017-07-13
 # -----------------------------------------------------------------------------
 
 # SEE:http://www.mnot.net/cache_docs/
@@ -15,10 +15,33 @@ __doc__ = """
 The 'localfiles' module defines `LocalFiles` and `Library` component that can
 be added to any application to serve local files and assets"""
 
-import os, sys, stat, mimetypes, subprocess
+import os, sys, stat, mimetypes, subprocess, base64
 from retro import *
 from retro.wsgi import SERVER_ERROR_CSS
 from retro.contrib.cache import SignatureCache
+
+FAVICON = base64.b64decode("""\
+AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAA
+AAAAAAAAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/
+AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8A
+AAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/z8/P/9/f3//b29v/w8PD/8AAAD/AAAA/w8P
+D/9vb2//f39//z8/P/8AAAD/AAAA/wAAAP8AAAD/AAAA/x8fH///////j4+P/8/Pz/+vr6//AAAA
+/wAAAP+vr6//z8/P/4+Pj///////Hx8f/wAAAP8AAAD/AAAA/wAAAP8/Pz//7+/v/wAAAP9PT0//
+7+/v/wAAAP8AAAD/v7+//09PT/8AAAD/7+/v/z8/P/8AAAD/AAAA/wAAAP8AAAD/Hx8f/+/v7/+/
+v7//n5+f//////9/f3//f39//9/f3/+fn5//v7+//+/v7/8fHx//AAAA/wAAAP8AAAD/AAAA/wAA
+AP8fHx//b29v/7+/v///////f39//39/f///////v7+//39/f/8fHx//AAAA/wAAAP8AAAD/AAAA
+/wAAAP8AAAD/AAAA/wAAAP9/f3///////wAAAP8AAAD//////39/f/8AAAD/AAAA/wAAAP8AAAD/
+AAAA/wAAAP8AAAD/AAAA/x8fH/8/Pz//n5+f//////8/Pz//Pz8///////+fn5//Pz8//x8fH/8A
+AAD/AAAA/wAAAP8AAAD/AAAA/wAAAP9/f3//////////////////////////////////////////
+//9/f3//AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8/Pz///////wAAAP8AAAD/v7+/
+/z8/P/8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/Pz8///////8PDw//
+AAAA/7+/v/9/f3//AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/w8PD//v
+7+//39/f/29vb/9/f3///////6+vr/+fn5//AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA
+AP8AAAD/Hx8f/39/f/9fX1//AAAA/19fX/9/f3//b29v/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA
+/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/
+AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8A
+AAD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAA==""")
 
 try:
 	import jsmin
@@ -178,6 +201,14 @@ class LocalFiles(Component):
 		if isinstance(path, list) or isinstance(path, tuple): path = path[0]
 		matches = sorted([_ for _ in self._processors if path.endswith(_)])
 		return self._processors[matches[-1]] if matches else None
+
+	@on(GET_POST_HEAD="/favicon.ico",priority=10)
+	def favicon( self, request ):
+		for p in ["favicon.ico", "lib/images/favicon.ico"]:
+			rp = self.resolvePath(request, p)
+			if os.path.exists(rp):
+				return self.local(request, p)
+		return request.respond(FAVICON, "image/x-icon")
 
 	@on(GET_POST_HEAD="/")
 	def catchall( self, request ):
