@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Encoding: iso-8859-1
+# Encoding: utf8
 # -----------------------------------------------------------------------------
 # Project   : Retro - HTTP Toolkit
 # -----------------------------------------------------------------------------
@@ -648,7 +648,6 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			)
 		# FIXME: We use repr do work around encoding problems in the output
 		if isinstance(exception, web.HandlerException):
-			error_txt    = str(exception.e)
 			exception_name, error_msg = self._formatException(exception.e)
 		else:
 			error_txt = repr(traceback.format_exc())
@@ -671,7 +670,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		stack   = []
 		error   = None
 		name    = None
-		while i < len(lines):
+		for i,line in enumerate(lines):
 			line = lines[i]
 			m = RE_EXCEPTION_TRACEBACK.match(line)
 			if m:
@@ -723,7 +722,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 					_["number"], i
 				)
 			)
-		return name, u"\n".join(ensureUnicode(result))
+		return name, u"\n".join(ensureUnicode(_) for _ in result)
 
 # ------------------------------------------------------------------------------
 #
