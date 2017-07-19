@@ -299,8 +299,8 @@ def shutdown(*args):
 	for callback in ON_SHUTDOWN:
 		try:
 			callback()
-		except:
-			pass
+		except Exception as e:
+			logging.error("Error while shutting down", e)
 	sys.exit()
 
 def onShutdown( callback ):
@@ -323,15 +323,16 @@ def onError( callback ):
 def createReactor():
 	global REACTOR
 	REACTOR = WSGIReactor()
-	if HAS_SIGNAL:
-		# Jython does not support all signals, so we only use
-		# the available ones
-		signals = ['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM']
-		for sig in signals:
-			try:
-				signal.signal(getattr(signal,sig),shutdown)
-			except Exception as e:
-				sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" %(sig, e))
+
+if HAS_SIGNAL:
+	# Jython does not support all signals, so we only use
+	# the available ones
+	signals = ['SIGINT',  'SIGHUP', 'SIGABRT', 'SIGQUIT', 'SIGTERM']
+	for sig in signals:
+		try:
+			signal.signal(getattr(signal,sig),shutdown)
+		except Exception as e:
+			sys.stderr.write("[!] retro.wsgi.createReactor:%s %s\n" %(sig, e))
 
 createReactor()
 
