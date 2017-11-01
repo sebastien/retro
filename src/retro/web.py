@@ -239,8 +239,8 @@ class HandlerException(Exception):
 	def __init__( self, e, request ):
 		self.e       = e
 		self.request = request
-		self.trace   = "\n|".join(traceback.format_exc().split("\n"))
-		Exception.__init__(self, str(self.e) + "\n" + self.trace)
+		self.trace   = traceback.format_exc()
+		Exception.__init__(self, str(self.e))
 
 	def __str__( self ):
 		return self.message

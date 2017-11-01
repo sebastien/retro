@@ -649,7 +649,12 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			)
 		# FIXME: We use repr do work around encoding problems in the output
 		if isinstance(exception, web.HandlerException):
-			exception_name, error_msg = self._formatException(exception.e)
+			error_txt = traceback.format_exc()
+			exception_name = exception
+			# FIXME: This should be improved
+			_, trace_msg = self._formatException(exception.trace)
+			_, error_msg = self._formatException(error_txt)
+			error_msg = trace_msg + error_msg
 		else:
 			error_txt = repr(traceback.format_exc())
 			exception_name, error_msg = self._formatException(error_txt)
@@ -675,7 +680,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			line = lines[i]
 			m = RE_EXCEPTION_TRACEBACK.match(line)
 			if m:
-				# We skipt the traceback header
+				# We skip the traceback header
 				i += 1
 				continue
 			m = RE_EXCEPTION_FILE.match(line)
