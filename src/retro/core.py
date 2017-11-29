@@ -85,6 +85,12 @@ def ensureUnicode( t, encoding="utf8" ):
 	else:
 		return t if isinstance(t, unicode) else str(t).decode(encoding)
 
+def ensureSafeUnicode( t, encoding="utf8" ):
+	if IS_PYTHON3:
+		return t if isinstance(t, str) else str(t, encoding, "ignore")
+	else:
+		return t if isinstance(t, unicode) else str(t).decode(encoding, "ignore")
+
 def ensureBytes( t, encoding="utf8" ):
 	if IS_PYTHON3:
 		return t if isinstance(t, bytes) else bytes(t, encoding)

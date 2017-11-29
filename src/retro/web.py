@@ -10,7 +10,7 @@
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime, urllib
-from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING, urllib_parse
+from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING, urllib_parse, ensureUnicode, ensureSafeUnicode
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -240,7 +240,12 @@ class HandlerException(Exception):
 		self.e       = e
 		self.request = request
 		self.trace   = traceback.format_exc()
-		Exception.__init__(self, str(self.e))
+		# NOTE: This is a way to circumvent these awful encoding errors
+		try:
+			s = ensureSafeUnicode(self.e)
+		except:
+			s = repr(e)
+		Exception.__init__(self, repr(self.e))
 
 	def __str__( self ):
 		return self.message
@@ -520,7 +525,7 @@ class Dispatcher:
 					return processor(request, handler, variables)
 				except Exception as e:
 					for _ in self._onException: _(e, self)
-					raise e
+					raise e if isinstance(e,HandlerException) else HandlerException(e, request)
 			else:
 				handler = lambda request, **variables: Response("Not authorized",[],401)
 				return processor( request, handler, variables)

@@ -61,7 +61,7 @@ except:
 RE_EXCEPTION_TRACEBACK = re.compile("^Traceback \([^)]+\):$")
 RE_EXCEPTION_FILE      = re.compile('^  File "([^"]+)", line (\d+), in ([^\s]+)$')
 RE_EXCEPTION_ERROR     = re.compile("^([\w_]+(\.[\w_]+)*):\s*$")
-SERVER_ERROR_CSS = """\
+SERVER_ERROR_CSS = u"""\
 html, body {
 		padding: 0;
 		margin: 0;
@@ -189,7 +189,7 @@ body pre {
 """
 
 
-SERVER_ERROR = """\
+SERVER_ERROR = u"""\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -656,13 +656,15 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			_, error_msg = self._formatException(error_txt)
 			error_msg = trace_msg + error_msg
 		else:
-			error_txt = repr(traceback.format_exc())
+			error_txt = traceback.format_exc()
+			exception_name = exception
 			exception_name, error_msg = self._formatException(error_txt)
 		if not self._sentHeaders:
 			self._startResponse("500 Server Error", [("Content-type", "text/html")])
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
-		self._writeData(SERVER_ERROR %( SERVER_ERROR_CSS, prelude, exception_name, error_msg))
+		error_message = core.ensureUnicode(SERVER_ERROR %( SERVER_ERROR_CSS, prelude, exception_name, error_msg))
+		self._writeData(error_message)
 		logging.error(error_txt)
 		error(error_txt)
 		self._processEnd()
@@ -706,10 +708,10 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		while output and not output[0].strip():  output = output[1:]
 		while output and not output[-1].strip(): output = output[:-1]
 		# FIXME: This still does not work properly for errors with weird UTF8
-		output = (core.safeEnsureString(_, "utf-8") for _ in output)
+		output = (core.ensureUnicode(_) for _ in output)
 		result = [
-			"<div class='output'><pre>{0}</pre></div>".format("\n".join(output)),
-			"<div class='stack'><ol>",
+			u"<div class='output'><pre>{0}</pre></div>".format("\n".join(output)),
+			u"<div class='stack'><ol>",
 		]
 		stack.reverse()
 		for i, _ in enumerate(stack):
