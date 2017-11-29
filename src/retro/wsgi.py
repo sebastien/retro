@@ -664,7 +664,8 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
 		error_message = core.ensureUnicode(SERVER_ERROR %( SERVER_ERROR_CSS, prelude, exception_name, error_msg))
-		self._writeData(error_message)
+		self._writeData(core.ensureString(error_message))
+		error_txt = core.ensureUnicode(error_txt)
 		logging.error(error_txt)
 		error(error_txt)
 		self._processEnd()
@@ -766,10 +767,10 @@ class WSGIServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 		exception = traceback.format_exc()
 		last_error = exception.rsplit("\n", 2)[-2]
 		if   last_error == "AttributeError: 'NoneType' object has no attribute 'recv'":
-			logging.error("[-] Connection closed by client %s:%s" %(client_address[0], client_address[1]))
+			logging.error(u"[-] Connection closed by client %s:%s" % (client_address[0], client_address[1]))
 		elif last_error.startswith("error: [Errno 32]"):
-			logging.error("[-] Connection interrupted by client %s:%s" %(client_address[0], client_address[1]))
+			logging.error(u"[-] Connection interrupted by client %s:%s" % (client_address[0], client_address[1]))
 		else:
-			logging.error("[-] Unsupported exception:{0}".format(exception))
+			logging.error(u"[-] Unsupported exception:{0}".format(exception))
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

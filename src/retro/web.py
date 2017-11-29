@@ -241,11 +241,8 @@ class HandlerException(Exception):
 		self.request = request
 		self.trace   = traceback.format_exc()
 		# NOTE: This is a way to circumvent these awful encoding errors
-		try:
-			s = ensureSafeUnicode(self.e)
-		except:
-			s = repr(e)
-		Exception.__init__(self, repr(self.e))
+		s = ensureUnicode(self.e.message)
+		Exception.__init__(self, s)
 
 	def __str__( self ):
 		return self.message
