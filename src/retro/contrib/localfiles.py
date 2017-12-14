@@ -72,9 +72,10 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 	background: #FFFFE0;
 }
 .retro-directory-listing li {
-	padding-top: 0.25em;
-	padding-bottom: 0.25em;
+	padding: 0.5em;
 	position: relative;
+	display: flex;
+	width: 100%;
 }
 .retro-directory-listing li .bullet {
 	color: #AAAAAA;
@@ -83,12 +84,17 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 	left: 0.5em;
 }
 
-.retro-directory-listing li a {
+.retro-directory-listing li .name {
 	position: relative;
 	padding-left: 2.5em;
 	display: block;
 	padding-top: 0.10em;
 	padding-bottom: 0.10em;
+	flex-grow: 1;
+}
+
+.retro-directory-listing li .size {
+	opacity: 0.5;
 }
 .retro-directory-listing .directory {
 	background: #EEEEEE;
@@ -99,6 +105,8 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 }
 .retro-directory-listing .parent {
 	color: #AAAAAA;
+	padding-top: 0.5em;
+	padding-bottom: 0.5em;
 }
 """
 
@@ -301,13 +309,57 @@ class LocalFiles(Component):
 			if file_name.startswith("."): ext +=" hidden"
 			file_url = ("/" + path + "/" +file_name).replace("//","/")
 			if os.path.isdir(file_path):
-				dirs.append("<li class='directory %s'><span class='bullet'>&fnof;</span><a href='%s'>%s</a></li>" % (
+				dirs.append(
+					"<li class='directory %s'>"
+					"<span class='bullet'>&fnof;</span>"
+					"<span class='name'>"
+					"<a href='%s'>%s</a>"
+					"</span>"
+					"</li>" % (
 					ext, file_url, file_name
 				))
 			else:
-				files.append("<li class='file %s'><span class='bullet'>&mdash;</span><a href='%s'>%s</a></li>" % (
-					ext, file_url, file_name
-				))
+				size = os.stat(file_path)[stat.ST_SIZE]
+				unit = None
+				if size < 1000:
+					unit = "b"
+					size = size
+				elif size < 1000000:
+					unit = "kb"
+					size = size / 1000.0
+				else:
+					unit = "mb"
+					size = size / 1000000.0
+				if size == int(size):
+					size = "{0:d}{1}".format(size,unit)
+				else:
+					size = "{0:0.2f}{1}".format(size,unit)
+				if file_name.endswith(".gz"):
+					files.append(
+						"<li class='file compressed %s'>"
+						"<span class='bullet'>&mdash;</span>"
+						"<span class='name'>"
+						"<a href='%s'>%s</a>"
+						"<a href='%s'>[.gz]</a>"
+						"</span>"
+						"<span class='size'>%s</span>"
+						"</li>" % (
+							ext,
+							file_url[:-3], file_name[:-3],
+							file_url,
+							size,
+					))
+				else:
+					files.append(
+						"<li class='file %s'>"
+						"<span class='bullet'>&mdash;</span>"
+						"<span class='name'>"
+						"<a href='%s'>%s</a>"
+						"</span>"
+						"<span class='size'>%s</span>"
+						"</li>" % (
+						ext, file_url, file_name, size,
+					))
 		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files))
 
 	def directoryAsList( self, path, localPath ):
