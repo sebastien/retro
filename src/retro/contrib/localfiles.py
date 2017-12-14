@@ -193,8 +193,8 @@ class LocalFiles(Component):
 
 	def getContent( self, path ):
 		"""Gets the content for this file."""
-		f = file(path, 'rb') ; c=f.read() ; f.close()
-		return c
+		with open(path, "rt") as f:
+			return f.read()
 
 	def processorFor( self, path ):
 		"""Returns the processors for the given path."""

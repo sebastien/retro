@@ -558,7 +558,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 				self._rendezvous = data
 				self._state = self.WAITING
 			elif data:
-				self._writeData(core.ensureString(data))
+				self._writeData(core.ensureBytes(data))
 			return self._state
 		except StopIteration:
 			if hasattr(self._result, 'close'):
@@ -591,7 +591,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			# it, because the client stopped the connection anyway
 			try:
 				# We must write out something!
-				self._writeData(" ")
+				self._writeData(core.ensureBytes(" "))
 			except:
 				pass
 		self._finish()
@@ -664,7 +664,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		# TODO: Format the response if in debug mode
 		self._state = self.ENDED
 		error_message = core.ensureUnicode(SERVER_ERROR %( SERVER_ERROR_CSS, prelude, exception_name, error_msg))
-		self._writeData(core.ensureString(error_message))
+		self._writeData(core.ensureBytes(error_message))
 		error_txt = core.ensureUnicode(error_txt)
 		logging.error(error_txt)
 		error(error_txt)
