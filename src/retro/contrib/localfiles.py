@@ -93,6 +93,9 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 	flex-grow: 1;
 }
 
+.retro-directory-listing li .gz {
+	opacity: 0.25;
+}
 .retro-directory-listing li .size {
 	opacity: 0.5;
 }
@@ -312,9 +315,7 @@ class LocalFiles(Component):
 				dirs.append(
 					"<li class='directory %s'>"
 					"<span class='bullet'>&fnof;</span>"
-					"<span class='name'>"
-					"<a href='%s'>%s</a>"
-					"</span>"
+					"<a class='name' href='%s'>%s</a>"
 					"</li>" % (
 					ext, file_url, file_name
 				))
@@ -338,24 +339,18 @@ class LocalFiles(Component):
 					files.append(
 						"<li class='file compressed %s'>"
 						"<span class='bullet'>&mdash;</span>"
-						"<span class='name'>"
-						"<a href='%s'>%s</a>"
-						"<a href='%s'>[.gz]</a>"
-						"</span>"
+						"<a class='name' href='%s'>%s<span class=gz>.gz</span></a>"
 						"<span class='size'>%s</span>"
 						"</li>" % (
 							ext,
 							file_url[:-3], file_name[:-3],
-							file_url,
 							size,
 					))
 				else:
 					files.append(
 						"<li class='file %s'>"
 						"<span class='bullet'>&mdash;</span>"
-						"<span class='name'>"
-						"<a href='%s'>%s</a>"
-						"</span>"
+						"<a class='name' href='%s'>%s</a>"
 						"<span class='size'>%s</span>"
 						"</li>" % (
 						ext, file_url, file_name, size,
