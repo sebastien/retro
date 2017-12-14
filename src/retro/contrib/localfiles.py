@@ -235,7 +235,10 @@ class LocalFiles(Component):
 			if path.endswith(".gz"):
 				return request.respond("File not found: %s" % (resolved_path), status=404)
 			else:
-				return self.local(request, path + ".gz").setHeader("Content-Type", request.guessContentType(path)).setHeader("Content-Encoding", "gzip")
+				res = self.local(request, path + ".gz")
+				if res.status >= 200 and res.status < 300:
+					res.setHeader("Content-Type", request.guessContentType(path)).setHeader("Content-Encoding", "gzip")
+				return res
 		elif os.path.isdir(resolved_path):
 			if self.LIST_DIR:
 				if request.param("format") == "json":

@@ -1085,7 +1085,7 @@ class Request:
 			return MIME_TYPES[ext]
 		else:
 			res, _ = mimetypes.guess_type(path)
-			return res
+			return res or "text/plain"
 
 	def respondFile( self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256 ):
 		"""Responds with a local file. The content type is guessed using
@@ -1529,9 +1529,9 @@ class Response:
 		result = []
 		for i in range(len(headers) - 1, -1, -1):
 			k, v = headers[i]
-			k    = ensureString(k)
+			k    = ensureString(k) if k else k
 			#if k not in output:
-			v = ensureString(v)
+			v = ensureString(v) if v else v
 			output.append(k)
 			result.append((k,v))
 		return result
