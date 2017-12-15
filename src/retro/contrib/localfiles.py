@@ -73,6 +73,8 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 }
 .retro-directory-listing li {
 	padding: 0.5em;
+	padding-top: 0.25em;
+	padding-bottom: 0.25em;
 	position: relative;
 	display: flex;
 	width: 100%;
@@ -301,6 +303,7 @@ class LocalFiles(Component):
 		"""Returns a directory as HTML"""
 		dirs  = []
 		files = []
+		dot_files = []
 		parent = os.path.dirname(path)
 		if path and path not in ("/", "."):
 			dirs.append("<li class='previous dir'><span class='bullet'>&hellip;</span><a class='parent' href='%s/%s'>(parent)</a></li>" % (self.PREFIX, parent))
@@ -335,8 +338,9 @@ class LocalFiles(Component):
 					size = "{0:d}{1}".format(size,unit)
 				else:
 					size = "{0:0.2f}{1}".format(size,unit)
+				group = dot_files if file_name.startswith(".") else files
 				if file_name.endswith(".gz"):
-					files.append(
+					group.append(
 						"<li class='file compressed %s'>"
 						"<span class='bullet'>&mdash;</span>"
 						"<a class='name' href='%s'>%s<span class=gz>.gz</span></a>"
@@ -347,7 +351,7 @@ class LocalFiles(Component):
 							size,
 					))
 				else:
-					files.append(
+					group.append(
 						"<li class='file %s'>"
 						"<span class='bullet'>&mdash;</span>"
 						"<a class='name' href='%s'>%s</a>"
@@ -355,7 +359,7 @@ class LocalFiles(Component):
 						"</li>" % (
 						ext, file_url, file_name, size,
 					))
-		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files))
+		return LIST_DIR_HTML % (path, LIST_DIR_CSS, path, "".join(dirs) + "".join(files + dot_files))
 
 	def directoryAsList( self, path, localPath ):
 		"""Returns a directory as JSON"""
