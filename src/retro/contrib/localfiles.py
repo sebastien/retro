@@ -323,7 +323,10 @@ class LocalFiles(Component):
 					ext, file_url, file_name
 				))
 			else:
-				size = os.stat(file_path)[stat.ST_SIZE]
+				try:
+					size = os.stat(file_path)[stat.ST_SIZE]
+				except Exception as e:
+					size = 0
 				unit = None
 				if size < 1000:
 					unit = "b"
