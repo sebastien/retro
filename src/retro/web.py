@@ -241,7 +241,11 @@ class HandlerException(Exception):
 		self.request = request
 		self.trace   = traceback.format_exc()
 		# NOTE: This is a way to circumvent these awful encoding errors
-		s = ensureUnicode(self.e.message)
+		if hasattr(self.e, "message"):
+			s = ensureUnicode(e.message)
+		else:
+			s = ensureUnicode(str(e))
+		self.message = s
 		Exception.__init__(self, s)
 
 	def __str__( self ):
@@ -606,6 +610,12 @@ class Component:
 		self.startTime  = None
 		if prefix:
 			self.PREFIX = prefix
+		else:
+			self.PREFIX = self.__class__.PREFIX
+
+	def setPrefix( self, prefix ):
+		self.PREFIX = prefix
+		return self
 
 	def setPriority( self, level ):
 		"""Sets the priority level for this component. The component

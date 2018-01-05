@@ -622,6 +622,7 @@ class Request:
 		self._responseHeaders  = []
 		self._bodyLoader       = None
 		self.protocol          = "http"
+		self.isClosed          = False
 
 	def headers( self ):
 		if self._headers is None:

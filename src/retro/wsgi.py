@@ -585,6 +585,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			self._state = self.ERROR
 
 	def _processEnd( self ):
+		# TODO: Should close the request
 		self._state = self.ENDED
 		if(not self._sentHeaders):
 			# If we have an exception here in the socket, we can safely ignore

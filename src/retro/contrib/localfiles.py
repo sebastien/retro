@@ -147,11 +147,11 @@ class LocalFiles(Component):
 	LIST_DIR          = True
 	USE_LAST_MODIFIED = True
 
-	def __init__( self, root="", name=None, processors={}, resolver=None, optsuffix=(), lastModified=None, writable=False):
+	def __init__( self, root="", name=None, processors={}, resolver=None, optsuffix=(), lastModified=None, writable=False, prefix=None):
 		"""Creates a new LocalFiles, with the optional root, name and
 		processors. Processors are functions that modify the content
 		of the file and returned the processed data."""
-		Component.__init__(self, name="LocalFiles")
+		Component.__init__(self, name="LocalFiles", prefix=prefix)
 		self._lastModified = self.USE_LAST_MODIFIED if lastModified is None else lastModified
 		self._localRoot    = None
 		self._processors   = {}
@@ -313,7 +313,7 @@ class LocalFiles(Component):
 			file_path = localPath + "/" + file_name
 			ext       = os.path.splitext(file_path)[1].replace(".", "_")
 			if file_name.startswith("."): ext +=" hidden"
-			file_url = ("/" + path + "/" +file_name).replace("//","/")
+			file_url = self.PREFIX + ("/" + path + "/" +file_name).replace("//","/")
 			if os.path.isdir(file_path):
 				dirs.append(
 					"<li class='directory %s'>"
