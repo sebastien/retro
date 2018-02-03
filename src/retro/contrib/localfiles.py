@@ -338,7 +338,7 @@ class LocalFiles(Component):
 					unit = "mb"
 					size = size / 1000000.0
 				if size == int(size):
-					size = "{0:d}{1}".format(size,unit)
+					size = "{0:d}{1}".format(int(size),unit)
 				else:
 					size = "{0:0.2f}{1}".format(size,unit)
 				group = dot_files if file_name.startswith(".") else files
