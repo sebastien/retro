@@ -116,9 +116,12 @@ LIST_DIR_CSS  = SERVER_ERROR_CSS + """
 """
 
 LIST_DIR_HTML = """
+<!DOCTYPE html>
 <html>
 <head>
-	<title>Content of %s</title>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+	 <title>Content of %s</title>
 	<style><!--
 	%s
 	--></style>
