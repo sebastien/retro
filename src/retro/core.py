@@ -608,7 +608,7 @@ class Request:
 	HEADER_IF_NONE_MATCH     = "If-None-Match"
 	HEADER_IF_MODIFIED_SINCE = "If-Modified-Since"
 
-	def __init__( self, environ, charset ):
+	def __init__( self, environ, charset=None ):
 		"""This creates a new request."""
 		self._environ          = environ
 		self._headers          = None
@@ -838,6 +838,7 @@ class Request:
 		else:
 			self._environ[name] = value
 
+	# TODO: Deprecate
 	def session( self, name=NOTHING, value=NOTHING ):
 		"""Invokes this request component `session` method, and returns a couple
 		(session, sessionState)"""
@@ -1577,6 +1578,7 @@ class Response:
 #
 # -----------------------------------------------------------------------------
 
+# TODO: Deprecate
 class Session:
 
 	def __init__(self):
