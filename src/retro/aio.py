@@ -1,13 +1,16 @@
-import asyncio, collections
+import asyncio, collections, sys
 import retro
 from   retro.contrib.localfiles import LocalFiles
-from   retro.core import Request
 
 """
 A simple AsyncIO-based HTTP Web Server with an WSGI interface. It's not meant
 to be used in production but is perfect for local development servers. The
 implementation only supports HTTP/1.1 and is designed to be relatively simple.
 """
+
+# TODO: We need either an AsyncRequest subclass of request, or
+# user @coroutine decorators with the asyncio.iscoroutine() to trigger an
+# await… and use the old (non async/await) syntax.
 
 # -----------------------------------------------------------------------------
 #
@@ -20,12 +23,14 @@ class HTTPContext(object):
 	"""Parses an HTTP request and headers from a stream through the `feed()`
 	method."""
 
-	def __init__( self ):
+	def __init__( self, address, port ):
+		self.address = address
+		self.port     = port
 		self.reset()
 
 	def reset( self ):
 		self.method   = None
-		self.url      = None
+		self.uri      = None
 		self.protocol = None
 		self.headers  = collections.OrderedDict()
 		self.step     = 0
@@ -37,7 +42,7 @@ class HTTPContext(object):
 
 	# TODO: We might want to make that async, or at least provide an async
 	# variant of that.
-	def read( self, size=None ):
+	async def read( self, size=None ):
 		"""Reads `size` bytes from the context's input stream, using
 		whatever data is left from the previous data feeding."""
 		rest = self.rest
@@ -47,23 +52,23 @@ class HTTPContext(object):
 		if rest is None:
 			if self._stream:
 				if size is None:
-					return self._stream.read()
+					return await self._stream.read()
 				else:
-					return self._stream.read(size)
+					return await self._stream.read(size)
 			else:
 				return b""
 		else:
-			self._rest = None
+			self.rest = None
 			if size is None:
 				if self._stream:
-					return rest + self._stream.read()
+					return rest + (await self._stream.read())
 				else:
 					return rest
 			elif len(rest) > size:
-				self._rest = rest[size:]
+				self.rest = rest[size:]
 				return rest[:size]
 			else:
-				return rest + self._stream.read(size - len(rest))
+				return rest + (await self._stream.read(size - len(rest)))
 
 	def feed( self, data ):
 		"""Feeds data into the context."""
@@ -109,14 +114,14 @@ class HTTPContext(object):
 
 	def parseLine( self, step, line ):
 		"""Parses a line (without the ending `\r\n`), updating the
-		context's {method,url,protocol,headers,step} accordingly. This
+		context's {method,uri,protocol,headers,step} accordingly. This
 		will stop once two empty lines have been encountered."""
 		if step == 0:
 			# That's the REQUEST line
 			j = line.index(b" ")
 			k = line.index(b" ", j + 1)
 			self.method   = line[:j].decode()
-			self.url      = line[j+1:k].decode()
+			self.uri      = line[j+1:k].decode()
 			self.protocol = line[k+1:].decode()
 			step = 1
 		elif not line:
@@ -128,7 +133,10 @@ class HTTPContext(object):
 			step = 1
 			j = line.index(b":")
 			h = line[:j].decode()
-			v = line[j:].strip().decode()
+			j += 1
+			if j < len(line) and line[j] == " ":
+				j += 1
+			v = line[j:].decode()
 			self.headers[h] = v
 		return step
 
@@ -136,7 +144,7 @@ class HTTPContext(object):
 		"""Exports a JSONable representation of the context."""
 		return {
 			"method": self.method,
-			"url": self.url,
+			"uri": self.uri,
 			"protocol": self.protocol,
 			"headers": [(k,v) for k,v in self.headers.items()],
 		}
@@ -144,6 +152,13 @@ class HTTPContext(object):
 	def toWSGI( self ):
 		"""Exports a WSGI data structure usable for this context."""
 		# SEE: https://www.python.org/dev/peps/pep-0333/
+		path = self.uri
+		i    = path.find("?")
+		if i == -1:
+			query = ""
+		else:
+			query = path[i+1:]
+			path  = path[:i]
 		res = {
 			"wsgi.version"    : (1,0),
 			"wsgi.url_scheme" : "http",
@@ -155,20 +170,23 @@ class HTTPContext(object):
 			"retro.app": None,
 			# "extra.request" : None
 			# "extra.header"  : None
-			"REQUEST_URI"     : self.url,
+			"REQUEST_URI"     : self.uri,
 			"REQUEST_METHOD"  : self.method,
-			"QUERY_STRING"    : None,
-			"PATH_INFO"       : None,
+			"SCRIPT_NAME"     : "",
+			"PATH_INFO"       : path,
+			"QUERY_STRING"    : query,
 			"CONTENT_TYPE"    : None,
 			"CONTENT_LENGTH"  : None,
 			"HTTP_COOKIE"     : None,
-			"HTTP_HOST"       : None,
 			"HTTP_USER_AGENT" : None,
-			"SCRIPT_NAME"     : None,
 			"SCRIPT_ROOT"     : None,
+			"HTTP_HOST"       : None,
+			"SERVER_NAME"     : self.address,
+			"SERVER_PORT"     : self.port,
+			# SEE: https://www.python.org/dev/peps/pep-0333/#url-reconstruction
 		}
 		# We set the additional headers
-		for k,v in self.headers:
+		for k,v in self.headers.items():
 			res[k.upper().replace("-", "_")] = v
 		return res
 
@@ -181,12 +199,12 @@ class HTTPContext(object):
 class Connection(object):
 	BUFFER_SIZE = 10
 
-	async def process( self, reader, writer ):
+	async def process( self, reader, writer, application, server ):
 		# We extract meta-information abouth the connection
 		addr    = writer.get_extra_info("peername")
 		# We creates an HTTPContext that represents the incoming
 		# request.
-		context  = HTTPContext(reader)
+		context  = HTTPContext(server.address, server.port)
 		# This parsers the input stream in chunks
 		n        = self.BUFFER_SIZE
 		ends     = False
@@ -204,24 +222,31 @@ class Connection(object):
 
 		# We create a WSGI environment
 		env = context.toWSGI()
-
 		# We get a WSGI-enabled requet handler
-		req = Request(env)
-		res = req(env, self._startResponse)
+		wrt = lambda s, h: self._startResponse(writer, s, h)
+		for _ in await application(env, wrt):
+			writer.write(self._ensureBytes(_))
+			await writer.drain()
+		await writer.drain()
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
 		# how to interface with the writing.
-
-		writer.write(b"404 Not Found\r\n")
-
-		await writer.drain()
 		writer.close()
 
-	def _processResponse( self, response_status, response_headers, exc_info=None ):
+	def _startResponse( self, writer, response_status, response_headers, exc_info=None ):
+		writer.write(self._ensureBytes(response_status))
+		writer.write(b"\r\n")
+		for h,v in response_headers:
+			writer.write(self._ensureBytes(h))
+			writer.write(b": ")
+			writer.write(self._ensureBytes(v))
+			writer.write(b"\r\n")
+		writer.write(b"\r\n")
+		writer.write(b"\r\n")
 
-	def _writeData( self, data ):
-
+	def _ensureBytes( self, value ):
+		return value.encode("utf-8") if not isinstance(value,bytes) else value
 
 # -----------------------------------------------------------------------------
 #
@@ -231,15 +256,31 @@ class Connection(object):
 
 class Server(object):
 
+	def __init__( self, application, address="127.0.0.1", port=8000 ):
+		self.application = application
+		self.address = address
+		self.port = port
+
 	async def request( self, reader, writer ):
 		conn = Connection()
-		await conn.process(reader, writer)
+		await conn.process(reader, writer, self.application, self)
 
 # -----------------------------------------------------------------------------
 #
 # API
 #
 # -----------------------------------------------------------------------------
+
+
+class Main(retro.Component):
+
+	@retro.on(GET_POST_UPDATE_DELETE="{path:any}")
+	async def echo( self, request, path ):
+		body = await request.body()
+		sys.stdout.write(retro.ensureString(body))
+		sys.stdout.write("\n\n")
+		sys.stdout.flush()
+		return request.respond(body)
 
 def run( arguments=None, options={} ):
 	# import argparse
@@ -252,7 +293,7 @@ def run( arguments=None, options={} ):
 	address = "127.0.0.1"
 	port    = 8001
 	loop    = asyncio.get_event_loop()
-	server  = Server()
+	server  = Server(retro.Application(Main()), address, port)
 	coro    = asyncio.start_server(server.request, address, port, loop=loop)
 	server  = loop.run_until_complete(coro)
 	print('Serving on {}'.format(server.sockets[0].getsockname()))

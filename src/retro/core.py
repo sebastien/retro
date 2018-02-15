@@ -31,6 +31,7 @@ if IS_PYTHON3:
 	# Python3 only defines str
 	unicode = str
 	long    = int
+	import asyncio
 else:
 	unicode = unicode
 
@@ -316,6 +317,10 @@ class FormData:
 			# the read stop somewhere within a boundary we'll stil be able
 			# to find it at the next iteration.
 			chunk           = file.read(read_size)
+			if asyncio.iscoroutineobj(chunk):
+				print ("CORO")
+			else:
+				print ("NOT CORO")
 			chunk_read_size = len(chunk)
 			chunk           = rest + chunk
 			# If state=="b" it means we've found a boundary at the previous iteration
@@ -429,152 +434,6 @@ class FormData:
 		if data_file:
 			data_file.seek(0)
 			yield (meta, data_file)
-
-# -----------------------------------------------------------------------------
-#
-# EVENT
-#
-# -----------------------------------------------------------------------------
-
-class Event:
-
-	def __init__( self, name=None, description=None ):
-		self.name          = name
-		self.description   = description
-		self.observers     =[]
-		self.observersLock = threading.Lock()
-
-	def observe( self, observer ):
-		res = False
-		self.observersLock.acquire()
-		res = False
-		if  not (observer in self.observers):
-			self.observers.append(observer)
-			res = True
-		self.observersLock.release()
-		return res
-
-	def unobserve( self, observer ):
-		res = False
-		self.observersLock.acquire()
-		if (observer in self.observers):
-			del self.observers[self.observers.index(observer)]
-			res = True
-		self.observersLock.release()
-		return res
-
-	def pipe( self, event ):
-		assert isinstance(event, Event)
-		self.observe(event.trigger)
-
-	def unpipe( self, event ):
-		assert isinstance(event, Event)
-		self.unobserve(event.trigger)
-
-	def trigger( self, *args, **kwargs ):
-		i = 0
-		# We have to clone the observers, as the observer callbacks may remove themselve
-		obs = tuple(self.observers)
-		for o in obs:
-			o(self, o, *args,**kwargs)
-			i += 1
-
-	def __getstate__( self ):
-		s = self.__dict__.copy()
-		del s["observersLock"]
-		return s
-
-	def __setstate__( self, s ):
-		self.__dict__.update(s)
-		if self.__dict__.get("observersLock") == None:
-			self.observersLock = threading.Lock()
-
-	def __call__( self,  *args, **kwargs ):
-		self.trigger(*args,**kwargs)
-
-class Stream:
-
-	def length( self ):
-		raise NotImplementedError
-
-	def open( self, offset ):
-		raise NotImplementedError
-
-	def read( self, count ):
-		raise NotImplementedError
-
-def IteratorStream( stream ):
-
-	def __init__( self, iterator, length ):
-		self.iterator = iterator
-		self.length   = length
-
-# -----------------------------------------------------------------------------
-#
-# RENDEZ-VOUS
-#
-# -----------------------------------------------------------------------------
-
-class RendezVous:
-
-	def __init__( self, expect=1, timeout=-1 ):
-		self.count      = 0
-		self.goal       = expect
-		self._events    = None
-		self._onMeet    = None
-		self._onTimeout = None
-		self._timeout   = timeout
-		self._created   = time.time()
-		self._meetSemaphore = threading.Event(expect == 0)
-		# FIXME: The best would be to use a schedule/reactor instead of that
-		# like 'call me back in XXXms'
-		if timeout > 0:
-			def run():
-				time.sleep(timeout)
-				self.timeout()
-			threading.Thread(target=run).start()
-
-	def joinEvent( self, event ):
-		if self._events is None: self._events = []
-		self._meetSemaphore.clear()
-		self._events.append(event)
-		event.observe(self._eventMet)
-		return self
-
-	def _eventMet( self, event, observer, *args, **kwargs ):
-		event.unobserve(observer)
-		self.meet()
-
-	def onMeet( self, callback ):
-		if self._onMeet is None: self._onMeet = []
-		self._onMeet.append(callback)
-
-	def onTimeout( self, callback ):
-		if self._onTimeout is None: self._onTimeout = []
-		self._onTimeout.append(callback)
-
-	def meet( self ):
-		self.count += 1
-		if self.count == self.goal:
-			# When the goal is reached, we call the callbacks
-			self._meetSemaphore.set()
-			if self._onMeet:
-				for c in self._onMeet:
-					c(self,c,self.count)
-				self._onMeet = None
-		return self
-
-	def wait( self ):
-		self._meetSemaphore.wait()
-
-	def timeout( self ):
-		# When the goal is reached, we call the callbacks
-		self._onMeet = None
-		if self._onTimeout:
-			for c in self._onTimeout:
-				c(self,c,self.count)
-				self._onTimeout = None
-		return self
 
 # ------------------------------------------------------------------------------
 #
@@ -852,14 +711,17 @@ class Request:
 		else:
 			return session.value(name, value)
 
-	def data( self, data=NOTHING, asFile=False, partial=False ):
+	async def data( self, data=NOTHING, asFile=False, partial=False ):
 		"""Gets/sets the request data as a file object. Note that when using
 		the `asFile` parameter, you should be sure to not do any concurrent access
 		to the data as a file, as you'll use the same file descriptor.
 		"""
 		if data == NOTHING:
 			if not partial:
-				while not self.isLoaded(): self.load()
+				while not self.isLoaded():
+					load = self.load()
+					if asyncio.iscoroutine(load):
+						await load
 			if asFile:
 				return self._data
 			else:
@@ -894,7 +756,7 @@ class Request:
 		if self._bodyLoader: return self._bodyLoader.progress(inBytes)
 		else: return 0
 
-	def load( self, size=None, decode=True ):
+	async def load( self, size=None, decode=True ):
 		"""Loads `size` more bytes (all by default) from the request
 		body.
 
@@ -906,7 +768,9 @@ class Request:
 		# We make sure that the body loader exists
 		if not self._bodyLoader: self._bodyLoader = RequestBodyLoader(self)
 		if not self._bodyLoader.isComplete():
-			self._bodyLoader.load(size)
+			is_loaded = self._bodyLoader.load(size)
+			if asyncio.iscoroutine(is_loaded):
+				is_loaded = await is_loaded
 		# We make sure the body is decoded if we have decode and the request is loaded
 		if self._bodyLoader.isComplete() and decode:
 			# If the the body loader is complete, we'll now proceed
@@ -1333,7 +1197,7 @@ class RequestBodyLoader:
 		else:
 			return 0
 
-	def load( self, size=None, writeData=True ):
+	async def load( self, size=None, writeData=True ):
 		"""Loads the data in chunks. Return the loaded and writes it to the
 		request data and returns it."""
 		# If the load is complete, we don't have anything to do
@@ -1341,8 +1205,10 @@ class RequestBodyLoader:
 		if size == None: size = self.contentLength
 		to_read   = min(self.remainingBytes(), size)
 		read_data = self.request._environ['wsgi.input'].read(to_read)
+		if asyncio.iscoroutine(read_data):
+			read_data = await read_data
 		self.contentRead += to_read
-		assert len(read_data) == to_read
+		assert len(read_data) == to_read, "Request was cut, read {0:d} out of {1:d} bytes".format(len(read_data), to_read)
 		# NOTE: This  read bytes
 		if writeData: self.request._data.write(read_data)
 		return read_data
@@ -1571,34 +1437,6 @@ class Response:
 		reason = self.REASONS.get(int(self.status)) or self.REASONS[500]
 		if reason: reason = reason[0]
 		return "%s %s\r\n" % (self.status, self.reason or reason)
-
-# -----------------------------------------------------------------------------
-#
-# SESSION
-#
-# -----------------------------------------------------------------------------
-
-# TODO: Deprecate
-class Session:
-
-	def __init__(self):
-		pass
-
-	@staticmethod
-	def hasSession( request ):
-		"""Tells if there is a session related to the given request, and returns
-		it if found. If not found, returns None"""
-
-	def isNew( self ):
-		"""Tells if the session is a new session or an existing one."""
-
-	def get( self, key=NOTHING, value=NOTHING ):
-		"""Alias to 'self.value(key,value)'"""
-		return self.value(key, value)
-
-	def value( self, key=NOTHING, value=NOTHING ):
-		"""Sets or gets the 'value' bound to the given 'key'"""
-
 
 CRAWLERS = {'plumtreewebaccessor': True, 'suke': True, 'javabee': True, 'infoseek sidewinder': True, 'checkbot': True, 'patric': True, 'iajabot': True, 'moget': True, 'gcreep': True, 'yes': True, 'w3mir': True, 'jbot (but can be changed by the user)': True, 'borg-bot': True, 'rixbot (http:': True, 'anthillv1.1': True, "'iagent": True, 'webcatcher': True, 'scooter': True, 'openfind data gatherer, openbot': True, 'fish-search-robot': True, "hazel's ferret web hopper,": True, 'grabber': True, 'explorersearch': True, 'combine': True, 'kdd-explorer': True, 'aitcsrobot': True, 'tarspider': True, 'wget': True, 'fido': True, 'weblayers': True, 'esther': True, 'orbsearch': True, 'site valet': True, 'rules': True, 'esculapio': True, 'kit-fireball': True, 'nhsewalker': True, 'lycos': True, 'tlspider': True, 'gestalticonoclast': True, 'road runner: imagescape robot (lim@cs.leidenuniv.nl)': True, 'techbot': True, 'bbot': True, 'spiderbot': True, 'emacs-w3': True, 'w3index': True, 'sitetech-rover': True, 'bspider': True, 'robbie': True, 'portaljuice.com': True, 'poppi': True, 'valkyrie': True, 'cmc': True, 'esismartspider': True, 'diibot': True, 'computingsite robi': True, 'jcrawler': True, "shai'hulud": True, 'appie': True, 'ingrid': True, 'robozilla': True, 'arks': True, 'netcarta cyberpilot pro': True, 'katipo': True, 'infospiders': True, 'i robot 0.4 (irobot@chaos.dk)': True, 'larbin (+mail)': True, 'dienstspider': True, 'solbot': True, 'portalbspider': True, 'evliya celebi v0.151 - http:': True, 'titin': True, 'wwwwanderer v3.0': True, 'ontospider': True, 'linkwalker': True, 'informant': True, 'webreaper [webreaper@otway.com]': True, 'ucsd-crawler': True, 'linkidator': True, 'golem': True, 'pageboy': True, 'atomz': True, 'emc spider': True, 'ebiness': True, 'uptimebot': True, 'spiderman 1.0': True, 'pioneer': True, 'gulper web bot 0.2.4 (www.ecsl.cs.sunysb.edu': True, 'peregrinator-mathematics': True, 'ndspider': True, 'digimarc cgireader': True, 'calif': True, 'geturl.rexx v1.05': True, 'wlm-1.1': True, 'udmsearch': True, 'cienciaficcion.net spider (http:': True, 'fastcrawler 3.0.x (crawler@1klik.dk) - http:': True, 'atn_worldwide': True, 'raven-v2': True, 'marvin': True, 'gammaspider xxxxxxx ()': True, 'webcopy': True, 'coolbot': True, 'freecrawl': True, 'not available': True, 'arachnophilia': True, 'infoseek robot 1.0': True, 'alkalinebot': True, 'aspider': True, 'speedy spider ( http:': True, 'image.kapsi.net': True, 'awapclient': True, 'jubiirobot': True, 'webwalk': True, 'hku www robot,': True, 'momspider': True, 'cusco': True, 'htmlgobble v2.2': True, 'lockon': True, 'vision-search': True, 'cactvs chemistry spider': True, 'tarantula': True, 'perlcrawler': True, 'lwp::': True, 'ssearcher100': True, 'nec-meshexplorer': True, 'googlebot': True, 'boxseabot': True, 'webvac': True, 'dnabot': True, 'ibm_planetwide,': True, 'backrub': True, 'piltdownman': True, 'slurp': True, 'muscatferret': True, 'safetynet robot 0.1,': True, 'motor': True, 'netscoop': True, 'ko_yappo_robot': True, 'northstar': True, 'objectssearch': True, 'digimarc webreader': True, 'webbandit': True, 'spiderline': True, 'jobo (can be modified by the user)': True, 'phpdig': True, 'cyberspyder': True, 'w@pspider': True, 'lwp': True, 'msnbot': True, 'gazz': True, 'esirover v1.0': True, 'sg-scout': True, 'incywincy': True, 'araybot': True, 'jumpstation': True, 'weblinker': True, 'labelgrab': True, 'straight flash!! getterroboplus 1.5': True, 'titan': True, 'packrat': True, 'robofox v2.0': True, 'urlck': True, 'crawlpaper': True, 'wolp': True, "due to a deficiency in java it's not currently possible to set the user-agent.": True, 'resume robot': True, 'webmoose': True, 'dragonbot': True, 'gromit': True, 'nomad-v2.x': True, 'logo.gif crawler': True, "'ahoy! the homepage finder'": True, 'merzscope': True, 'digger': True, 'h\xe4m\xe4h\xe4kki': True, 'libwww-perl-5.41': True, 'none': True, 'legs': True, 'newscan-online': True, 'occam': True, 'linkscan server': True, 'architextspider': True, 'felixide': True, 'robocrawl (http:': True, 'webs@recruit.co.jp': True, 'monster': True, 'elfinbot': True, 'searchprocess': True, 'mwdsearch': True, 'cosmos': True, 'w3m2': True, 'root': True, 'bayspider': True, 'http:': True, 'auresys': True, 'gulliver': True, 'templeton': True, 'israelisearch': True, 'm': True, 'die blinde kuh': True, 'simbot': True, 'snooper': True, 'shagseeker at http:': True, 'duppies': True, 'havindex': True, 'htdig': True, 'pgp-ka': True, 'psbot': True, 'desertrealm.com; 0.2; [j];': True, 'webfetcher': True, 'abcdatos botlink': True, 'no': True, 'wired-digital-newsbot': True, 'bjaaland': True, 'eit-link-verifier-robot': True, 'dlw3robot': True, 'inspectorwww': True, 'nederland.zoek': True, 'magpie': True, 'vwbot_k': True, 'mouse.house': True, 'griffon': True, 'cydralspider': True, 'web robot pegasus': True, 'rhcs': True, 'big brother': True, 'voyager': True, "due to a deficiency in java it's not currently possible": True, 'mindcrawler': True, 'deweb': True, 'webwatch': True, 'netmechanic': True, 'funnelweb-1.0': True, 'void-bot': True, 'victoria': True, 'webquest': True, 'hometown spider pro': True, 'mozilla 3.01 pbwf (win95)': True, 'wwwc': True, 'iron33': True, 'url spider pro': True, 'suntek': True, 'joebot': True, 'dwcp': True, 'verticrawlbot': True, 'whatuseek_winona': True, 'jobot': True, 'webwalker': True, 'xget': True, 'mediafox': True, 'internet cruiser robot': True, 'araneo': True, 'muninn': True, 'roverbot': True, 'robot du crim 1.0a': True, 'senrigan': True, 'blackwidow': True, 'confuzzledbot': True, '???': True, 'parasite': True, 'slcrawler': True}
 # EOF - vim: tw=80 ts=4 sw=4 noet

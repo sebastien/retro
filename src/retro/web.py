@@ -10,7 +10,8 @@
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime, urllib
-from   retro.core import Request, Response, Event, RendezVous, asJSON, json, unjson, NOTHING, urllib_parse, ensureUnicode, ensureSafeUnicode
+from   retro.core import Request, Response, asJSON, json, unjson, NOTHING, urllib_parse, ensureUnicode, ensureSafeUnicode
+import asyncio
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -36,7 +37,7 @@ class WebRuntimeError(Exception):
 
 	def __init__( self, message=None, code=None, data=None ):
 		Exception.__init__(self, message)
-		assert self.message == message
+		self.message = message
 		self.code    = code
 		self.data    = data
 
@@ -532,19 +533,23 @@ class Dispatcher:
 				return processor( request, handler, variables)
 		assert WebRuntimeError("No handler found")
 
-	def _processWSGI( self, request, handler, variables, start_response ):
+	async def _processWSGI( self, request, handler, variables, start_response ):
 		# FIXME: Add a charset option
 		# We bind the component to the request
 		request.environ("retro.start_response", start_response)
 		request.environ("retro.variables",      variables)
 		# TODO: ADD PROPER ERROR HANDLER
 		# The app is expected to produce a response object
-		try:
-			response = handler(request, **variables)
-		except Exception as e:
-			# NOTE: We do this so that we actually intercept the stack
-			# trace where the error occured
-			raise HandlerException(e, request)
+		response = handler(request, **variables)
+		if asyncio.iscoroutine(response):
+			response = await response
+		print ("RESPONSE" ,response)
+		# try:
+		# 	response = handler(request, **variables)
+		# except Exception as e:
+		# 	# NOTE: We do this so that we actually intercept the stack
+		# 	# trace where the error occured
+		# 	raise HandlerException(e, request)
 		if isinstance(response, Response):
 			result = response.asWSGI(start_response, self.app().config("charset"))
 			return result

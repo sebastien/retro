@@ -16,7 +16,7 @@ from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
 ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote
 from retro.web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
-Dispatcher, Configuration, ValidationError, WebRuntimeError, Event, RendezVous
+Dispatcher, Configuration, ValidationError, WebRuntimeError
 
 # FIXME: Add support for stackable applications
 
