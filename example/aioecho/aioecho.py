@@ -14,9 +14,7 @@ This script starts a Retro/Py web server that acts as a local proxy to the
 current filesystem or given directory ."""
 
 import os, sys
-from retro import *
-
-PORT               = 9030
+import retro
 
 # ------------------------------------------------------------------------------
 #
@@ -24,15 +22,16 @@ PORT               = 9030
 #
 # ------------------------------------------------------------------------------
 
-class Main(Component):
 
-	@on(GET_POST_UPDATE_DELETE="{path:any}")
+class Main(retro.Component):
+
+	@retro.on(GET_POST_UPDATE_DELETE="{path:any}")
 	async def echo( self, request, path ):
 		body = await request.body()
-		sys.stdout.write(str(body))
+		sys.stdout.write(retro.ensureString(body))
 		sys.stdout.write("\n\n")
 		sys.stdout.flush()
-		return request.respond(request.body())
+		return request.respond(body)
 
 # ------------------------------------------------------------------------------
 #
@@ -42,11 +41,11 @@ class Main(Component):
 
 if __name__ == "__main__":
 	main = Main()
-	run(
-		app        = Application(main),
+	retro.run(
+		app        = retro.Application(main),
 		name       = os.path.splitext(os.path.basename(__file__))[1],
-		method     = STANDALONE,
-		port       = PORT,
+		method     = retro.STANDALONE,
+		port       = 9030,
 		async      = True
 	)
 

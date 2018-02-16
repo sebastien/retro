@@ -310,20 +310,8 @@ onError=None ):
 		else:
 			import retro.aio
 			import asyncio
-			loop    = asyncio.get_event_loop ()
-			server  = retro.aio.Server(app, server_address[0], server_address[1])
-			coro    = asyncio.start_server(server.request, server_address[0], server_address[1], loop=loop)
-			server  = loop.run_until_complete(coro)
-			print ("Retro asyncio server listening on %s:%s" % ( server_address[0], server_address[1]))
+			retro.aio.run(server_address[0], server_address[1])
 			# TODO: Support runCondition
-			try:
-				loop.run_forever()
-			except KeyboardInterrupt:
-				pass
-			server.close()
-			loop.run_until_complete(server.wait_closed())
-			loop.closer()
-			print ("done")
 	else:
 		raise Exception("Unknown retro setup method:" + method)
 

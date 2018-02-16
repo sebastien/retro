@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+# -----------------------------------------------------------------------------
+# Project   : Retro - HTTP Toolkit
+# -----------------------------------------------------------------------------
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
+# License   : Revised BSD License
+# -----------------------------------------------------------------------------
+# Creation  : 15-Feb-2018
+# Last mod  : 16-Feb-2018
+# -----------------------------------------------------------------------------
+
 import asyncio, collections, sys
 import retro.core
 from   retro.contrib.localfiles import LocalFiles
@@ -59,7 +70,6 @@ class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
 		# If the load is complete, we don't have anything to do
 		to_read = self._load_prepare(size)
 		read_data = await self._load_load(to_read)
-		print ("READ", read_data )
 		return self._load_post(to_read, read_data, writeData)
 
 	async def _load_load( self, to_read ):
@@ -346,30 +356,22 @@ class Main(retro.Component):
 		sys.stdout.flush()
 		return request.respond(body)
 
-def run( arguments=None, options={} ):
-	# import argparse
-	# p = argparse.ArgumentParser(description="Starts a web server that translates PAML files")
-	# p.add_argument("values",  type=str, nargs="*")
-	# p.add_argument("-d", "--def", dest="var",   type=str, action="append")
-	# components = [LocalFiles()]
-	# app        = retro.Application(components=components)
-
-	address = "127.0.0.1"
-	port    = 8001
+def run( address, port ):
 	loop    = asyncio.get_event_loop()
 	server  = Server(retro.Application(Main()), address, port)
 	coro    = asyncio.start_server(server.request, address, port, loop=loop)
 	server  = loop.run_until_complete(coro)
-	print('Serving on {}'.format(server.sockets[0].getsockname()))
+	socket = server.sockets[0].getsockname()
+	print ("Retro asyncio server listening on %s:%s" % ( socket[0], socket[1] ))
 	try:
 		loop.run_forever()
 	except KeyboardInterrupt:
 		pass
-
 	# Close the server
 	server.close()
 	loop.run_until_complete(server.wait_closed())
 	loop.close()
+	print ("done")
 
 # -----------------------------------------------------------------------------
 #
