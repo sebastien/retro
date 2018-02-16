@@ -1,16 +1,71 @@
 import asyncio, collections, sys
-import retro
+import retro.core
 from   retro.contrib.localfiles import LocalFiles
 
 """
-A simple AsyncIO-based HTTP Web Server with an WSGI interface. It's not meant
-to be used in production but is perfect for local development servers. The
-implementation only supports HTTP/1.1 and is designed to be relatively simple.
+A simple AsyncIO-based HTTP Web Server with an WSGI interface that
+specializes Retro's request object to support asynchronous loading.
+
+It's not meant to be used in production but is perfect for local development
+servers. The implementation only supports HTTP/1.1 and is designed to be
+relatively simple.
 """
 
-# TODO: We need either an AsyncRequest subclass of request, or
-# user @coroutine decorators with the asyncio.iscoroutine() to trigger an
-# await… and use the old (non async/await) syntax.
+# -----------------------------------------------------------------------------
+#
+# ASYNC REQUEST
+#
+# -----------------------------------------------------------------------------
+
+class AsyncRequest(retro.core.Request):
+	"""A specialized retro Request object that uses coroutines to
+	load the data."""
+
+	async def data( self, data=retro.core.NOTHING, asFile=False, partial=False ):
+		await self._data_load(data, partial)
+		return self._data_process(data, asFile, partial)
+
+	async def _data_load( self, data, partial ):
+		if data == retro.core.NOTHING and not partial:
+			while not self.isLoaded():
+				await self.load()
+
+	async def load( self, size=None, decode=True ):
+		# We make sure that the body loader exists
+		self._load_prepare()
+		await self._load_load(size)
+		self._load_process(size, decode)
+
+	async def _load_load( self, size):
+		if not self._bodyLoader:
+			self._bodyLoader = RequestBodyLoader(self)
+		if not self._bodyLoader.isComplete():
+			is_loaded = await self._bodyLoader.load(size)
+
+	def createRequestBodyLoader( self, request, complete=False ):
+		return AsyncRequestBodyLoader(request, complete)
+
+# -----------------------------------------------------------------------------
+#
+# REQUEST BODY LOADER
+#
+# -----------------------------------------------------------------------------
+
+class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
+	"""A specialized request body loader to asynchronously load the
+	requests's body."""
+
+	async def load( self, size=None, writeData=True ):
+		# If the load is complete, we don't have anything to do
+		to_read = self._load_prepare(size)
+		read_data = await self._load_load(to_read)
+		print ("READ", read_data )
+		return self._load_post(to_read, read_data, writeData)
+
+	async def _load_load( self, to_read ):
+		read_data = await self.request._environ['wsgi.input'].read(to_read)
+		self.contentRead += to_read
+		return read_data
 
 # -----------------------------------------------------------------------------
 #
@@ -39,36 +94,6 @@ class HTTPContext(object):
 
 	def input( self, stream ):
 		self._stream = stream
-
-	# TODO: We might want to make that async, or at least provide an async
-	# variant of that.
-	async def read( self, size=None ):
-		"""Reads `size` bytes from the context's input stream, using
-		whatever data is left from the previous data feeding."""
-		rest = self.rest
-		# This method is a little bit contrived because e need to test
-		# for all the cases. Also, this needs to be relatively fast as
-		# it's going to be used often.
-		if rest is None:
-			if self._stream:
-				if size is None:
-					return await self._stream.read()
-				else:
-					return await self._stream.read(size)
-			else:
-				return b""
-		else:
-			self.rest = None
-			if size is None:
-				if self._stream:
-					return rest + (await self._stream.read())
-				else:
-					return rest
-			elif len(rest) > size:
-				self.rest = rest[size:]
-				return rest[:size]
-			else:
-				return rest + (await self._stream.read(size - len(rest)))
 
 	def feed( self, data ):
 		"""Feeds data into the context."""
@@ -140,6 +165,37 @@ class HTTPContext(object):
 			self.headers[h] = v
 		return step
 
+	# TODO: We might want to move that to connection, but right
+	# now the HTTP context is a better fix.
+	# variant of that.
+	async def read( self, size=None ):
+		"""Reads `size` bytes from the context's input stream, using
+		whatever data is left from the previous data feeding."""
+		rest = self.rest
+		# This method is a little bit contrived because e need to test
+		# for all the cases. Also, this needs to be relatively fast as
+		# it's going to be used often.
+		if rest is None:
+			if self._stream:
+				if size is None:
+					return await self._stream.read()
+				else:
+					return await self._stream.read(size)
+			else:
+				return b""
+		else:
+			self.rest = None
+			if size is None:
+				if self._stream:
+					return rest + (await self._stream.read())
+				else:
+					return rest
+			elif len(rest) > size:
+				self.rest = rest[size:]
+				return rest[:size]
+			else:
+				return rest + (await self._stream.read(size - len(rest)))
+
 	def export( self ):
 		"""Exports a JSONable representation of the context."""
 		return {
@@ -192,12 +248,16 @@ class HTTPContext(object):
 
 # -----------------------------------------------------------------------------
 #
-# CONNECTION
+# WSGI CONNECTION
 #
 # -----------------------------------------------------------------------------
 
-class Connection(object):
-	BUFFER_SIZE = 10
+class WSGIConnection(object):
+	"""Represents an asynchronous HTTP connection. The connection
+	creates an HTTP context and pass it in WSGI format to the application,
+	writing the output to the writer socket."""
+
+	BUFFER_SIZE = 1024 * 128
 
 	async def process( self, reader, writer, application, server ):
 		# We extract meta-information abouth the connection
@@ -224,7 +284,9 @@ class Connection(object):
 		env = context.toWSGI()
 		# We get a WSGI-enabled requet handler
 		wrt = lambda s, h: self._startResponse(writer, s, h)
-		for _ in await application(env, wrt):
+		res = await application(env, wrt)
+		r   = res.asWSGI(wrt)
+		for _ in r:
 			writer.write(self._ensureBytes(_))
 			await writer.drain()
 		await writer.drain()
@@ -255,14 +317,16 @@ class Connection(object):
 # -----------------------------------------------------------------------------
 
 class Server(object):
+	"""Smiple asynchronous server"""
 
 	def __init__( self, application, address="127.0.0.1", port=8000 ):
 		self.application = application
+		self.application._dispatcher._requestClass = AsyncRequest
 		self.address = address
 		self.port = port
 
 	async def request( self, reader, writer ):
-		conn = Connection()
+		conn = WSGIConnection()
 		await conn.process(reader, writer, self.application, self)
 
 # -----------------------------------------------------------------------------

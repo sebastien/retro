@@ -14,6 +14,7 @@
 
 import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
 import gzip, io, threading, locale, collections, unicodedata
+from   .compat import *
 
 try:
 	import urllib.request
@@ -24,16 +25,6 @@ except ImportError:
 	import urllib as urllib_parse
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
-
-IS_PYTHON3 = sys.version_info[0] > 2
-
-if IS_PYTHON3:
-	# Python3 only defines str
-	unicode = str
-	long    = int
-	import asyncio
-else:
-	unicode = unicode
 
 NOTHING    = re
 MIME_TYPES = dict(
@@ -64,39 +55,11 @@ completely standalone and separated from Retro Web applications.
 
 quote   = urllib_parse.quote
 unquote = urllib_parse.unquote
-
-def isString( t ):
-	return isinstance(t, unicode) or isinstance(t, str)
-
-def ensureString( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, str) else str(t, encoding)
-	else:
-		return t.encode("utf8") if isinstance (t, unicode) else str(t)
-
-def safeEnsureString( t,  encoding="utf8" ):
-	if IS_PYTHON3:
-		return ensureString(t, encoding)
-	else:
-		return t.encode("utf8", "ignore") if isinstance (t, unicode) else str(t)
-
-def ensureUnicode( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, str) else str(t, encoding)
-	else:
-		return t if isinstance(t, unicode) else str(t).decode(encoding)
-
-def ensureSafeUnicode( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, str) else str(t, encoding, "ignore")
-	else:
-		return t if isinstance(t, unicode) else str(t).decode(encoding, "ignore")
-
-def ensureBytes( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, bytes) else bytes(t, encoding)
-	else:
-		return t
+ensureString      = ensure_str
+ensureUnicode     = ensure_unicode
+ensureBytes       = ensure_bytes
+safeEnsureString  = ensure_str_safe
+ensureSafeUnicode = ensure_unicode_safe
 
 def normalizeHeader( h ):
 	return "-".join(_.capitalize() for _ in h.split("-"))
@@ -317,10 +280,6 @@ class FormData:
 			# the read stop somewhere within a boundary we'll stil be able
 			# to find it at the next iteration.
 			chunk           = file.read(read_size)
-			if asyncio.iscoroutineobj(chunk):
-				print ("CORO")
-			else:
-				print ("NOT CORO")
 			chunk_read_size = len(chunk)
 			chunk           = rest + chunk
 			# If state=="b" it means we've found a boundary at the previous iteration
@@ -482,6 +441,9 @@ class Request:
 		self._bodyLoader       = None
 		self.protocol          = "http"
 		self.isClosed          = False
+
+	def createRequestBodyLoader( self, request, complete=False ):
+		return RequestBodyLoader(request, complete)
 
 	def headers( self ):
 		if self._headers is None:
@@ -711,17 +673,23 @@ class Request:
 		else:
 			return session.value(name, value)
 
-	async def data( self, data=NOTHING, asFile=False, partial=False ):
+	def data( self, data=NOTHING, asFile=False, partial=False ):
 		"""Gets/sets the request data as a file object. Note that when using
 		the `asFile` parameter, you should be sure to not do any concurrent access
 		to the data as a file, as you'll use the same file descriptor.
 		"""
+		self._data_load(data, partial)
+		return self._data_process(data, asFile, partial)
+
+	def _data_load( self, data, partial ):
+		if data == NOTHING and not partial:
+			while not self.isLoaded():
+				load = self.load()
+				if asyncio_iscoroutine(load):
+					raise Exception("Synchronous request used with async server")
+
+	def _data_process( self, data, asFile, partial ):
 		if data == NOTHING:
-			if not partial:
-				while not self.isLoaded():
-					load = self.load()
-					if asyncio.iscoroutine(load):
-						await load
 			if asFile:
 				return self._data
 			else:
@@ -739,7 +707,7 @@ class Request:
 			if self._data: self._data.close()
 			self._data       = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
 			self._data.write(data)
-			self._bodyLoader = RequestBodyLoader(self, complete=True)
+			self._bodyLoader = self.createRequestBodyLoader(self, complete=True)
 			return self._bodyLoader
 
 	def body( self, body=re ):
@@ -756,7 +724,7 @@ class Request:
 		if self._bodyLoader: return self._bodyLoader.progress(inBytes)
 		else: return 0
 
-	async def load( self, size=None, decode=True ):
+	def load( self, size=None, decode=True ):
 		"""Loads `size` more bytes (all by default) from the request
 		body.
 
@@ -766,11 +734,21 @@ class Request:
 		the data
 		"""
 		# We make sure that the body loader exists
-		if not self._bodyLoader: self._bodyLoader = RequestBodyLoader(self)
+		self._load_prepare()
+		self._load_load(size)
+		self._load_process(size, decode)
+
+	def _load_prepare( self ):
+		if not self._bodyLoader:
+			self._bodyLoader = self.createRequestBodyLoader(self)
+
+	def _load_load( self, size):
 		if not self._bodyLoader.isComplete():
 			is_loaded = self._bodyLoader.load(size)
-			if asyncio.iscoroutine(is_loaded):
-				is_loaded = await is_loaded
+			if asyncio_iscoroutine(is_loaded):
+				raise Exception("Synchronous request used with async server")
+
+	def _load_process( self, size, decode ):
 		# We make sure the body is decoded if we have decode and the request is loaded
 		if self._bodyLoader.isComplete() and decode:
 			# If the the body loader is complete, we'll now proceed
@@ -1197,17 +1175,27 @@ class RequestBodyLoader:
 		else:
 			return 0
 
-	async def load( self, size=None, writeData=True ):
+	def load( self, size=None, writeData=True ):
 		"""Loads the data in chunks. Return the loaded and writes it to the
 		request data and returns it."""
 		# If the load is complete, we don't have anything to do
+		to_read = self._load_prepare(size)
+		read_data = self._load_load(to_read)
+		return self._load_post(to_read, read_data, writeData)
+
+	def _load_prepare( self, size ):
 		if self.isComplete(): return None
 		if size == None: size = self.contentLength
-		to_read   = min(self.remainingBytes(), size)
+		return min(self.remainingBytes(), size)
+
+	def _load_load( self, to_read ):
 		read_data = self.request._environ['wsgi.input'].read(to_read)
-		if asyncio.iscoroutine(read_data):
-			read_data = await read_data
+		if asyncio_iscoroutine(read_data):
+			raise Exception("Synchronous request used with async server")
 		self.contentRead += to_read
+		return read_data
+
+	def _load_post( self, to_read, read_data, writeData ):
 		assert len(read_data) == to_read, "Request was cut, read {0:d} out of {1:d} bytes".format(len(read_data), to_read)
 		# NOTE: This  read bytes
 		if writeData: self.request._data.write(read_data)
@@ -1419,6 +1407,7 @@ class Response:
 		headers = self._normalizeHeaders(self.headers)
 		startResponse(status, headers)
 		encode = ensureBytes if IS_PYTHON3 else ensureString
+		print("CONTENT", self.content)
 		# If content is a generator we return it as-is
 		if type(self.content) == types.GeneratorType:
 			# NOTE: We really don't want to wrap the generator in a try/except

@@ -554,10 +554,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		self._state = self.PROCESSING
 		try:
 			data = next(self._result)
-			if isinstance(data, core.RendezVous):
-				self._rendezvous = data
-				self._state = self.WAITING
-			elif data:
+			if data:
 				self._writeData(core.ensureBytes(data))
 			return self._state
 		except StopIteration:

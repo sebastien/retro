@@ -11,7 +11,7 @@
 
 import os, re, sys, time, functools, traceback, io, datetime, urllib
 from   retro.core import Request, Response, asJSON, json, unjson, NOTHING, urllib_parse, ensureUnicode, ensureSafeUnicode
-import asyncio
+from   .compat import *
 
 LOG_ENABLED       = True
 LOG_DISPATCHER_ON = False
@@ -299,6 +299,7 @@ class Dispatcher:
 	def __init__( self, app ):
 		"""Creates a new Dispatcher instance. The @_handlers attribute stores
 		couple of (regexp, http_handlers)."""
+		self._requestClass = Request
 		self._handlers    = []
 		self._app         = app
 		self.patterns     = {}
@@ -483,6 +484,9 @@ class Dispatcher:
 		else:
 			return [(0, fallback_handler, {}, None)]
 
+	def createRequest( self, environ, charset ):
+		return self._requestClass(environ, self.app().config("charset"))
+
 	def dispatch( self, environ, handlers=NOTHING, processor=(lambda r,h,v:h(r,**v)), request=None ):
 		"""Dispatches the given `environ` or `request` to the given handlers
 		previously obtained by calling `match`, returns a `Response` instance."""
@@ -491,7 +495,7 @@ class Dispatcher:
 		if handlers is NOTHING: handlers = self.match(environ)
 		if request == None:
 			assert environ, "Dispatcher.dispatch: request or environ is required"
-			request = Request(environ, self.app().config("charset"))
+			request = self.createRequest(environ, self.app().config("charset"))
 		for _, handler, variables, params_name in handlers:
 			can_handle = True
 			# NOTE: If there is a failure here (like AttributeError:
@@ -533,7 +537,8 @@ class Dispatcher:
 				return processor( request, handler, variables)
 		assert WebRuntimeError("No handler found")
 
-	async def _processWSGI( self, request, handler, variables, start_response ):
+	#async
+	def _processWSGI( self, request, handler, variables, start_response ):
 		# FIXME: Add a charset option
 		# We bind the component to the request
 		request.environ("retro.start_response", start_response)
@@ -541,9 +546,8 @@ class Dispatcher:
 		# TODO: ADD PROPER ERROR HANDLER
 		# The app is expected to produce a response object
 		response = handler(request, **variables)
-		if asyncio.iscoroutine(response):
-			response = await response
-		print ("RESPONSE" ,response)
+		if asyncio_iscoroutine(response):
+			return response
 		# try:
 		# 	response = handler(request, **variables)
 		# except Exception as e:
