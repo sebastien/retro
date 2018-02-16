@@ -310,7 +310,7 @@ onError=None ):
 		else:
 			import retro.aio
 			import asyncio
-			retro.aio.run(server_address[0], server_address[1])
+			retro.aio.run(app, server_address[0], server_address[1])
 			# TODO: Support runCondition
 	else:
 		raise Exception("Unknown retro setup method:" + method)

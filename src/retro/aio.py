@@ -345,20 +345,9 @@ class Server(object):
 #
 # -----------------------------------------------------------------------------
 
-
-class Main(retro.Component):
-
-	@retro.on(GET_POST_UPDATE_DELETE="{path:any}")
-	async def echo( self, request, path ):
-		body = await request.body()
-		sys.stdout.write(retro.ensureString(body))
-		sys.stdout.write("\n\n")
-		sys.stdout.flush()
-		return request.respond(body)
-
-def run( address, port ):
+def run( application, address, port ):
 	loop    = asyncio.get_event_loop()
-	server  = Server(retro.Application(Main()), address, port)
+	server  = Server(application, address, port)
 	coro    = asyncio.start_server(server.request, address, port, loop=loop)
 	server  = loop.run_until_complete(coro)
 	socket = server.sockets[0].getsockname()
