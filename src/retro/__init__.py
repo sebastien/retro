@@ -51,6 +51,7 @@ FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
 CGI  = True
 WSGI = "WSGI"
 STANDALONE = "standalone"
+AIO = "aio"
 
 try:
 	FLUP_FCGIServer = None
@@ -121,13 +122,6 @@ onError=None ):
 
 	This function is the 'main' for your web application, so this is basically
 	the last call you should have in your web application main."""
-	if async:
-		async = False
-		# FIXME: Thread is deprecated
-		import _thread
-		return _thread.start_new_thread(run,(),locals())
-	if not (withReactor is None):
-		retro.wsgi.USE_REACTOR = withReactor
 	if app == None:
 		app = Application(prefix=prefix,components=components)
 	else:
@@ -287,7 +281,7 @@ onError=None ):
 	#
 	# == STANDALONE (Retro WSGI server)
 	#
-	elif method == STANDALONE:
+	elif method in (STANDALONE, AIO):
 		try:
 			import reporter as logging
 		except:
@@ -298,19 +292,26 @@ onError=None ):
 		)
 		stack.fromRetro = True
 		stack.app       = lambda: app
-		try:
-			server          = retro.wsgi.WSGIServer(server_address, stack)
-			retro.wsgi.onError(onError)
-			socket = server.socket.getsockname()
-			print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))
-		except Exception as e:
-			logging.error("Retro: Cannot bind to {0}:{1}, error: {2}".format(server_address[0], server_address[1], e))
-			return -1
-		try:
-			while runCondition():
-				server.handle_request()
-		except KeyboardInterrupt:
-			print ("done")
+		if method == STANDALONE and not async:
+			try:
+				server          = retro.wsgi.WSGIServer(server_address, stack)
+				retro.wsgi.onError(onError)
+				socket = server.socket.getsockname()
+				print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))
+			except Exception as e:
+				logging.error("Retro: Cannot bind to {0}:{1}, error: {2}".format(server_address[0], server_address[1], e))
+				return -1
+			# TODO: Support runCondition
+			try:
+				while runCondition():
+					server.handle_request()
+			except KeyboardInterrupt:
+				print ("done")
+		else:
+			import retro.aio
+			import asyncio
+			retro.aio.run(server_address[0], server_address[1])
+			# TODO: Support runCondition
 	else:
 		raise Exception("Unknown retro setup method:" + method)
 
