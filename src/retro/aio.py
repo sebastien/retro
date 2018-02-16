@@ -9,7 +9,7 @@
 # Last mod  : 16-Feb-2018
 # -----------------------------------------------------------------------------
 
-import asyncio, collections, sys
+import asyncio, collections, sys, types
 import retro.core
 from   retro.contrib.localfiles import LocalFiles
 
@@ -218,7 +218,8 @@ class HTTPContext(object):
 	def toWSGI( self ):
 		"""Exports a WSGI data structure usable for this context."""
 		# SEE: https://www.python.org/dev/peps/pep-0333/
-		path = self.uri
+		path = self.uri or ""
+		# FIXME: path sometimes is None, we should investigte
 		i    = path.find("?")
 		if i == -1:
 			query = ""
@@ -294,12 +295,21 @@ class WSGIConnection(object):
 		env = context.toWSGI()
 		# We get a WSGI-enabled requet handler
 		wrt = lambda s, h: self._startResponse(writer, s, h)
-		res = await application(env, wrt)
-		r   = res.asWSGI(wrt)
-		for _ in r:
-			writer.write(self._ensureBytes(_))
+		res = application(env, wrt)
+		# NOTE: It's not clear why this returns different types
+		if isinstance(res, types.GeneratorType):
+			for _ in res:
+				writer.write(self._ensureBytes(_))
+				await writer.drain()
+		else:
+			if asyncio.iscoroutine(res):
+				res = await res
+			# NOTE: I'm not sure why we need to to asWSGI here
+			r   = res.asWSGI(wrt)
+			for _ in r:
+				writer.write(self._ensureBytes(_))
+				await writer.drain()
 			await writer.drain()
-		await writer.drain()
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
@@ -307,6 +317,7 @@ class WSGIConnection(object):
 		writer.close()
 
 	def _startResponse( self, writer, response_status, response_headers, exc_info=None ):
+		writer.write(b"HTTP/1.1 ")
 		writer.write(self._ensureBytes(response_status))
 		writer.write(b"\r\n")
 		for h,v in response_headers:
@@ -314,7 +325,6 @@ class WSGIConnection(object):
 			writer.write(b": ")
 			writer.write(self._ensureBytes(v))
 			writer.write(b"\r\n")
-		writer.write(b"\r\n")
 		writer.write(b"\r\n")
 
 	def _ensureBytes( self, value ):
@@ -337,7 +347,10 @@ class Server(object):
 
 	async def request( self, reader, writer ):
 		conn = WSGIConnection()
-		await conn.process(reader, writer, self.application, self)
+		try:
+			await conn.process(reader, writer, self.application, self)
+		except ConnectionResetError:
+			print ("Client closed connection")
 
 # -----------------------------------------------------------------------------
 #

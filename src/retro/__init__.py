@@ -10,8 +10,6 @@
 # -----------------------------------------------------------------------------
 
 import sys, os, socket
-import retro.wsgi
-from retro.wsgi import REACTOR, onShutdown, onError
 from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
 ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote
 from retro.web  import on, expose, predicate, when, restrict, cache, \
@@ -47,12 +45,13 @@ __pychecker__ = "unusednames=executionInfo,status"
 
 DEFAULT_PORT    = 8000
 DEFAULT_ADDRESS = "0.0.0.0"
-FLUP = FCGI = WSGIREF = SCGI = STANDALONE = None
-CGI  = True
-WSGI = "WSGI"
-STANDALONE = "standalone"
-AIO = "aio"
+FLUP            = FCGI         = WSGIREF = SCGI = STANDALONE = None
+CGI             = True
+WSGI            = "WSGI"
+STANDALONE      = "standalone"
+AIO             = "aio"
 
+# FIXME: We might want ot clean this
 try:
 	FLUP_FCGIServer = None
 	FLUP_SCGIServer = None
@@ -293,8 +292,9 @@ onError=None ):
 		stack.fromRetro = True
 		stack.app       = lambda: app
 		if method == STANDALONE and not async:
+			import retro.wsgi
 			try:
-				server          = retro.wsgi.WSGIServer(server_address, stack)
+				server   = retro.wsgi.WSGIServer(server_address, stack)
 				retro.wsgi.onError(onError)
 				socket = server.socket.getsockname()
 				print ("Retro embedded server listening on %s:%s" % ( socket[0], socket[1]))

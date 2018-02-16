@@ -265,11 +265,17 @@ class LocalFiles(Component):
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		if processor and not request.has("raw"):
 			if not multi_paths:
-				content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
-				return request.respond(content=content, contentType=content_type)
+				try:
+					content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
+					return request.respond(content=content, contentType=content_type)
+				except Exception as e:
+					return request.fail(status=500, content=str(e))
 			else:
-				content, content_type = processor(None, multi_paths, request)
-				return request.respond(content=content, contentType=content_type)
+				try:
+					content, content_type = processor(None, multi_paths, request)
+					return request.respond(content=content, contentType=content_type)
+				except Exception as e:
+					return request.fail(status=500, content=str(e))
 		elif request.has("raw"):
 			return request.respondFile(resolved_path, contentType="text/plain", lastModified=self._lastModified)
 		else:
