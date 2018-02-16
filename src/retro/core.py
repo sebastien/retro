@@ -14,6 +14,7 @@
 
 import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
 import gzip, io, threading, locale, collections, unicodedata
+from   .compat import *
 
 try:
 	import urllib.request
@@ -24,16 +25,6 @@ except ImportError:
 	import urllib as urllib_parse
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
-
-IS_PYTHON3 = sys.version_info[0] > 2
-
-if IS_PYTHON3:
-	# Python3 only defines str
-	unicode = str
-	long    = int
-	import asyncio
-else:
-	unicode = unicode
 
 NOTHING    = re
 MIME_TYPES = dict(
@@ -62,41 +53,14 @@ This module could be easily re-used in another application, as it is (almost)
 completely standalone and separated from Retro Web applications.
 """
 
-quote   = urllib_parse.quote
-unquote = urllib_parse.unquote
-
-def isString( t ):
-	return isinstance(t, unicode) or isinstance(t, str)
-
-def ensureString( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, str) else str(t, encoding)
-	else:
-		return t.encode("utf8") if isinstance (t, unicode) else str(t)
-
-def safeEnsureString( t,  encoding="utf8" ):
-	if IS_PYTHON3:
-		return ensureString(t, encoding)
-	else:
-		return t.encode("utf8", "ignore") if isinstance (t, unicode) else str(t)
-
-def ensureUnicode( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, str) else str(t, encoding)
-	else:
-		return t if isinstance(t, unicode) else str(t).decode(encoding)
-
-def ensureSafeUnicode( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, str) else str(t, encoding, "ignore")
-	else:
-		return t if isinstance(t, unicode) else str(t).decode(encoding, "ignore")
-
-def ensureBytes( t, encoding="utf8" ):
-	if IS_PYTHON3:
-		return t if isinstance(t, bytes) else bytes(t, encoding)
-	else:
-		return t
+quote             = urllib_parse.quote
+unquote           = urllib_parse.unquote
+isString          = is_string
+ensureString      = ensure_str
+ensureUnicode     = ensure_unicode
+ensureBytes       = ensure_bytes
+safeEnsureString  = ensure_str_safe
+ensureSafeUnicode = ensure_unicode_safe
 
 def normalizeHeader( h ):
 	return "-".join(_.capitalize() for _ in h.split("-"))
@@ -317,10 +281,8 @@ class FormData:
 			# the read stop somewhere within a boundary we'll stil be able
 			# to find it at the next iteration.
 			chunk           = file.read(read_size)
-			if asyncio.iscoroutineobj(chunk):
-				print ("CORO")
-			else:
-				print ("NOT CORO")
+			if asyncio_iscoroutine(chunk):
+				chunk = asyncio_await(chunk)
 			chunk_read_size = len(chunk)
 			chunk           = rest + chunk
 			# If state=="b" it means we've found a boundary at the previous iteration
@@ -711,7 +673,8 @@ class Request:
 		else:
 			return session.value(name, value)
 
-	async def data( self, data=NOTHING, asFile=False, partial=False ):
+	@asyncio_coroutine
+	def data( self, data=NOTHING, asFile=False, partial=False ):
 		"""Gets/sets the request data as a file object. Note that when using
 		the `asFile` parameter, you should be sure to not do any concurrent access
 		to the data as a file, as you'll use the same file descriptor.
@@ -720,8 +683,8 @@ class Request:
 			if not partial:
 				while not self.isLoaded():
 					load = self.load()
-					if asyncio.iscoroutine(load):
-						await load
+					if asyncio_iscoroutine(load):
+						load = asyncio_await(load)
 			if asFile:
 				return self._data
 			else:
@@ -756,7 +719,8 @@ class Request:
 		if self._bodyLoader: return self._bodyLoader.progress(inBytes)
 		else: return 0
 
-	async def load( self, size=None, decode=True ):
+	@asyncio_coroutine
+	def load( self, size=None, decode=True ):
 		"""Loads `size` more bytes (all by default) from the request
 		body.
 
@@ -769,8 +733,8 @@ class Request:
 		if not self._bodyLoader: self._bodyLoader = RequestBodyLoader(self)
 		if not self._bodyLoader.isComplete():
 			is_loaded = self._bodyLoader.load(size)
-			if asyncio.iscoroutine(is_loaded):
-				is_loaded = await is_loaded
+			if asyncio_iscoroutine(is_loaded):
+				is_loaded = asyncio_await(is_loaded)
 		# We make sure the body is decoded if we have decode and the request is loaded
 		if self._bodyLoader.isComplete() and decode:
 			# If the the body loader is complete, we'll now proceed
@@ -1197,7 +1161,8 @@ class RequestBodyLoader:
 		else:
 			return 0
 
-	async def load( self, size=None, writeData=True ):
+	@asyncio_coroutine
+	def load( self, size=None, writeData=True ):
 		"""Loads the data in chunks. Return the loaded and writes it to the
 		request data and returns it."""
 		# If the load is complete, we don't have anything to do
@@ -1205,8 +1170,8 @@ class RequestBodyLoader:
 		if size == None: size = self.contentLength
 		to_read   = min(self.remainingBytes(), size)
 		read_data = self.request._environ['wsgi.input'].read(to_read)
-		if asyncio.iscoroutine(read_data):
-			read_data = await read_data
+		if asyncio_iscoroutine(read_data):
+			read_data = asyncio_await(read_data)
 		self.contentRead += to_read
 		assert len(read_data) == to_read, "Request was cut, read {0:d} out of {1:d} bytes".format(len(read_data), to_read)
 		# NOTE: This  read bytes
