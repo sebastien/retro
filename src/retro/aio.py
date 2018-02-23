@@ -9,9 +9,14 @@
 # Last mod  : 16-Feb-2018
 # -----------------------------------------------------------------------------
 
-import asyncio, collections, sys, types
+import asyncio, collections, sys, types, time
 import retro.core
 from   retro.contrib.localfiles import LocalFiles
+try:
+	import reporter
+	logging = reporter.bind("retro-aio")
+except ImportError as e:
+	import logging
 
 """
 A simple AsyncIO-based HTTP Web Server with an WSGI interface that
@@ -143,6 +148,7 @@ class HTTPContext(object):
 			step = self.parseLine(step, data[o:i])
 			# And we increase the offset
 			o = i + 2
+		logging.info("[{0}] {1}".format(self.method, self.uri))
 		# We update the state
 		self.step = step
 		return o
@@ -279,6 +285,7 @@ class WSGIConnection(object):
 		# This parsers the input stream in chunks
 		n        = self.BUFFER_SIZE
 		ends     = False
+		started  = time.time()
 		# We only parse the REQUEST line and the HEADERS. We'll stop
 		# once we reach the body. This means that we won't be reading
 		# huge requests large away, but let the client decide how to
@@ -310,6 +317,7 @@ class WSGIConnection(object):
 				writer.write(self._ensureBytes(_))
 				await writer.drain()
 			await writer.drain()
+		logging.info(" {0}{1:60s} [{2:0.3f}ms]".format(" " * len(context.method), context.uri, time.time() - started))
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
@@ -364,7 +372,7 @@ def run( application, address, port ):
 	coro    = asyncio.start_server(server.request, address, port, loop=loop)
 	server  = loop.run_until_complete(coro)
 	socket = server.sockets[0].getsockname()
-	print ("Retro asyncio server listening on %s:%s" % ( socket[0], socket[1] ))
+	logging.info("Retro asyncio server listening on %s:%s" % ( socket[0], socket[1] ))
 	try:
 		loop.run_forever()
 	except KeyboardInterrupt:
@@ -373,7 +381,7 @@ def run( application, address, port ):
 	server.close()
 	loop.run_until_complete(server.wait_closed())
 	loop.close()
-	print ("done")
+	logging.trace("done")
 
 # -----------------------------------------------------------------------------
 #
