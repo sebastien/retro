@@ -96,6 +96,7 @@ class HTTPContext(object):
 	def __init__( self, address, port ):
 		self.address = address
 		self.port     = port
+		self.started  = time.time()
 		self.reset()
 
 	def reset( self ):
@@ -107,6 +108,7 @@ class HTTPContext(object):
 		self.rest     = None
 		self.status   = None
 		self._stream  = None
+		self.started  = time.time()
 
 	def input( self, stream ):
 		self._stream = stream
@@ -286,12 +288,17 @@ class WSGIConnection(object):
 
 	BUFFER_SIZE = 1024 * 128
 
+	def __init__( self ):
+		# NOTE: We should probably have only one context
+		self.context = None
+
 	async def process( self, reader, writer, application, server ):
 		# We extract meta-information abouth the connection
 		addr    = writer.get_extra_info("peername")
 		# We creates an HTTPContext that represents the incoming
 		# request.
 		context  = HTTPContext(server.address, server.port)
+		self.context = context
 		# This parsers the input stream in chunks
 		n        = self.BUFFER_SIZE
 		ends     = False
@@ -338,7 +345,8 @@ class WSGIConnection(object):
 			color = reporter.COLOR_YELLOW
 		elif context.status >= 500:
 			color = reporter.COLOR_RED
-		logging.trace(" {0}  {1:60s} [{2:0.3f}ms]".format(" " * len(context.method), context.uri, time.time() - started), color=color)
+		# TODO: Add color visualization of the response  time
+		logging.trace(" {0}  {1:60s} [{2:0.3f}s]".format(" " * len(context.method), context.uri, time.time() - started), color=color)
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
@@ -370,7 +378,7 @@ class WSGIConnection(object):
 # -----------------------------------------------------------------------------
 
 class Server(object):
-	"""Smiple asynchronous server"""
+	"""Simple asynchronous server"""
 
 	def __init__( self, application, address="127.0.0.1", port=8000 ):
 		self.application = application
@@ -383,7 +391,7 @@ class Server(object):
 		try:
 			await conn.process(reader, writer, self.application, self)
 		except ConnectionResetError:
-			print ("Client closed connection")
+			logging.info("[{0}] {1} connection closed after {2:0.3f}s".format(conn.context.method, conn.context.uri, time.time() - conn.context.started, color=reporter.COLOR_YELLOW))
 
 # -----------------------------------------------------------------------------
 #
