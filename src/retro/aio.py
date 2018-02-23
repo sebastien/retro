@@ -105,6 +105,7 @@ class HTTPContext(object):
 		self.headers  = collections.OrderedDict()
 		self.step     = 0
 		self.rest     = None
+		self.status   = None
 		self._stream  = None
 
 	def input( self, stream ):
@@ -148,7 +149,16 @@ class HTTPContext(object):
 			step = self.parseLine(step, data[o:i])
 			# And we increase the offset
 			o = i + 2
-		logging.info("[{0}] {1}".format(self.method, self.uri))
+		color = reporter.COLOR_BLUE_BOLD
+		if self.method == "HEAD":
+			color = reporter.COLOR_BLUE
+		elif self.method == "POST":
+			color = reporter.COLOR_GREEN_BOLD
+		elif self.method == "UPDATE":
+			color = reporter.COLOR_GREEN
+		elif self.method == "DELETE":
+			color = reporter.COLOR_YELLOW
+		logging.info("[{0}] {1}".format(self.method, self.uri), color=color)
 		# We update the state
 		self.step = step
 		return o
@@ -301,7 +311,7 @@ class WSGIConnection(object):
 		# We create a WSGI environment
 		env = context.toWSGI()
 		# We get a WSGI-enabled requet handler
-		wrt = lambda s, h: self._startResponse(writer, s, h)
+		wrt = lambda s, h: self._startResponse(writer, context, s, h)
 		res = application(env, wrt)
 		# NOTE: It's not clear why this returns different types
 		if isinstance(res, types.GeneratorType):
@@ -317,17 +327,32 @@ class WSGIConnection(object):
 				writer.write(self._ensureBytes(_))
 				await writer.drain()
 			await writer.drain()
-		logging.info(" {0}{1:60s} [{2:0.3f}ms]".format(" " * len(context.method), context.uri, time.time() - started))
+		color = reporter.COLOR_DARK_GRAY
+		if context.status >= 100 and context.status < 200:
+			color = reporter.COLOR_LIGHT_GRAY
+		elif context.status >= 200 and context.status < 300:
+			color = reporter.COLOR_GREEN
+		elif context.status >= 300 and context.status < 400:
+			color = reporter.COLOR_CYAN
+		elif context.status >= 400 and context.status < 500:
+			color = reporter.COLOR_YELLOW
+		elif context.status >= 500:
+			color = reporter.COLOR_RED
+		logging.trace(" {0}  {1:60s} [{2:0.3f}ms]".format(" " * len(context.method), context.uri, time.time() - started), color=color)
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
 		# how to interface with the writing.
 		writer.close()
 
-	def _startResponse( self, writer, response_status, response_headers, exc_info=None ):
+	def _startResponse( self, writer, context, response_status, response_headers, exc_info=None ):
 		writer.write(b"HTTP/1.1 ")
 		writer.write(self._ensureBytes(response_status))
 		writer.write(b"\r\n")
+		try:
+			context.status = int(response_status.split(" ", 1)[0])
+		except:
+			context.status = 0
 		for h,v in response_headers:
 			writer.write(self._ensureBytes(h))
 			writer.write(b": ")
