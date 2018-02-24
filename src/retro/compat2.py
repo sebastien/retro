@@ -6,6 +6,9 @@ def asyncio_await(value):
 def asyncio_iscoroutine(value):
 	return False
 
+def asyncio_isgenerator(value):
+	return False
+
 def asyncio_coroutine(value):
 	return value
 
@@ -25,5 +28,6 @@ def ensure_bytes( t, encoding=ENCODING ):
 
 def is_string( t ):
 	return isinstance(t, unicode) or isinstance(t, str)
+
 
 # EOF

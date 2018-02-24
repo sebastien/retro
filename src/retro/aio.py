@@ -331,8 +331,13 @@ class WSGIConnection(object):
 			# NOTE: I'm not sure why we need to to asWSGI here
 			r   = res.asWSGI(wrt)
 			for _ in r:
-				writer.write(self._ensureBytes(_))
-				await writer.drain()
+				if isinstance(_, types.AsyncGeneratorType):
+					async for v in _:
+						writer.write(self._ensureBytes(v))
+						await writer.drain()
+				else:
+					writer.write(self._ensureBytes(_))
+					await writer.drain()
 			await writer.drain()
 		color = reporter.COLOR_DARK_GRAY
 		if context.status >= 100 and context.status < 200:

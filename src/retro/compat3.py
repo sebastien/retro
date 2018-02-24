@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, types
 
 ENCODING = "UTF-8"
 
@@ -7,6 +7,9 @@ async def asyncio_await(value):
 
 asyncio_coroutine   = asyncio.coroutine
 asyncio_iscoroutine = asyncio.iscoroutine
+
+def asyncio_isgenerator(value):
+	return isinstance(value, types.AsyncGeneratorType)
 
 unicode = str
 long    = int

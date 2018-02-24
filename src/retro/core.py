@@ -1415,6 +1415,8 @@ class Response:
 			# good error handlers.
 			for c in self.content:
 				yield encode(c)
+		elif asyncio_isgenerator(self.content):
+			yield self.content
 		# Otherwise we return a single-shot generator
 		else:
 			yield encode(self.content)
