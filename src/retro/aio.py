@@ -27,6 +27,29 @@ servers. The implementation only supports HTTP/1.1 and is designed to be
 relatively simple.
 """
 
+
+# -----------------------------------------------------------------------------
+#
+# HELPERS
+#
+# -----------------------------------------------------------------------------
+
+RESET = "\033[0m"
+GRADIENT = (
+	59,  66, 108, 151, 194,
+	231, 230, 229, 228, 227, 226,
+	220, 214, 208, 202, 160, 196
+)
+
+def lerp(a, b, k):
+	return a + (b - a) * k
+
+def normal(color):
+	return "\033[38;5;%sm" % (color)
+
+def bold  (color):
+	return "\033[1;38;5;%sm" % (color)
+
 # -----------------------------------------------------------------------------
 #
 # ASYNC REQUEST
@@ -93,10 +116,11 @@ class HTTPContext(object):
 	"""Parses an HTTP request and headers from a stream through the `feed()`
 	method."""
 
-	def __init__( self, address, port ):
+	def __init__( self, address, port, stats ):
 		self.address = address
 		self.port     = port
 		self.started  = time.time()
+		self.stats    = stats
 		self.reset()
 
 	def reset( self ):
@@ -151,16 +175,6 @@ class HTTPContext(object):
 			step = self.parseLine(step, data[o:i])
 			# And we increase the offset
 			o = i + 2
-		color = reporter.COLOR_BLUE_BOLD
-		if self.method == "HEAD":
-			color = reporter.COLOR_BLUE
-		elif self.method == "POST":
-			color = reporter.COLOR_GREEN_BOLD
-		elif self.method == "UPDATE":
-			color = reporter.COLOR_GREEN
-		elif self.method == "DELETE":
-			color = reporter.COLOR_YELLOW
-		logging.info("[{0}] {1}".format(self.method, self.uri), color=color)
 		# We update the state
 		self.step = step
 		return o
@@ -297,7 +311,7 @@ class WSGIConnection(object):
 		addr    = writer.get_extra_info("peername")
 		# We creates an HTTPContext that represents the incoming
 		# request.
-		context  = HTTPContext(server.address, server.port)
+		context  = HTTPContext(server.address, server.port, server.stats)
 		self.context = context
 		# This parsers the input stream in chunks
 		n        = self.BUFFER_SIZE
@@ -320,11 +334,16 @@ class WSGIConnection(object):
 		# We get a WSGI-enabled requet handler
 		wrt = lambda s, h: self._startResponse(writer, context, s, h)
 		res = application(env, wrt)
+		# Here we don't write bodies of HEAD requests, as some browsers
+		# simply won't read the body.
+		write_body = not (context.method == "HEAD")
 		# NOTE: It's not clear why this returns different types
 		if isinstance(res, types.GeneratorType):
 			for _ in res:
-				writer.write(self._ensureBytes(_))
-				await writer.drain()
+				data = self._ensureBytes(_)
+				# written += len(data)
+				if write_body:
+					writer.write(data)
 		else:
 			if asyncio.iscoroutine(res):
 				res = await res
@@ -333,25 +352,17 @@ class WSGIConnection(object):
 			for _ in r:
 				if isinstance(_, types.AsyncGeneratorType):
 					async for v in _:
-						writer.write(self._ensureBytes(v))
-						await writer.drain()
+						data = self._ensureBytes(v)
+						# written += len(data)
+						if write_body:
+							writer.write(data)
 				else:
-					writer.write(self._ensureBytes(_))
-					await writer.drain()
+					data = self._ensureBytes(_)
+					# written += len(data)
+					if write_body:
+						writer.write(data)
+		if context.method != "HEAD":
 			await writer.drain()
-		color = reporter.COLOR_DARK_GRAY
-		if context.status >= 100 and context.status < 200:
-			color = reporter.COLOR_LIGHT_GRAY
-		elif context.status >= 200 and context.status < 300:
-			color = reporter.COLOR_GREEN
-		elif context.status >= 300 and context.status < 400:
-			color = reporter.COLOR_CYAN
-		elif context.status >= 400 and context.status < 500:
-			color = reporter.COLOR_YELLOW
-		elif context.status >= 500:
-			color = reporter.COLOR_RED
-		# TODO: Add color visualization of the response  time
-		logging.trace(" {0}  {1:60s} [{2:0.3f}s]".format(" " * len(context.method), context.uri, time.time() - started), color=color)
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
@@ -372,6 +383,39 @@ class WSGIConnection(object):
 			writer.write(self._ensureBytes(v))
 			writer.write(b"\r\n")
 		writer.write(b"\r\n")
+		self._logResponse(context)
+
+	def _logResponse( self, context ):
+		method = context.method
+		uri    = context.uri
+		status = context.status
+		elapsed = time.time() - context.started
+		stats   = context.stats
+		stats["min.time"] = min(elapsed, stats["min.time"] )
+		stats["max.time"] = max(elapsed, stats["max.time"] )
+		tk = (1.0 * elapsed - stats["min.time"]) / stats["max.time"]
+		sk = min (1.0, (1.0 * status / 500.0))
+		ti = round(tk * (len(GRADIENT) - 1))
+		si = round(sk * (len(GRADIENT) - 1))
+		uri_color = RESET
+		if method == "HEAD":
+			uri_color = normal(GRADIENT[0])
+		elif status > 400:
+			uri_color = normal(GRADIENT[-1])
+		logging.info("{reset}{method_start}{method:7s}{method_end} {status_start}{status:3d}{status_end} {uri_start}{uri:70s}{reset} {elapsed_start}[{elapsed:2.3f}s]{elapsed_end}{reset}".format(
+			method        = method,
+			method_start  = (bold if method in ("GET", "POST", "DELETE") else normal)(255),
+			method_end    = RESET,
+			status        = status,
+			status_start  = normal(GRADIENT[si]),
+			status_end    = RESET,
+			uri           = uri[:69] + "…" if len(uri) > 70 else uri,
+			uri_start     = uri_color,
+			elapsed       = elapsed,
+			elapsed_start = normal(GRADIENT[ti]),
+			elapsed_end   = RESET,
+			reset         = RESET,
+		))
 
 	def _ensureBytes( self, value ):
 		return value.encode("utf-8") if not isinstance(value,bytes) else value
@@ -390,6 +434,10 @@ class Server(object):
 		self.application._dispatcher._requestClass = AsyncRequest
 		self.address = address
 		self.port = port
+		self.stats = {
+			"min.time" : 99999999,
+			"max.time" : 0,
+		}
 
 	async def request( self, reader, writer ):
 		conn = WSGIConnection()
