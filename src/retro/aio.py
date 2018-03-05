@@ -307,6 +307,7 @@ class WSGIConnection(object):
 		self.context = None
 
 	async def process( self, reader, writer, application, server ):
+		# FIXME: It seems that sometimes the response status is not properly communicated
 		# We extract meta-information abouth the connection
 		addr    = writer.get_extra_info("peername")
 		# We creates an HTTPContext that represents the incoming
@@ -362,7 +363,12 @@ class WSGIConnection(object):
 					if write_body:
 						writer.write(data)
 		if context.method != "HEAD":
+			await asyncio.sleep(0)
 			await writer.drain()
+		# We need to let some time for the schedule to do other stuff, this
+		# should prevent the `socket.send() raised exception` errors.
+		# SEE: https://github.com/aaugustin/websockets/issues/84
+		await asyncio.sleep(0)
 		# TODO: The tricky part here is how to interface with WSGI so that
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
@@ -386,13 +392,13 @@ class WSGIConnection(object):
 		self._logResponse(context)
 
 	def _logResponse( self, context ):
-		method = context.method
-		uri    = context.uri
-		status = context.status
+		method = context.method or "?"
+		uri    = context.uri or "?"
+		status = context.status or 600
 		elapsed = time.time() - context.started
-		stats   = context.stats
-		stats["min.time"] = min(elapsed, stats["min.time"] )
-		stats["max.time"] = max(elapsed, stats["max.time"] )
+		stats   = context.stats or {}
+		stats["min.time"] = min(elapsed, stats["min.time"] or elapsed)
+		stats["max.time"] = max(elapsed, stats["max.time"] or elapsed)
 		tk = (1.0 * elapsed - stats["min.time"]) / stats["max.time"]
 		sk = min (1.0, (1.0 * status / 500.0))
 		ti = round(tk * (len(GRADIENT) - 1))
@@ -409,7 +415,7 @@ class WSGIConnection(object):
 			status        = status,
 			status_start  = normal(GRADIENT[si]),
 			status_end    = RESET,
-			uri           = uri[:69] + "…" if len(uri) > 70 else uri,
+			uri           = uri[:69] + "…" if uri and len(uri) > 70 else uri,
 			uri_start     = uri_color,
 			elapsed       = elapsed,
 			elapsed_start = normal(GRADIENT[ti]),
@@ -444,7 +450,7 @@ class Server(object):
 		try:
 			await conn.process(reader, writer, self.application, self)
 		except ConnectionResetError:
-			logging.info("[{0}] {1} connection closed after {2:0.3f}s".format(conn.context.method, conn.context.uri, time.time() - conn.context.started, color=reporter.COLOR_YELLOW))
+			logging.info("{0:7s} {1} connection closed after {2:0.3f}s".format(conn.context.method or "?", conn.context.uri, time.time() - conn.context.started, color=reporter.COLOR_YELLOW))
 
 # -----------------------------------------------------------------------------
 #
