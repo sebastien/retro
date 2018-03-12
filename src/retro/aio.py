@@ -408,7 +408,7 @@ class WSGIConnection(object):
 			uri_color = normal(GRADIENT[0])
 		elif status > 400:
 			uri_color = normal(GRADIENT[-1])
-		logging.info("{reset}{method_start}{method:7s}{method_end} {status_start}{status:3d}{status_end} {uri_start}{uri:70s}{reset} {elapsed_start}[{elapsed:2.3f}s]{elapsed_end}{reset}".format(
+		logging.info("{reset}{method_start}{method:7s}{method_end} {uri_start}{uri:70s}{reset} {status_start}[{status:3d}]{status_end} {elapsed_start}in {elapsed:2.3f}s{elapsed_end}{reset}".format(
 			method        = method,
 			method_start  = (bold if method in ("GET", "POST", "DELETE") else normal)(255),
 			method_end    = RESET,
@@ -464,7 +464,12 @@ def run( application, address, port ):
 	coro    = asyncio.start_server(server.request, address, port, loop=loop)
 	server  = loop.run_until_complete(coro)
 	socket = server.sockets[0].getsockname()
-	logging.info("Retro asyncio server listening on %s:%s" % ( socket[0], socket[1] ))
+	logging.info("Retro {font_server}asyncio{reset} server listening on {font_url}http://{host}:{port}{reset}".format(
+		host=socket[0], port=socket[1],
+		font_server=bold(255),
+		font_url=normal(51),
+		reset=RESET,
+	))
 	try:
 		loop.run_forever()
 	except KeyboardInterrupt:
