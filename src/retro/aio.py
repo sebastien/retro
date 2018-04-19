@@ -338,11 +338,12 @@ class WSGIConnection(object):
 		# Here we don't write bodies of HEAD requests, as some browsers
 		# simply won't read the body.
 		write_body = not (context.method == "HEAD")
+		written    = 0
 		# NOTE: It's not clear why this returns different types
 		if isinstance(res, types.GeneratorType):
 			for _ in res:
 				data = self._ensureBytes(_)
-				# written += len(data)
+				written += len(data)
 				if write_body:
 					writer.write(data)
 		else:
@@ -354,17 +355,22 @@ class WSGIConnection(object):
 				if isinstance(_, types.AsyncGeneratorType):
 					async for v in _:
 						data = self._ensureBytes(v)
-						# written += len(data)
+						written += len(data)
 						if write_body:
 							writer.write(data)
 				else:
 					data = self._ensureBytes(_)
-					# written += len(data)
+					written += len(data)
 					if write_body:
 						writer.write(data)
 		if context.method != "HEAD":
 			await asyncio.sleep(0)
-			await writer.drain()
+			if written:
+				try:
+					await writer.drain()
+				except BrokenPipeError as e:
+					# This happens when the client closes the connection
+					pass
 		# We need to let some time for the schedule to do other stuff, this
 		# should prevent the `socket.send() raised exception` errors.
 		# SEE: https://github.com/aaugustin/websockets/issues/84
@@ -451,6 +457,18 @@ class Server(object):
 			await conn.process(reader, writer, self.application, self)
 		except ConnectionResetError:
 			logging.info("{0:7s} {1} connection closed after {2:0.3f}s".format(conn.context.method or "?", conn.context.uri, time.time() - conn.context.started, color=reporter.COLOR_YELLOW))
+		# Experimental: We always try to close the reader and writer
+		# This might be necessary for Chrome, as sometimes the webserver
+		# will block with Chrome. If that does not fix it, then
+		# we should remove it.
+		try:
+			reader.close()
+		except Exception:
+			pass
+		try:
+			writer.close()
+		except Exception:
+			pass
 
 # -----------------------------------------------------------------------------
 #
