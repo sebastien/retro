@@ -735,9 +735,13 @@ class Request:
 		the data
 		"""
 		# We make sure that the body loader exists
-		self._load_prepare()
-		self._load_load(size)
-		self._load_process(size, decode)
+		if self._bodyLoader and self._bodyLoader.isComplete():
+			return self
+		else:
+			self._load_prepare()
+			self._load_load(size)
+			self._load_process(size, decode)
+			return self
 
 	def _load_prepare( self ):
 		if not self._bodyLoader:

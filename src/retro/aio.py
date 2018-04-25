@@ -60,6 +60,34 @@ class AsyncRequest(retro.core.Request):
 	"""A specialized retro Request object that uses coroutines to
 	load the data."""
 
+	def createRequestBodyLoader( self, request, complete=False ):
+		return AsyncRequestBodyLoader(request, complete)
+
+	# =========================================================================
+	# LOADING
+	# =========================================================================
+
+	async def load( self, size=None, decode=True ):
+		# We make sure that the body loader exists
+		if self.isLoaded():
+			return self
+		else:
+			self._load_prepare()
+			await self._load_load(size)
+			self._load_process(size, decode)
+			assert (self.isLoaded())
+		return self
+
+	async def _load_load( self, size):
+		if not self._bodyLoader:
+			self._bodyLoader = AsyncRequestBodyLoader(self)
+		if not self._bodyLoader.isComplete():
+			is_loaded = await self._bodyLoader.load(size)
+
+	# =========================================================================
+	# DATA LOADING & PROCESSING
+	# =========================================================================
+
 	async def data( self, data=retro.core.NOTHING, asFile=False, partial=False ):
 		await self._data_load(data, partial)
 		return self._data_process(data, asFile, partial)
@@ -68,21 +96,6 @@ class AsyncRequest(retro.core.Request):
 		if data == retro.core.NOTHING and not partial:
 			while not self.isLoaded():
 				await self.load()
-
-	async def load( self, size=None, decode=True ):
-		# We make sure that the body loader exists
-		self._load_prepare()
-		await self._load_load(size)
-		self._load_process(size, decode)
-
-	async def _load_load( self, size):
-		if not self._bodyLoader:
-			self._bodyLoader = RequestBodyLoader(self)
-		if not self._bodyLoader.isComplete():
-			is_loaded = await self._bodyLoader.load(size)
-
-	def createRequestBodyLoader( self, request, complete=False ):
-		return AsyncRequestBodyLoader(request, complete)
 
 # -----------------------------------------------------------------------------
 #
@@ -97,12 +110,25 @@ class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
 	async def load( self, size=None, writeData=True ):
 		# If the load is complete, we don't have anything to do
 		to_read = self._load_prepare(size)
-		read_data = await self._load_load(to_read)
-		return self._load_post(to_read, read_data, writeData)
+		read_data  = None
+		iteration  = 0
+		# TODO: We might want to add a timeout
+		while self.contentRead < to_read:
+			d            = await self._load_load(to_read - self.contentRead)
+			read_data    = d if iteration == 0 else read_data + d
+			iteration   += 1
+			# NOTE: We stream the data here
+			if writeData:
+				self.request._data.write(d)
+		# NOTE: We don't call self._load_post like in the sync version, because
+		# we've been streaming theresult
+		assert self.contentRead == to_read, "Request was cut, read {0:d} out of {1:d} bytes".format(read_count, to_read)
+		return read_data
 
 	async def _load_load( self, to_read ):
 		read_data = await self.request._environ['wsgi.input'].read(to_read)
-		self.contentRead += to_read
+		read_count = len(read_data)
+		self.contentRead += read_count
 		return read_data
 
 # -----------------------------------------------------------------------------
