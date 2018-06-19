@@ -382,13 +382,19 @@ class WSGIConnection(object):
 					async for v in _:
 						data = self._ensureBytes(v)
 						written += len(data)
+						if writer._transport.is_closing():
+							break
 						if write_body:
 							writer.write(data)
 				else:
 					data = self._ensureBytes(_)
 					written += len(data)
+					if writer._transport.is_closing():
+						break
 					if write_body:
 						writer.write(data)
+				if writer._transport.is_closing():
+					break
 
 		# We need to let some time for the schedule to do other stuff, this
 		# should prevent the `socket.send() raised exception` errors.
@@ -398,8 +404,13 @@ class WSGIConnection(object):
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
 		# how to interface with the writing.
-		writer.write_eof()
-		await writer.drain()
+		# NOTE: When the client has closed already
+		#   File "/usr/lib64/python3.6/asyncio/selector_events.py", line 807, in write_eof
+		# 	self._sock.shutdown(socket.SHUT_WR)
+		# AttributeError: 'NoneType' object has no attribute 'shutdown'
+		if writer._transport and not writer._transport.is_closing():
+			writer.write_eof()
+			await writer.drain()
 		writer.close()
 
 	def _startResponse( self, writer, context, response_status, response_headers, exc_info=None ):
