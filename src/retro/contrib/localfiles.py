@@ -264,22 +264,25 @@ class LocalFiles(Component):
 			else:
 				return request.respond("Component does not allows directory listing" % (resolved_path), status=403)
 		if processor and not request.has("raw"):
-			if not multi_paths:
-				try:
-					content, content_type = processor(self.getContent(resolved_path), resolved_path, request)
-					return request.respond(content=content, contentType=content_type)
-				except Exception as e:
-					return request.fail(status=500, content=str(e))
-			else:
-				try:
-					content, content_type = processor(None, multi_paths, request)
-					return request.respond(content=content, contentType=content_type)
-				except Exception as e:
-					return request.fail(status=500, content=str(e))
+			return self._respondWithProcessor( request, processor, resolved_path, multi_paths  )
 		elif request.has("raw"):
 			return request.respondFile(resolved_path, contentType="text/plain", lastModified=self._lastModified)
 		else:
 			return request.respondFile(resolved_path, lastModified=self._lastModified)
+
+	def _respondWithProcessor( self, request, processor, resolvedPath=None, multiPaths=None):
+		if not multiPaths:
+			try:
+				content, content_type = processor(self.getContent(resolvedPath), resolvedPath, request)
+				return request.respond(content=content, contentType=content_type)
+			except Exception as e:
+				return request.fail(status=500, content=str(e))
+		else:
+			try:
+				content, content_type = processor(None, multiPaths, request)
+				return request.respond(content=content, contentType=content_type)
+			except Exception as e:
+				return request.fail(status=500, content=str(e))
 
 	@on(PUT_PATCH="/{path:any}")
 	def write( self, request, path ):

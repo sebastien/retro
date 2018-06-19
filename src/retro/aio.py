@@ -389,14 +389,7 @@ class WSGIConnection(object):
 					written += len(data)
 					if write_body:
 						writer.write(data)
-		if context.method != "HEAD":
-			await asyncio.sleep(0)
-			if written:
-				try:
-					await writer.drain()
-				except BrokenPipeError as e:
-					# This happens when the client closes the connection
-					pass
+
 		# We need to let some time for the schedule to do other stuff, this
 		# should prevent the `socket.send() raised exception` errors.
 		# SEE: https://github.com/aaugustin/websockets/issues/84
@@ -405,6 +398,8 @@ class WSGIConnection(object):
 		# we iterate over the different steps (using await so that we have
 		# proper streaming if the response is an iterator). And also
 		# how to interface with the writing.
+		writer.write_eof()
+		await writer.drain()
 		writer.close()
 
 	def _startResponse( self, writer, context, response_status, response_headers, exc_info=None ):
@@ -483,18 +478,6 @@ class Server(object):
 			await conn.process(reader, writer, self.application, self)
 		except ConnectionResetError:
 			logging.info("{0:7s} {1} connection closed after {2:0.3f}s".format(conn.context.method or "?", conn.context.uri, time.time() - conn.context.started, color=reporter.COLOR_YELLOW))
-		# Experimental: We always try to close the reader and writer
-		# This might be necessary for Chrome, as sometimes the webserver
-		# will block with Chrome. If that does not fix it, then
-		# we should remove it.
-		try:
-			reader.close()
-		except Exception:
-			pass
-		try:
-			writer.close()
-		except Exception:
-			pass
 
 # -----------------------------------------------------------------------------
 #
