@@ -446,9 +446,14 @@ class WSGIConnection(object):
 			uri_color = normal(GRADIENT[0])
 		elif status > 400:
 			uri_color = normal(GRADIENT[-1])
+		status_color = 255
+		if status >= 500:
+			status_color = 196 # Red
+		elif status >= 400:
+			status_color = 202 # Orange
 		logging.info("{reset}{method_start}{method:7s}{method_end} {uri_start}{uri:70s}{reset} {status_start}[{status:3d}]{status_end} {elapsed_start}in {elapsed:2.3f}s{elapsed_end}{reset}".format(
 			method        = method,
-			method_start  = (bold if method in ("GET", "POST", "DELETE") else normal)(255),
+			method_start  = (bold if method in ("GET", "POST", "DELETE") else normal)(status_color),
 			method_end    = RESET,
 			status        = status,
 			status_start  = normal(GRADIENT[si]),
@@ -527,4 +532,4 @@ def run( application, address, port ):
 if __name__ == "__main__":
 	run()
 
-# EOF
+# EOF - vim: ts=4 sw=4 noet
