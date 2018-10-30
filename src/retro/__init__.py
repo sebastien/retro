@@ -112,7 +112,7 @@ def command( args, **extra ):
 	run(**extra)
 
 def run( app=None, components=(), method=STANDALONE, name="retro",
-root = ".", resetlog=False, address="", port=None, prefix='', async=False,
+root = ".", resetlog=False, address="", port=None, prefix='', asynchronous=False,
 sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda:True,
 onError=None ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
@@ -291,7 +291,7 @@ onError=None ):
 		)
 		stack.fromRetro = True
 		stack.app       = lambda: app
-		if method == STANDALONE and not async:
+		if method == STANDALONE and not asynchronous:
 			import retro.wsgi
 			try:
 				server   = retro.wsgi.WSGIServer(server_address, stack)
