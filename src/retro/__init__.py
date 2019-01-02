@@ -6,12 +6,12 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 14-Oct-2016
+# Last mod  : 02-Jan-2019
 # -----------------------------------------------------------------------------
 
 import sys, os, socket
 from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
-ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote
+ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote, Request
 from retro.web  import on, expose, predicate, when, restrict, cache, \
 Component, Application, \
 Dispatcher, Configuration, ValidationError, WebRuntimeError
@@ -240,7 +240,6 @@ onError=None ):
 				import bjoern
 			except ImportError:
 				raise ImportError("bjoern is required to run `bjoern` method")
-			if hasattr(logging, "install"): logging.install(level=logging.INFO)
 			bjoern.run(logged_application, host, port)
 		elif method == ROCKET:
 			try:
