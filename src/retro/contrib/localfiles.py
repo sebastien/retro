@@ -417,7 +417,6 @@ class LibraryServer(Component):
 	- JavaScript ('lib/js')
 	- Sugar      ('lib/sjs')
 	- Images     ('lib/images', of type 'png', 'gif', 'jpg', 'ico' and 'svg')
-	- Flash      ('lib/swf' and 'crossdomain.xml')
 	- PDF        ('lib/pdf')
 	- Fonts      ('lib/fonts')
 	- XSL        ('lib/xsl')
@@ -479,14 +478,6 @@ class LibraryServer(Component):
 				return self.cache.set(path, data)
 		return data
 
-	@on(GET="crossdomain.xml")
-	def getCrossDomain( self, request ):
-		return request.respond(
-			'<?xml version="1.0"?>'
-			+ '<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">'
-			+ '<cross-domain-policy><allow-access-from domain="*" /></cross-domain-policy>'
-		).cache(years=1)
-
 	@on(GET="lib/fonts/{path:rest}")
 	def getFonts( self, request, path ):
 		if path.endswith(".css"):
@@ -499,10 +490,6 @@ class LibraryServer(Component):
 		content_type = self.CONTENT_TYPES.get(image.rsplit(".",1)[-1])
 		# NOTE: I had to add the content type as not adding it blocks the system in production in some circumstances...
 		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg")), content_type).cache(seconds=self.cacheDuration)
-
-	@on(GET="lib/swf/{script:[^/]+\.swf}")
-	def getFlash( self, request, script ):
-		return request.respondFile(os.path.join(self.library, "swf", script)).cache(seconds=self.cacheDuration)
 
 	@on(GET="lib/pdf/{script:[^/]+\.pdf}")
 	def getPDF( self, request, script ):
