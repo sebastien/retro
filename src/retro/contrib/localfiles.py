@@ -478,44 +478,44 @@ class LibraryServer(Component):
 				return self.cache.set(path, data)
 		return data
 
-	@on(GET="lib/fonts/{path:rest}")
+	@on(GET_HEAD="lib/fonts/{path:rest}")
 	def getFonts( self, request, path ):
 		if path.endswith(".css"):
 			return self._getFromLibrary(request, "fonts", path, "text/css; charset=utf-8")
 		else:
 			return request.respondFile(os.path.join(self.library, "fonts", path)).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
+	@on(GET_HEAD="lib/images/{image:([\w\-_]+/)*[\w\-_]+(\.png|\.gif|\.jpg|\.ico|\.svg)*}")
 	def getImage( self, request, image ):
 		content_type = self.CONTENT_TYPES.get(image.rsplit(".",1)[-1])
 		# NOTE: I had to add the content type as not adding it blocks the system in production in some circumstances...
 		return request.respondFile(self._guessPath("images", image, extensions=(".png", ".gif", ".jpg", ".ico", ".svg")), content_type).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/pdf/{script:[^/]+\.pdf}")
+	@on(GET_HEAD="lib/pdf/{script:[^/]+\.pdf}")
 	def getPDF( self, request, script ):
 		return request.respondFile(os.path.join(self.library, "pdf", script)).cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/{script:[^/]+\.mf}")
+	@on(GET_HEAD="lib/{script:[^/]+\.mf}")
 	def getManifest( self, request, script ):
 		return request.respondFile(os.path.join(self.library,script), "text/cache-manifest").cache(seconds=self.cacheDuration)
 
-	@on(GET="lib/css/{paths:rest}")
+	@on(GET_HEAD="lib/css/{paths:rest}")
 	def getCSS( self, request, paths ):
 		return self._getFromLibrary(request, "css", paths, "text/css; charset=utf-8")
 
-	@on(GET="lib/ccss/{paths:rest}")
+	@on(GET_HEAD="lib/ccss/{paths:rest}")
 	def getCCSS( self, request, paths ):
 		return self._getFromLibrary(request, "ccss", paths, "text/css; charset=utf-8")
 
-	@on(GET="lib/pcss/{paths:rest}")
+	@on(GET_HEAD="lib/pcss/{paths:rest}")
 	def getPCSS( self, request, paths ):
 		return self._getFromLibrary(request, "pcss", paths, "text/css; charset=utf-8")
 
-	@on(GET="lib/xsl/{paths:rest}")
+	@on(GET_HEAD="lib/xsl/{paths:rest}")
 	def getXSL( self, request, paths ):
 		return self._getFromLibrary(request, "xsl", paths, "text/xsl; charset=utf-8")
 
-	@on(GET="lib/{prefix:(js|sjs)}/{paths:rest}")
+	@on(GET_HEAD="lib/{prefix:(js|sjs)}/{paths:rest}")
 	def getJavaScript( self, request, prefix, paths ):
 		return self._getFromLibrary(request, prefix, paths, "text/javascript; charset=utf-8")
 

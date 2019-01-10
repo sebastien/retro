@@ -354,6 +354,7 @@ class PageServer(Component):
 class WebApp( Application ):
 
 	CONFIG_EXT = ".json"
+	DEFAULT_DIRECTORES = ("cache.path", "data.path", "cache.api.path")
 
 	# This is the default configuration for the sphere chat, which is created if an
 	# existing configuration is not found.
@@ -372,12 +373,12 @@ class WebApp( Application ):
 				"prefix"              : E("PREFIX",             ""),
 				"version"             : E("VERSION",            VERSION),
 				"build"               : E("BUILD",              "development"),
+				"run.path"            : E("RUN_PATH",           os.path.abspath(os.getcwd())),
+				"log.path"            : E("LOG_PATH",           os.path.abspath("logs")),
 				"data.path"           : E("DATA_PATH",          os.path.abspath("data")),
 				"cache.path"          : E("CACHE_PATH",         os.path.abspath("cache")),
-				"log.path"            : E("LOG_PATH",           os.path.abspath("logs")),
 				"cache.api.path"      : E("CACHE_PATH",         os.path.abspath("cache")) + "/api",
-				"workqueue.path"      : E("CACHE_PATH",         os.path.abspath("data/_workqueue")),
-				"library.path"        : E("LIBRARY_PATH",       os.path.abspath("library")),
+				"library.path"        : E("LIBRARY_PATH",       os.path.abspath("lib")),
 				"library.python.path" : E("LIBRARY_PYTHON_PATH",os.path.abspath(".")),
 			}
 
@@ -400,7 +401,7 @@ class WebApp( Application ):
 				import ipdb
 			except ImportError as e:
 				pass
-		for d in (self.config("cache.path"), self.config("data.path"), self.config("cache.api.path")):
+		for d in (self.config(_) for _ in self.DEFAULT_DIRECTORES):
 			if not os.path.exists(d):
 				os.makedirs(d)
 		self.isProduction = is_production
@@ -419,7 +420,8 @@ class WebApp( Application ):
 			prefix          = self.config("base"),
 			cache           = LIBRARY_CACHE,
 			cacheAggregates = self.isProduction,
-			minify          = self.isProduction,
+			# NOTE: We don't use minification by default now
+			minify          = False,
 			compress        = self.isProduction,
 			cacheDuration   = self.isProduction and 60 * 60 or 0
 		)

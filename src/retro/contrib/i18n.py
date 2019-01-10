@@ -112,7 +112,7 @@ def localize(handler):
 	def retro_i18n_localize_wrapper(inst, request, lang=None, *args, **kwargs):
 		app = request.environ("retro.app")
 		# NOTE: This should be super optimized as it's called each time
-		if ENABLED and app.config("i18n.localize") is not False:
+		if ENABLED and app and app.config("i18n.localize") is not False:
 			prefix = app.config("base")
 			path   = request.path()
 			if path.startswith(prefix): path = path[len(prefix):]
