@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 07-Sep-2016
+# Last mod  : 14-Feb-2019
 # -----------------------------------------------------------------------------
 
 import re, os, stat, hashlib, threading,  pickle, time, functools, types
@@ -201,6 +201,7 @@ class MemoryCache(Cache):
 					break
 			for k in keys:
 				del self.data[k]
+
 # -----------------------------------------------------------------------------
 #
 # LRU CACHE
@@ -375,15 +376,17 @@ class TimeoutCache(Cache):
 class FileCache(Cache):
 	"""A simplistic filesystem-based cache"""
 
-	EXTENSION = ".cache"
-	EXPIRES   = 60 * 60
+	EXTENSION       = ".cache"
+	EXPIRES         = 60 * 60
 	MAX_KEY_LENGTH = 100
 
 	@staticmethod
-	def SHA1_KEY(_):return hashlib.sha1(_).hexdigest()
+	def SHA1_KEY(_):
+		return hashlib.sha1(bytes(_, "UTF8")).hexdigest()
 
 	@staticmethod
-	def MD5_KEY (_):return hashlib.md5(_).hexdigest()
+	def MD5_KEY (_):
+		return hashlib.md5(bytes(_, "UTF8")).hexdigest()
 
 	@classmethod
 	def NAME_KEY(self,key):
@@ -391,7 +394,7 @@ class FileCache(Cache):
 		name       = urlencode(dict(_=key))[2:]
 		name_len   = len(name)
 		if name_len >= max_length:
-			suffix = hashlib.md5(key).hexdigest()
+			suffix = hashlib.md5(bytes(key, "UTF8")).hexdigest()
 			name   = name[:max_length - (len(suffix) + 1)]
 			name  += "-" + suffix
 		if not (len(name) <= max_length):
@@ -400,7 +403,7 @@ class FileCache(Cache):
 		assert len(name) <= max_length, "Key is too long %d > %d, key=%s" % (len(name), max_length, repr(key))
 		return name
 
-	def __init__( self, path=None, serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None, createPath=True, extension=None):
+	def __init__( self, path=".cache", serializer=lambda fd,data:pickle.dump(data,fd), deserializer=pickle.load, keys=None, expires=None, createPath=True, extension=None):
 		Cache.__init__(self)
 		self.serializer   = serializer
 		self.deserializer = deserializer
@@ -439,6 +442,13 @@ class FileCache(Cache):
 		assert os.path.isdir(path),  "Cache path is not a directory: {0}".format(path)
 		self.path = path
 
+	def mtime( self, key ):
+		path = self.path + "/" + self._normKey(key) + self.extension
+		if os.path.exists(path):
+			return os.stat(path)[stat.ST_MTIME]
+		else:
+			return None
+
 	def has( self, key ):
 		path = self.path + "/" + self._normKey(key) + self.extension
 		if os.path.exists(path):
@@ -453,15 +463,17 @@ class FileCache(Cache):
 	def get( self, key ):
 		if self.has(key):
 			path = self.path + "/" + self._normKey(key) + self.extension
-			with file(path, 'r') as f:
-				return self._load(f)
+			with open(path, 'rb') as f:
+				res = self._load(f)
+				return res
 		else:
 			return None
 
 	def set( self, key, data ):
 		path = self.path + "/" + self._normKey(key) + self.extension
-		with file(path, 'w') as f:
-			self._save(f, data)
+		with open(path, 'wb') as f:
+			success = self._save(f, data)
+		if not success: os.unlink(path)
 		return data
 
 	def clear( self ):
@@ -476,9 +488,10 @@ class FileCache(Cache):
 
 	def _save( self, fd, data ):
 		try:
-			return self.serializer(fd, data)
+			self.serializer(fd, data)
+			return True
 		except Exception as e:
-			return None
+			return False
 
 	def _load( self, fd ):
 		try:
@@ -531,9 +544,8 @@ class SignatureCache(Cache):
 
 	@staticmethod
 	def sha1(  path ):
-		f = file(path, 'rb')
-		t = f.read()
-		f.close()
+		with open(path, 'rb') as f:
+			t = f.read()
 		return hashlib.sha1(t).hexdigest()
 
 	@staticmethod

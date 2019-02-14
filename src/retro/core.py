@@ -1422,7 +1422,7 @@ class Response:
 		elif asyncio_isgenerator(self.content):
 			yield self.content
 		# Otherwise we return a single-shot generator
-		elif not isinstance(self.content, str) and not isinstance(self.content, bytes) and not isinstance(self.content, unicode):
+		elif not isinstance(self.content, str) and not isinstance(self.content, bytes):
 			raise Exception("Retro handler expected to return a generator or a string, got: {0}".format(self.content))
 		else:
 			yield encode(self.content)
