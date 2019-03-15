@@ -67,7 +67,8 @@ class AsyncRequest(retro.core.Request):
 		self._aioInput = self._environ['wsgi.input']
 		# NOTE: It's OK to merge the HTTP context's headers with
 		# the request as the context is not recycled.
-		self._headers  = self._aioInput.h
+		self._headers  = self._aioInput.headers
+
 	# =========================================================================
 	# LOADING
 	# =========================================================================

@@ -294,7 +294,8 @@ class FormData:
 						if not line: continue
 						header = line.split(b":",1)
 						if len(header) == 2:
-							name  = normalizeHeader(header[0]).strip()
+							# TODO: We might want to specify an alternate encoding
+							name  = normalizeHeader(header[0].decode()).strip()
 							value = header[1].strip()
 							parsed_headers[ensureString(name)] = ensureString(value)
 					yield ("h", parsed_headers)
@@ -442,6 +443,10 @@ class Request:
 		self._bodyLoader       = None
 		self.protocol          = "http"
 		self.isClosed          = False
+		self.init()
+
+	def init( self ):
+		pass
 
 	def createRequestBodyLoader( self, request, complete=False ):
 		return RequestBodyLoader(request, complete)
@@ -449,7 +454,7 @@ class Request:
 	def headers( self ):
 		if self._headers is None:
 			e = self._environ
-			headers = {}
+			headers = collections.OrderedDict()
 			# This parses headers from the WSGI environment
 			for key in e:
 				if not key.startswith("HTTP_"): continue
@@ -505,6 +510,9 @@ class Request:
 		"""Returns the request content type"""
 		return self._environ.get(self.CONTENT_TYPE)
 
+	def hasContentLength( self ):
+		"""Returns the request content length (if any)"""
+		return self._environ.get(self.CONTENT_LENGTH)
 	def contentLength( self ):
 		"""Returns the request content length (if any)"""
 		return int(self._environ.get(self.CONTENT_LENGTH) or 0)
