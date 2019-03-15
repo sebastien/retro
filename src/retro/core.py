@@ -1160,11 +1160,15 @@ class RequestBodyLoader:
 		self.contentRead   = 0
 		self.contentLength = request.contentLength()
 		self.contentFile   = None
+		self._isComplete   = True
 		self._decoded      = complete
 		if complete: self.contentRead = self.contentLength
 
 	def isComplete( self ):
-		return self.contentLength == self.contentRead
+		if self._isComplete:
+			return self._isComplete
+		else:
+			return self.contentLength == self.contentRead
 
 	def isDecoded( self ):
 		return self._decoded
@@ -1197,7 +1201,10 @@ class RequestBodyLoader:
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		if asyncio_iscoroutine(read_data):
 			raise Exception("Synchronous request used with async server")
-		self.contentRead += to_read
+		read_count = len(read_data)
+		if read_count is 0:
+			self._isComplete = True
+		self.contentRead += len(read_count)
 		return read_data
 
 	def _load_post( self, to_read, read_data, writeData ):
