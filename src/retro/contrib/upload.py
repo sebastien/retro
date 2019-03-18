@@ -188,4 +188,4 @@ class Uploader:
 				del self.uploads[key]
 		return len(to_remove)
 
-# EOF
+# EOF - vim: ts=4 sw=4 noet

@@ -63,6 +63,12 @@ class AsyncRequest(retro.core.Request):
 	def createRequestBodyLoader( self, request, complete=False ):
 		return AsyncRequestBodyLoader(request, complete)
 
+	def init( self ):
+		self._aioInput = self._environ['wsgi.input']
+		# NOTE: It's OK to merge the HTTP context's headers with
+		# the request as the context is not recycled.
+		self._headers  = self._aioInput.headers
+
 	# =========================================================================
 	# LOADING
 	# =========================================================================
@@ -93,7 +99,7 @@ class AsyncRequest(retro.core.Request):
 		return self._data_process(data, asFile, partial)
 
 	async def _data_load( self, data, partial ):
-		if data == retro.core.NOTHING and not partial:
+		if data is retro.core.NOTHING and not partial:
 			while not self.isLoaded():
 				await self.load()
 
@@ -128,6 +134,10 @@ class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
 	async def _load_load( self, to_read ):
 		read_data = await self.request._environ['wsgi.input'].read(to_read)
 		read_count = len(read_data)
+		# FIXME: I'm not using _isComplete for now, it's causing issues
+		# with request body loading.
+		if read_count is 0:
+			self._isComplete = True
 		self.contentRead += read_count
 		return read_data
 
@@ -169,7 +179,13 @@ class HTTPContext(object):
 			return False
 		else:
 			t = self.rest + data if self.rest else data
+
+			# TODO:
+			# We should look for a leading "\r\n". Note that we don't want to
+			# use rfind as if we have a multipart body with boundary this
+			# would throw us off.
 			i = t.rfind(b"\r\n")
+
 			if i == -1:
 				self.rest = t
 			else:
@@ -225,11 +241,11 @@ class HTTPContext(object):
 			# That's a HEADER line
 			step = 1
 			j = line.index(b":")
-			h = line[:j].decode()
+			h = line[:j].decode().strip()
 			j += 1
 			if j < len(line) and line[j] == " ":
 				j += 1
-			v = line[j:].decode()
+			v = line[j:].decode().strip()
 			self.headers[h] = v
 		return step
 
@@ -246,9 +262,14 @@ class HTTPContext(object):
 		if rest is None:
 			if self._stream:
 				if size is None:
-					return await self._stream.read()
+					res =  await self._stream.read()
+					return res
 				else:
-					return await self._stream.read(size)
+					# FIXME: Somewhow when returning directly there
+					# is an issue when receiving large uploaded files, it
+					# will block forever.
+					res = await self._stream.read(size)
+					return res
 			else:
 				return b""
 		else:

@@ -13,10 +13,7 @@
 # Last mod  : 22-Jul-2015
 # -----------------------------------------------------------------------------
 
-# TODO: Use AsynCore or (better), Thor!
-# TODO: Test retro apps with another WSGI server
 # FIXME: Reactor is broken (and probably unnecessary)
-
 
 __doc__ = """\
 This module is based on Colin Stewart WSGIUtils WSGI server, only that it is

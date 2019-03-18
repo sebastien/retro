@@ -294,7 +294,8 @@ class FormData:
 						if not line: continue
 						header = line.split(b":",1)
 						if len(header) == 2:
-							name  = normalizeHeader(header[0]).strip()
+							# TODO: We might want to specify an alternate encoding
+							name  = normalizeHeader(header[0].decode()).strip()
 							value = header[1].strip()
 							parsed_headers[ensureString(name)] = ensureString(value)
 					yield ("h", parsed_headers)
@@ -442,6 +443,10 @@ class Request:
 		self._bodyLoader       = None
 		self.protocol          = "http"
 		self.isClosed          = False
+		self.init()
+
+	def init( self ):
+		pass
 
 	def createRequestBodyLoader( self, request, complete=False ):
 		return RequestBodyLoader(request, complete)
@@ -449,7 +454,7 @@ class Request:
 	def headers( self ):
 		if self._headers is None:
 			e = self._environ
-			headers = {}
+			headers = collections.OrderedDict()
 			# This parses headers from the WSGI environment
 			for key in e:
 				if not key.startswith("HTTP_"): continue
@@ -505,6 +510,9 @@ class Request:
 		"""Returns the request content type"""
 		return self._environ.get(self.CONTENT_TYPE)
 
+	def hasContentLength( self ):
+		"""Returns the request content length (if any)"""
+		return self._environ.get(self.CONTENT_LENGTH)
 	def contentLength( self ):
 		"""Returns the request content length (if any)"""
 		return int(self._environ.get(self.CONTENT_LENGTH) or 0)
@@ -1160,11 +1168,22 @@ class RequestBodyLoader:
 		self.contentRead   = 0
 		self.contentLength = request.contentLength()
 		self.contentFile   = None
+		self._isComplete   = True
 		self._decoded      = complete
 		if complete: self.contentRead = self.contentLength
 
 	def isComplete( self ):
 		return self.contentLength == self.contentRead
+		# FIXME: This does not work, it causes a early exit. I'm leaving
+		# it there for reference. The idea was to make sure we support 
+		# requests with no Content-Length, or stop reading the request
+		# when we're reading 0 input. The problem can be exercises with
+		# processing requests like :
+		# curl -v -F "data=@p~/Downloads/steele.pdf" http://localhost:8000/upload 
+		# if self._isComplete:
+		#	return self._isComplete
+		#else:
+		#	return self.contentLength == self.contentRead
 
 	def isDecoded( self ):
 		return self._decoded
@@ -1197,7 +1216,10 @@ class RequestBodyLoader:
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		if asyncio_iscoroutine(read_data):
 			raise Exception("Synchronous request used with async server")
-		self.contentRead += to_read
+		read_count = len(read_data)
+		if read_count is 0:
+			self._isComplete = True
+		self.contentRead += read_count
 		return read_data
 
 	def _load_post( self, to_read, read_data, writeData ):
@@ -1422,7 +1444,7 @@ class Response:
 		elif asyncio_isgenerator(self.content):
 			yield self.content
 		# Otherwise we return a single-shot generator
-		elif not isinstance(self.content, str) and not isinstance(self.content, bytes):
+		elif not isinstance(self.content, str) and not isinstance(self.content, bytes) and not isinstance(self.content, unicode):
 			raise Exception("Retro handler expected to return a generator or a string, got: {0}".format(self.content))
 		else:
 			yield encode(self.content)
