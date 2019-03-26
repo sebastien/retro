@@ -81,7 +81,7 @@ class AsyncRequest(retro.core.Request):
 			self._load_prepare()
 			await self._load_load(size)
 			self._load_process(size, decode)
-			assert (self.isLoaded())
+			# assert (self.isLoaded())
 		return self
 
 	async def _load_load( self, size):
@@ -115,29 +115,33 @@ class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
 
 	async def load( self, size=None, writeData=True ):
 		# If the load is complete, we don't have anything to do
-		to_read = self._load_prepare(size)
+		to_read    = self._load_prepare(size)
 		read_data  = None
 		iteration  = 0
-		# TODO: We might want to add a timeout
-		while self.contentRead < to_read:
-			d            = await self._load_load(to_read - self.contentRead)
-			read_data    = d if iteration == 0 else read_data + d
-			iteration   += 1
-			# NOTE: We stream the data here
-			if writeData:
-				self.request._data.write(d)
+		read_count = 0
+		while read_count < to_read:
+			d = await self._load_load(to_read - read_count)
+			if d is None:
+				break
+				self._isComplete = True
+			else:
+				read_data    = d if iteration == 0 else read_data + d
+				read_count  += len(d)
+				iteration   += 1
+				# NOTE: We stream the data here
+				if writeData:
+					self.request._data.write(d)
+				# We break early if we did not read anything
+				if read_count is 0:
+					break
 		# NOTE: We don't call self._load_post like in the sync version, because
 		# we've been streaming theresult
-		assert self.contentRead == to_read, "Request was cut, read {0:d} out of {1:d} bytes".format(read_count, to_read)
 		return read_data
 
 	async def _load_load( self, to_read ):
+		assert to_read is not 0
 		read_data = await self.request._environ['wsgi.input'].read(to_read)
 		read_count = len(read_data)
-		# FIXME: I'm not using _isComplete for now, it's causing issues
-		# with request body loading.
-		if read_count is 0:
-			self._isComplete = True
 		self.contentRead += read_count
 		return read_data
 
@@ -176,26 +180,24 @@ class HTTPContext(object):
 	def feed( self, data ):
 		"""Feeds data into the context."""
 		if self.step >= 2:
+			# If we're past reading the body (>=2), then we can't decode anything
 			return False
 		else:
 			t = self.rest + data if self.rest else data
-
-			# TODO:
-			# We should look for a leading "\r\n". Note that we don't want to
-			# use rfind as if we have a multipart body with boundary this
-			# would throw us off.
-			i = t.rfind(b"\r\n")
-
+			# TODO: We're looking for the final \r\n\r\n that separates
+			# the header from the body.
+			i = t.find(b"\r\n\r\n")
 			if i == -1:
 				self.rest = t
 			else:
-				j = i + 2
-				o = self.parseChunk(t,0,j)
+				# We skip the 4 bytes of \r\n\r\n
+				j = i + 4
+				o = self._parseChunk(t,0,j)
 				assert (o <= j)
 				self.rest = t[j:] if j < len(t) else None
 			return True
 
-	def parseChunk( self, data, start, end ):
+	def _parseChunk( self, data, start, end ):
 		"""Parses a chunk of the data, which MUST have at least one
 		/r/n in there and end with /r/n."""
 		# NOTE: In essence, this is pretty close to data[stat:end].split("\r\n")
@@ -214,14 +216,14 @@ class HTTPContext(object):
 			# The chunk must have \r\n at the end
 			assert (i >= 0)
 			# Now we have a line, so we parse it
-			step = self.parseLine(step, data[o:i])
+			step = self._parseLine(step, data[o:i])
 			# And we increase the offset
 			o = i + 2
 		# We update the state
 		self.step = step
 		return o
 
-	def parseLine( self, step, line ):
+	def _parseLine( self, step, line ):
 		"""Parses a line (without the ending `\r\n`), updating the
 		context's {method,uri,protocol,headers,step} accordingly. This
 		will stop once two empty lines have been encountered."""
@@ -255,6 +257,7 @@ class HTTPContext(object):
 	async def read( self, size=None ):
 		"""Reads `size` bytes from the context's input stream, using
 		whatever data is left from the previous data feeding."""
+		assert size is not 0
 		rest = self.rest
 		# This method is a little bit contrived because e need to test
 		# for all the cases. Also, this needs to be relatively fast as

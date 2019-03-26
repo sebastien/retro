@@ -513,6 +513,7 @@ class Request:
 	def hasContentLength( self ):
 		"""Returns the request content length (if any)"""
 		return self._environ.get(self.CONTENT_LENGTH)
+
 	def contentLength( self ):
 		"""Returns the request content length (if any)"""
 		return int(self._environ.get(self.CONTENT_LENGTH) or 0)
@@ -1168,26 +1169,16 @@ class RequestBodyLoader:
 		self.contentRead   = 0
 		self.contentLength = request.contentLength()
 		self.contentFile   = None
-		self._isComplete   = True
 		self._decoded      = complete
 		if complete: self.contentRead = self.contentLength
 
 	def isComplete( self ):
 		return self.contentLength == self.contentRead
-		# FIXME: This does not work, it causes a early exit. I'm leaving
-		# it there for reference. The idea was to make sure we support 
-		# requests with no Content-Length, or stop reading the request
-		# when we're reading 0 input. The problem can be exercises with
-		# processing requests like :
-		# curl -v -F "data=@p~/Downloads/steele.pdf" http://localhost:8000/upload 
-		# if self._isComplete:
-		#	return self._isComplete
-		#else:
-		#	return self.contentLength == self.contentRead
 
 	def isDecoded( self ):
 		return self._decoded
 
+	@property
 	def remainingBytes( self ):
 		return self.contentLength - self.contentRead
 
@@ -1210,15 +1201,13 @@ class RequestBodyLoader:
 	def _load_prepare( self, size ):
 		if self.isComplete(): return None
 		if size == None: size = self.contentLength
-		return min(self.remainingBytes(), size)
+		return min(self.remainingBytes, size)
 
 	def _load_load( self, to_read ):
 		read_data = self.request._environ['wsgi.input'].read(to_read)
 		if asyncio_iscoroutine(read_data):
 			raise Exception("Synchronous request used with async server")
 		read_count = len(read_data)
-		if read_count is 0:
-			self._isComplete = True
 		self.contentRead += read_count
 		return read_data
 
@@ -1243,10 +1232,13 @@ class RequestBodyLoader:
 		if self.isDecoded(): return
 		dataFile       = self.request._data if dataFile is None else dataFile
 		# NOTE: See http://www.cs.tut.fi/~jkorpela/forms/file.html
-		content_type   = self.request._environ[Request.CONTENT_TYPE] or "application/x-www-form-urlencoded"
+		content_type   = self.request._environ[Request.CONTENT_TYPE] or None
 		params         = self.request.params(load=False)
 		files          = []
-		if content_type.startswith('multipart'):
+		if not content_type:
+			# We have no content type specified, so we assume a binary payload
+			pass
+		elif content_type.startswith('multipart'):
 			# We handle the case of a multi-part body
 			dataFile.seek(0)
 			# We're using the FormData
