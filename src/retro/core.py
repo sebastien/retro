@@ -102,7 +102,7 @@ def asJSON( value, **options ):
 		return json(value)
 	elif type(value) in (list, tuple, set):
 		res = "[%s]" % (",".join([asJSON(x,**options) for x in value]))
-	elif type(value) == dict:
+	elif isinstance(value, dict) or isinstance(value, collections.OrderedDict):
 		r = []
 		for k in list(value.keys()):
 			r.append('%s:%s' % (json(str(k)), asJSON(value[k], **options)))
