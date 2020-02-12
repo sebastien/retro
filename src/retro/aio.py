@@ -433,8 +433,11 @@ class WSGIConnection(object):
 		# 	self._sock.shutdown(socket.SHUT_WR)
 		# AttributeError: 'NoneType' object has no attribute 'shutdown'
 		if writer._transport and not writer._transport.is_closing():
-			writer.write_eof()
-			await writer.drain()
+			try:
+				writer.write_eof()
+				await writer.drain()
+			except OSError as e:
+				pass
 		writer.close()
 
 	def _startResponse( self, writer, context, response_status, response_headers, exc_info=None ):
