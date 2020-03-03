@@ -1,5 +1,5 @@
 import os, sys
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + "../Sources"))
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + "../src"))
 from retro import *
 from retro.web import Dispatcher
 
