@@ -609,12 +609,12 @@ class Component:
 				}))
 		return res
 
-	def __init__( self, name=None, prefix=None ):
+	def __init__( self, name=None, prefix=None, priority=None ):
 		if name == None: name = self.__class__.__name__
 		self._name      = name
 		self._app       = None
 		self._context   = {}
-		self._priority  = 0
+		self._priority  = self.PRIORITY if priority is None else priority
 		self._isRunning = True
 		self.startTime  = None
 		if prefix:
@@ -658,7 +658,7 @@ class Component:
 				handlers[method.upper()] = handler
 				prefix = self.PREFIX
 				if prefix and prefix[0] != "/": self.PREFIX = prefix = "/" + prefix
-				priority += self.PRIORITY
+				priority += self._priority
 				self._app.dispatcher().on(path, prefix=prefix, handlers=handlers, priority=priority)
 
 	def location( self ):
