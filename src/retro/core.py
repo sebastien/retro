@@ -540,9 +540,9 @@ class Request:
 				query_params = cgi.parse_qs(query)
 				# FIXME: What about unquote?
 				# for key, value in params.items():
-				# 	if name == key:
-				# 		if len(value) == 1: return urllib.unquote(value[0])
-				# 		return urllib.unquote(value)
+				#	if name == key:
+				#		if len(value) == 1: return urllib.unquote(value[0])
+				#		return urllib.unquote(value)
 				# TODO: Decode support
 				# if not self._charset is None:
 					# for key, value in d.iteritems():
@@ -643,7 +643,7 @@ class Request:
 		return name in params
 
 	def files( self ):
-		return [_[0] for _ in self._files]
+		return [_[0] for _ in self._files if _]
 
 	def file( self, name=None ):
 		"""Returns the file (as a 'cgi.FieldStorage') which was submitted
@@ -821,7 +821,7 @@ class Request:
 		bodies    = iter(bodies)
 		if not headers: headers = []
 		headers.append(("Content-Type", "multipart/x-mixed-replace; "
-		+ 'boundary=' + BOUNDARY + ''))
+				  + 'boundary=' + BOUNDARY + ''))
 		def bodygenerator():
 			for body in bodies:
 				if body:
@@ -1139,10 +1139,10 @@ class File:
 
 	# # NOTE: This is to keep compatibility with previous Retro API
 	# def __getitem__( self, name ):
-	# 	if hasattr(self, name):
-	# 		return getattr(self, name)
-	# 	else:
-	# 		return None
+	#	if hasattr(self, name):
+	#		return getattr(self, name)
+	#	else:
+	#		return None
 
 # -----------------------------------------------------------------------------
 #
@@ -1265,7 +1265,7 @@ class RequestBodyLoader:
 					self.request._addFile (name, new_file)
 					self.request._addParam(name, new_file)
 				else:
-					self.request._addParam(value, value)
+					self.request._addParam(name, name)
 		elif content_type.startswith("application/x-www-form-urlencoded"):
 			# Ex: "application/x-www-form-urlencoded; charset=UTF-8"
 			charset = content_type.split("charset=",1)
@@ -1307,7 +1307,7 @@ class Response:
 	REASONS         = BaseHTTPRequestHandler.responses
 
 	def __init__( self, content=None, headers=None, status=200, reason=None,
-	produceWhen=None, compression=None):
+			  produceWhen=None, compression=None):
 		if headers == None: headers = []
 		self.status  = status
 		self.reason  = reason
