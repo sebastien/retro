@@ -29,27 +29,27 @@ into a web application or to write new ones.
 # ------------------------------------------------------------------------------
 
 setup(
-    name        = "Retro",
-    version     = VERSION,
-    author      = "Sebastien Pierre", author_email = "sebastien.pierre@gmail.com",
-    description = SUMMARY, long_description = DESCRIPTION,
-    license     = "Revised BSD License",
-    keywords    = "web lightweight framework http declarative".split(),
-    url         = "http://www.github.com/sebastien/retro",
-    download_url= "http://github.com/sebastien/retro/tarball/%s" % (VERSION) ,
-    package_dir = { "": "src" },
-    packages    = ["retro"],
-    classifiers = [
-      "Development Status :: 4 - Beta",
-      "Environment :: Web Environment",
-      "Intended Audience :: Developers",
-      "Intended Audience :: Information Technology",
-      "License :: OSI Approved :: BSD License",
-      "Natural Language :: English",
-      "Topic :: Internet :: WWW/HTTP",
-      "Operating System :: POSIX",
-      "Operating System :: Microsoft :: Windows",
-      "Programming Language :: Python",
-    ]
+	name        = "Retro",
+	version     = VERSION,
+	author      = "Sebastien Pierre", author_email = "sebastien.pierre@gmail.com",
+	description = SUMMARY, long_description = DESCRIPTION,
+	license     = "Revised BSD License",
+	keywords    = "web lightweight framework http declarative".split(),
+	url         = "http://www.github.com/sebastien/retro",
+	download_url= "http://github.com/sebastien/retro/tarball/%s" % (VERSION) ,
+	package_dir = { "": "src" },
+	packages    = ["retro", "retro.contrib"],
+	classifiers = [
+		"Development Status :: 4 - Beta",
+		"Environment :: Web Environment",
+		"Intended Audience :: Developers",
+		"Intended Audience :: Information Technology",
+		"License :: OSI Approved :: BSD License",
+		"Natural Language :: English",
+		"Topic :: Internet :: WWW/HTTP",
+		"Operating System :: POSIX",
+		"Operating System :: Microsoft :: Windows",
+		"Programming Language :: Python",
+	]
 )
 # EOF - vim: tw=80 ts=4 sw=4 fenc=latin-1 noet

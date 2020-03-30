@@ -11,14 +11,14 @@
 
 import sys, os, socket
 from retro.core import asJSON, asPrimitive, cut, escapeHTML, NOTHING, \
-ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote, Request, Response
+	ensureBytes, ensureUnicode, ensureString, IS_PYTHON3, quote, unquote, Request, Response
 from retro.web  import on, expose, predicate, when, restrict, cache, \
-Component, Application, \
-Dispatcher, Configuration, ValidationError, WebRuntimeError
+	Component, Application, \
+	Dispatcher, Configuration, ValidationError, WebRuntimeError
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.8.0"
+__version__ = "2.8.1"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
@@ -102,9 +102,9 @@ def command( args, **extra ):
 	# We create the parse and register the options
 	oparser = OptionParser(version="Retro " + __version__)
 	oparser.add_option("-p", "--port", action="store", dest="port",
-		help=OPT_PORT, default=DEFAULT_PORT)
+					help=OPT_PORT, default=DEFAULT_PORT)
 	oparser.add_option("-P", "--prefix", action="store", dest="prefix",
-		help=OPT_PREFIX, default=None)
+					help=OPT_PREFIX, default=None)
 	# We parse the options and arguments
 	options, args = oparser.parse_args(args=args)
 	extra["prefix"]   = options.prefix
@@ -112,9 +112,9 @@ def command( args, **extra ):
 	run(**extra)
 
 def run( app=None, components=(), method=STANDALONE, name="retro",
-root = ".", resetlog=False, address="", port=None, prefix='', asynchronous=False,
-sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda:True,
-onError=None ):
+		root = ".", resetlog=False, address="", port=None, prefix='', asynchronous=False,
+		sessions=False, withReactor=None, processStack=lambda x:x, runCondition=lambda:True,
+		onError=None ):
 	"""Runs this web application with the given method (easiest one is STANDALONE),
 	with the given root (directory from where the web app-related resource
 	will be resolved).
@@ -264,18 +264,18 @@ onError=None ):
 	# == STANDALONE (WSGIREF)
 	#
 	# elif method == STANDALONE_WSGIREF:
-	# 	server_address     = (
-	# 		address or app.config("address") or DEFAULT_ADDRESS,
-	# 		port or app.config("port") or DEFAULT_PORT
-	# 	)
-	# 	server = WSGIServer(server_address, WSGIRequestHandler)
-	# 	server.set_app(stack)
-	# 	socket = server.socket.getsockname()
-	# 	print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
-	# 	try:
-	# 		while runCondition: server.handle_request()
-	# 	except KeyboardInterrupt:
-	# 		print "done"
+	#	server_address     = (
+	#		address or app.config("address") or DEFAULT_ADDRESS,
+	#		port or app.config("port") or DEFAULT_PORT
+	#	)
+	#	server = WSGIServer(server_address, WSGIRequestHandler)
+	#	server.set_app(stack)
+	#	socket = server.socket.getsockname()
+	#	print "WSGIREF server listening on %s:%s" % ( socket[0], socket[1])
+	#	try:
+	#		while runCondition: server.handle_request()
+	#	except KeyboardInterrupt:
+	#		print "done"
 	#
 	# == STANDALONE (Retro WSGI server)
 	#
