@@ -6,10 +6,10 @@
 # License           : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation date     : 2015-07-21
-# Last modification : 2015-07-21
+# Last modification : 2020-03-30
 # -----------------------------------------------------------------------------
 
-import retro.core
+import retro.core,types
 from   retro.web import updateWrapper
 
 # SEE: http://stackoverflow.com/questions/16386148/why-browser-do-not-follow-redirects-using-xmlhttprequest-and-cors/20854800#20854800
@@ -20,9 +20,24 @@ def cors(allowAll=True):
 	def decorator(f):
 		def wrapper( *args, **kwargs ):
 			response = f(*args, **kwargs)
+			assert not isinstance(response, types.CoroutineType), "Handler is async, use '@acors' instead"
 			return setCORSHeaders(response, args[1].header("Origin"), allowAll=allowAll)
 		return updateWrapper(wrapper, f)
 	return decorator
+
+def acors(allowAll=True):
+	"""A decorator for a request handler that will ensure
+	response."""
+	def decorator(f):
+		async def wrapper( *args, **kwargs ):
+			coro = f(*args, **kwargs)
+			assert isinstance(coro, types.CoroutineType), "Handler is async, use '@acors' instead"
+			response = await coro
+			return setCORSHeaders(response, args[1].header("Origin"), allowAll=allowAll)
+		return updateWrapper(wrapper, f)
+	return decorator
+
+
 
 def setCORSHeaders(r, origin=None, allowAll=True):
 	"""Takes the given request or response, and
