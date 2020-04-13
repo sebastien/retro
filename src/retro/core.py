@@ -15,6 +15,7 @@
 import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
 import gzip, io, threading, locale, collections, unicodedata
 from   .compat import *
+from urllib.parse import parse_qs
 
 try:
 	import urllib.request
@@ -25,6 +26,7 @@ except ImportError:
 	import urllib as urllib_parse
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
+
 
 NOTHING    = re
 MIME_TYPES = dict(
@@ -537,7 +539,7 @@ class Request:
 			query = self._environ.get(self.QUERY_STRING)
 			if query:
 				# We try to parse the query string
-				query_params = cgi.parse_qs(query)
+				query_params = parse_qs(query)
 				# FIXME: What about unquote?
 				# for key, value in params.items():
 				#	if name == key:
@@ -1275,7 +1277,7 @@ class RequestBodyLoader:
 			dataFile.seek(0)
 			data = dataFile.read()
 			# NOTE: Encoding is not supported yet
-			query_params = cgi.parse_qs(data)
+			query_params = parse_qs(data)
 			for k,v in list(query_params.items()): self.request._addParam(k,v)
 		elif content_type.startswith("application/json"):
 			dataFile.seek(0)
