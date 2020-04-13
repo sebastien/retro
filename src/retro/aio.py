@@ -132,14 +132,14 @@ class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
 				if writeData:
 					self.request._data.write(d)
 				# We break early if we did not read anything
-				if read_count is 0:
+				if read_count == 0:
 					break
 		# NOTE: We don't call self._load_post like in the sync version, because
 		# we've been streaming theresult
 		return read_data
 
 	async def _load_load( self, to_read ):
-		assert to_read is not 0
+		assert to_read != 0
 		read_data = await self.request._environ['wsgi.input'].read(to_read)
 		read_count = len(read_data)
 		self.contentRead += read_count
@@ -257,7 +257,7 @@ class HTTPContext(object):
 	async def read( self, size=None ):
 		"""Reads `size` bytes from the context's input stream, using
 		whatever data is left from the previous data feeding."""
-		assert size is not 0
+		assert size != 0
 		rest = self.rest
 		# This method is a little bit contrived because e need to test
 		# for all the cases. Also, this needs to be relatively fast as
@@ -464,7 +464,7 @@ class WSGIConnection(object):
 		stats   = context.stats or {}
 		stats["min.time"] = min(elapsed, stats["min.time"] or elapsed)
 		stats["max.time"] = max(elapsed, stats["max.time"] or elapsed)
-		tk = (1.0 * elapsed - stats["min.time"]) / stats["max.time"]
+		tk = (1.0 * elapsed - stats["min.time"]) / (stats["max.time"] or 1)
 		sk = min (1.0, (1.0 * status / 500.0))
 		ti = round(tk * (len(GRADIENT) - 1))
 		si = round(sk * (len(GRADIENT) - 1))
