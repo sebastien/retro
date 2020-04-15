@@ -13,7 +13,7 @@
 # TODO: Automatic suport for HEAD and cache requests
 
 import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
-import gzip, io, threading, locale, collections, unicodedata
+import gzip, io, threading, locale, collections, unicodedata, logging
 from   .compat import *
 from urllib.parse import parse_qs
 
@@ -26,7 +26,6 @@ except ImportError:
 	import urllib as urllib_parse
 	from   BaseHTTPServer import BaseHTTPRequestHandler
 	from   Cookie         import SimpleCookie
-
 
 NOTHING    = re
 MIME_TYPES = dict(
@@ -560,6 +559,19 @@ class Request:
 			# We load if we haven't loaded yet and load is True
 			if load and not self.isLoaded(): self.load()
 		return self._params
+
+	def parseParams( self, **processors ):
+		"""Returns uses the `processors:Dict[str,Function]` to parse
+		parameters."""
+		params = self.params()
+		res = {}
+		for name,processor in processors.items():
+			if name in params:
+				try:
+					res[name] = processor(params[name])
+				except Exception as e:
+					logging.error(f"Request: Could not parse param '{name}' in {params} with {processors}")
+		return res
 
 	def hashParams( self, path=None ):
 		"""Parses the parameters that might be defined in the URL's hash, and
