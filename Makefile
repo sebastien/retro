@@ -1,4 +1,4 @@
-VERSION=$(shell grep __version__ Sources/retro/__init__.py | head -n1 | cut -d'"' -f2)
+VERSION=$(shell grep __version__ src/retro/__init__.py | head -n1 | cut -d'"' -f2)
 SOURCES_PY=$(wildcard src/retro/*.py src/retro/*/*.py  src/retro/*/*/*.py)
 MANIFEST    = $(SOURCES_PY) $(wildcard *.py api/*.* AUTHORS* README* LICENSE*)
 PRODUCT     = MANIFEST

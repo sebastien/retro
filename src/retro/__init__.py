@@ -18,7 +18,7 @@ from retro.web  import on, expose, predicate, when, restrict, cache, \
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.8.6"
+__version__ = "2.8.7"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
