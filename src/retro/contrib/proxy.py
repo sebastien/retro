@@ -45,23 +45,23 @@ class Proxy:
 		return res
 
 	def proxyGET( self, request, server, port, uri, parameters ):
-		#print self.requestAsString(request.method(), server, port, uri, request.headers(), request.body())
-		status, headers, body = self.httpRequest(server, port, "GET", uri, headers=self.filterHeaders(request.headers()))
+		#print self.requestAsString(request.method(), server, port, uri, request.headers, request.body())
+		status, headers, body = self.httpRequest(server, port, "GET", uri, headers=self.filterHeaders(request.headers))
 		return request.respond(content=body,headers=headers,status=status)
 
 	def proxyPOST( self, request, server, port, uri ):
-		#print self.requestAsString(request.method(), server, port, uri, request.headers(), request.body())
-		status, headers, body = self.httpRequest(server, port, "POST", uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		#print self.requestAsString(request.method(), server, port, uri, request.headers, request.body())
+		status, headers, body = self.httpRequest(server, port, "POST", uri, body=request.body(), headers=self.filterHeaders(request.headers))
 		return request.respond(content=body,headers=headers,status=status)
 
 	def proxyPUT( self, request, server, port, uri ):
-		#print self.requestAsString(request.method(), server, port, uri, request.headers(), request.body())
-		status, headers, body = self.httpRequest(server, port, "PUT", uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		#print self.requestAsString(request.method(), server, port, uri, request.headers, request.body())
+		status, headers, body = self.httpRequest(server, port, "PUT", uri, body=request.body(), headers=self.filterHeaders(request.headers))
 		return request.respond(content=body,headers=headers,status=status)
 
 	def proxyDELETE( self, request, server, port, uri ):
-		#print self.requestAsString(request.method(), server, port, uri, request.headers(), request.body())
-		status, headers, body = self.httpRequest(server, port, "DELETE", uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		#print self.requestAsString(request.method(), server, port, uri, request.headers, request.body())
+		status, headers, body = self.httpRequest(server, port, "DELETE", uri, body=request.body(), headers=self.filterHeaders(request.headers))
 		return request.respond(content=body,headers=headers,status=status)
 
 	def hasBackend( self ):
@@ -86,7 +86,7 @@ class Proxy:
 					yield data[i:j]
 					i = j
 			res = throttling_wrapper()
-		return 200, t.headers(), data
+		return 200, t.headers, data
 
 	# NOTE: This does not  seem to work properly..., so disabled for now
 	#def _httpRequest( self, server, port, method, url, body="", headers=None ):
@@ -162,7 +162,7 @@ class ProxyService(Component, Proxy):
 		if len(uri_params) == 2:
 			if not dest_uri.endswith("?"): dest_uri += "?"
 			dest_uri += uri_params[1]
-		status, headers, body = self.httpRequest(self._host, self._port, method, dest_uri, body=request.body(), headers=self.filterHeaders(request.headers()))
+		status, headers, body = self.httpRequest(self._host, self._port, method, dest_uri, body=request.body(), headers=self.filterHeaders(request.headers))
 		# TODO: We have a redirect, so we have to rewrite it
 		if status == 302:
 			pass

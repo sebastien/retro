@@ -308,16 +308,18 @@ class Dispatcher:
 		for key, value in list(self.PATTERNS.items()):
 			self.patterns[key]=value
 
+	@property
+	def app( self ):
+		"""Returns a reference to the Retro application bound to this
+		dispatcher."""
+		return self._app
+
 	def onException( self, callback ):
 		"""Registers a callback `(exception, dispatcher)` to be called when
 		an exception occurs in the handler."""
 		self._onException.append(callback)
 		return self
 
-	def app( self ):
-		"""Returns a reference to the Retro application bound to this
-		dispatcher."""
-		return self._app
 
 	def _parseExpression( self, expression, isStart=True ):
 		"""Handler expressions are paths (URLs) that can contain typed variables
@@ -453,7 +455,7 @@ class Dispatcher:
 		returns the handler plus a map of variables to pass to the handler."""
 		if path == None: path     = urllib_parse.unquote(environ['PATH_INFO'])
 		if method == None: method = environ['REQUEST_METHOD']
-		fallback_handler = self.app().notFound
+		fallback_handler = self.app.notFound
 		matched_handlers = []
 		for priority, regexp, params_name, converters, method_dict in self._handlers:
 			match = regexp.search(path)
@@ -470,7 +472,7 @@ class Dispatcher:
 				# We return the handler along with the variables
 				matched_handlers.append((priority, method_handler, variables, params_name))
 		if not matched_handlers:
-			fallback_handler = self.app().notSupported
+			fallback_handler = self.app.notSupported
 		if matched_handlers:
 			# NOTE: Was matched_handlers.sort(lambda a,b:cmp(b[0],a[0]))
 			# Make sure this is the same order.
@@ -485,7 +487,7 @@ class Dispatcher:
 			return [(0, fallback_handler, {}, None)]
 
 	def createRequest( self, environ, charset ):
-		return self._requestClass(environ, self.app().config("charset"))
+		return self._requestClass(environ, self.app.config("charset"))
 
 	def dispatch( self, environ, handlers=NOTHING, processor=(lambda r,h,v:h(r,**v)), request=None ):
 		"""Dispatches the given `environ` or `request` to the given handlers
@@ -495,7 +497,7 @@ class Dispatcher:
 		if handlers is NOTHING: handlers = self.match(environ)
 		if request == None:
 			assert environ, "Dispatcher.dispatch: request or environ is required"
-			request = self.createRequest(environ, self.app().config("charset"))
+			request = self.createRequest(environ, self.app.config("charset"))
 		for _, handler, variables, params_name in handlers:
 			can_handle = True
 			# NOTE: If there is a failure here (like AttributeError:
@@ -530,7 +532,8 @@ class Dispatcher:
 					# the handler function and the variables.
 					return processor(request, handler, variables)
 				except Exception as e:
-					for _ in self._onException: _(e, self)
+					for _ in self._onException:
+						_(e, self)
 					raise e if isinstance(e,HandlerException) else HandlerException(e, request)
 			else:
 				handler = lambda request, **variables: Response("Not authorized",[],401)
@@ -555,14 +558,14 @@ class Dispatcher:
 		# 	# trace where the error occured
 		# 	raise HandlerException(e, request)
 		if isinstance(response, Response):
-			result = response.asWSGI(start_response, self.app().config("charset"))
+			result = response.asWSGI(start_response, self.app.config("charset"))
 			return result
 		# TODO: Add an option to warn on None returned by handlers
 		elif response == None:
 			response = Response("",[],200)
-			return response.asWSGI(start_response, self.app().config("charset"))
+			return response.asWSGI(start_response, self.app.config("charset"))
 		elif hasattr(response, "asWSGI"):
-			return response.asWSGI(start_response, self.app().config("charset"))
+			return response.asWSGI(start_response, self.app.config("charset"))
 		else:
 			raise WebRuntimeError("Handler {0} for {1} should return a Response object, got {2}".format(handler, request.path(), response))
 
@@ -622,6 +625,11 @@ class Component:
 		else:
 			self.PREFIX = self.__class__.PREFIX
 
+	@property
+	def isRunning( self ):
+		"""Tells if the component is running."""
+		return self._isRunning
+
 	def setPrefix( self, prefix ):
 		self.PREFIX = prefix
 		return self
@@ -661,11 +669,28 @@ class Component:
 				priority += self._priority
 				self._app.dispatcher().on(path, prefix=prefix, handlers=handlers, priority=priority)
 
+	@property
+	def context( self ):
+		return self._context
+
+	@property
+	def app( self ):
+		return self._app
+
+	def config( self, name=re, value=re ):
+		return self._app.config(name,value)
+
+	@property
+	def name( self ):
+		"""Returns the name for the component."""
+		return self._name
+
+	@property
 	def location( self ):
 		"""Returns the location for this component. It is guaranteed to start
 		with a slash, and not end with one. If it starts with a slash, then
 		nothing is returned."""
-		loc = self.app().location()
+		loc = self.app.location
 		pre = self.PREFIX
 		if not loc or loc[-1] != "/": loc += "/"
 		if pre and pre[0] == "/": pre = pre[1:]
@@ -683,29 +708,18 @@ class Component:
 	def get( self, key ):
 		return self._context.get(key)
 
-	def context( self ):
-		return self._context
 
 	# FIXME: Deprecated, might refactor
 	# def session( self, request, create=True ):
 	# 	"""Tells if there is a session attached with this request, creating it
 	# 	if `create` is true (by default).
 	# 	"""
-	# 	session_type = self.app().config("session")
+	# 	session_type = self.app.config("session")
 	# 	res = Session.hasSession(request)
 	# 	if res: return res
 	# 	elif create: return Session(request)
 	# 	else: return None
 
-	def app( self ):
-		return self._app
-
-	def config( self, name=re, value=re ):
-		return self._app.config(name,value)
-
-	def name( self ):
-		"""Returns the name for the component."""
-		return self._name
 
 	def shutdown( self ):
 		"""This will trigger 'onShutdown' in this application and in all the
@@ -716,70 +730,6 @@ class Component:
 	def onShutdown( self ):
 		"""A stub to be overriden by subclasses."""
 
-	def isRunning( self ):
-		"""Tells if the component is running."""
-		return self._isRunning
-
-	# NOTE: Disabled because of HTTP/2
-	# @on(POST="/channels:burst", priority=0)
-	# def processBurstChannel( self, request ):
-	# 	"""The `postRequest` method implements a mechanism that allows the
-	# 	Retro _burst channel_ to work properly. It allows to put multiple
-	# 	requests into a single request, and then put the corresponding responses
-	# 	withing the body of this request."""
-	# 	boundary       = request.header("X-Channel-Boundary") or "8<-----BURST-CHANNEL-REQUEST-------"
-	# 	channel_type   = request.header("X-Channel-Type")
-	# 	requests_count = request.header("X-Channel-Requests")
-	# 	requests       = request.body().split(boundary + "\n")
-	# 	# We create a fake start response that will simply yield the results
-	# 	# The iterate method is a generator that will produce the result
-	# 	response_boundary = "8<-----BURST-CHANNEL-RESPONSE-------"
-	# 	def iterate(self=self,request=request):
-	# 		context = {}
-	# 		# When the fake_start_response gets called, we will update the
-	# 		# context dict with the response status and header info, so that we
-	# 		# can output it within the aggregate response
-	# 		def fake_start_response(status, header,context=context):
-	# 			s, r = status.split(" ", 1)
-	# 			context['status'] = int(s)
-	# 			context['reason'] = r
-	# 			context['headers'] = header
-	# 		has_responded = False
-	# 		dispatcher    = self.app()._dispatcher
-	# 		# We iterate on each request embedded within the body of this
-	# 		# request
-	# 		origin = request.uri()
-	# 		for request_string in requests:
-	# 			req, headers, body = request_string.split("\r\n", 2)
-	# 			method, url = req.split(" ",1)
-	# 			# We update the current request object (instead of creating one
-	# 			# new)
-	# 			if not url or url[0] != "/": url = os.path.dirname(origin) + url
-	# 			request._environ[request.REQUEST_METHOD]=method
-	# 			request._environ[request.REQUEST_URI]=url
-	# 			# FIXME: PATH_INFO should be computed properly
-	# 			request._environ[request.PATH_INFO]=url
-	# 			request.body(body)
-	# 			# If we already generated a response, we add the response
-	# 			# spearator
-	# 			if has_responded:
-	# 				yield response_boundary
-	# 			# And now we generate the body of the request
-	# 			for res in dispatcher(request.environ(), fake_start_response, request):
-	# 				if list(context.items()):
-	# 					yield "{'status':%s,'reason':%s,'headers':%s,'body':%s}\n\n" % (
-	# 						asJSON(context['status']),
-	# 						asJSON(context['reason']),
-	# 						asJSON(context['headers']),
-	# 						asJSON(res)
-	# 					)
-	# 					del context['status']
-	# 					del context['reason']
-	# 					del context['headers']
-	# 					assert not list(context.items())
-	# 			has_responded = True
-	# 	# We respond using the given iterator
-	# 	return request.respond(iterate(),headers=[["X-Channel-Boundary", response_boundary]])
 
 # ------------------------------------------------------------------------------
 #
@@ -866,6 +816,7 @@ class Application(Component):
 	def notSupported(self, request):
 		return Response("404 No resource at the given URI", [], 404)
 
+	@property
 	def location( self ):
 		"""Returns the location of this application. The location will not
 		finish by a slash. If the prefix is `/` then an empty string will be
@@ -888,7 +839,7 @@ class Application(Component):
 		return self._dispatcher
 
 	def log( self, *args):
-		self.config().log(*args)
+		self.config.log(*args)
 
 	def config( self, name=re, value=re ):
 		"""Returns the configuration value for the given name. Please note that
@@ -908,6 +859,7 @@ class Application(Component):
 		else:
 			return self._config.set(name, value)
 
+	@property
 	def rootPath( self ):
 		"""Returns the absolute path where this application is rooted. This is
 		only set at the execution.
@@ -918,7 +870,7 @@ class Application(Component):
 	def localPath( self, path ):
 		"""Returns an absolute path expressed relatively to the root."""
 		if os.path.abspath(path) == path: return path
-		else: return os.path.abspath(os.path.join(self.rootPath(), path))
+		else: return os.path.abspath(os.path.join(self.rootPath, path))
 
 	def load( self, path, sync=True, mustExist=False ):
 		"""Loads the file at the given path and returns its content."""

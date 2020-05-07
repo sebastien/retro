@@ -170,7 +170,7 @@ class LocalFiles(Component):
 			root = os.path.abspath(root)
 			self.setRoot(root or ".")
 		elif self._localRoot is None:
-			root = self.app().config("root")
+			root = self.app.config("root")
 
 	def setRoot( self, root ):
 		"""Sets the root used by this component. This is where the
@@ -190,7 +190,7 @@ class LocalFiles(Component):
 	def _resolvePath( self, path ):
 		"""Resolves the given path and returns an absolute file system
 		location for the given path (which is supposed to be relative)."""
-		real_path = self.app().localPath(os.path.join(self._localRoot, path))
+		real_path = self.app.localPath(os.path.join(self._localRoot, path))
 		if not os.path.exists(real_path):
 			for s in self._optSuffixes:
 				if os.path.exists(real_path + s):
@@ -293,7 +293,7 @@ class LocalFiles(Component):
 			if not os.path.exists(dirname): os.makedirs(dirname)
 			request.load()
 			data = request.data()
-			self.app().save(local_path, ensureBytes(data))
+			self.app.save(local_path, ensureBytes(data))
 			return request.returns(True)
 		else:
 			return self.local(request, path)
@@ -448,7 +448,7 @@ class LibraryServer(Component):
 		self.cacheDuration   = cacheDuration
 
 	def start( self ):
-		self.library  = self.library or self.app().config("library.path")
+		self.library  = self.library or self.app.config("library.path")
 
 	def setCache( self, cache ):
 		self.cache = cache
@@ -560,14 +560,14 @@ class LibraryServer(Component):
 
 	def _processCSS( self, path ):
 		"""Processes a CSS file, minifyiing it if `cssmin` is installed."""
-		data = self.app().load(path)
+		data = self.app.load(path)
 		if self.minify and cssmin: data = cssmin.cssmin(data)
 		return data
 
 	def _processCCSS( self, path ):
 		"""Processes a CCSS file, minifying it if `cssmin` is installed.
 		Requires `clevercss`"""
-		data = self.app().load(path)
+		data = self.app.load(path)
 		data = clevercss.convert(data)
 		if self.minify and cssmin: data = cssmin.cssmin(data)
 		return data
@@ -579,7 +579,7 @@ class LibraryServer(Component):
 		tries  = 0
 		# TODO: This does not work yet, but it is the best for an application
 		# Right now, we default to piping
-		# data = self.app().load(path)
+		# data = self.app.load(path)
 		# data = pythoniccss.convert(data)
 		while (not data) and tries < 3:
 			command = "%s %s" % (self.commands.get("pythoniccss", "pythoniccss"), path)
@@ -611,16 +611,16 @@ class LibraryServer(Component):
 
 	def _processPAML( self, path ):
 		"""Processes a JS file, minifying it if `jsmin` is installed."""
-		data = self.app().load(path)
+		data = self.app.load(path)
 		return paml.process(data)
 
 	def _processXSL( self, path ):
 		"""Processes a JS file, minifying it if `jsmin` is installed."""
-		return self.app().load(path)
+		return self.app.load(path)
 
 	def _processJS( self, path ):
 		"""Processes a JS file, minifying it if `jsmin` is installed."""
-		data = self.app().load(path)
+		data = self.app.load(path)
 		if self.minify and jsmin: data = jsmin.jsmin(data)
 		return data
 

@@ -18,7 +18,7 @@ from retro.web  import on, expose, predicate, when, restrict, cache, \
 
 # FIXME: Add support for stackable applications
 
-__version__ = "2.8.7"
+__version__ = "2.9.0"
 __doc__     = """\
 This is the main Retro module. You can generally do the following:
 
@@ -127,22 +127,25 @@ def run( app=None, components=(), method=STANDALONE, name="retro",
 		for _ in components: app.register(_)
 	# We set up the configuration if necessary
 	config = app.config()
-	if not config: config = Configuration(CONFIG)
+	if not config:
+		config = Configuration(CONFIG)
 	# Adjusts the working directory to basepath
 	root = os.path.abspath(root)
-	if os.path.isfile(root): root = os.path.dirname(root)
+	if os.path.isfile(root):
+		root = os.path.dirname(root)
 	# We set the application root to the given root, and do a chdir
 	os.chdir(root)
 	config.setdefault("root",    root)
 	config.setdefault("name",    name)
 	config.setdefault("logfile", name + ".log")
-	if resetlog: os.path.unlink(config.logfile())
+	if resetlog and os.path.exists(config.logfile()):
+		os.unlink(config.logfile())
 	# We set the configuration
 	app.config(config)
 	# And start the application
 	app.start()
 	# NOTE: Maybe we should always print it
-	#print app.config()
+	#print app.config
 	# We start the WSGI stack
 	stack = app._dispatcher
 	stack = processStack(stack)
@@ -222,11 +225,11 @@ def run( app=None, components=(), method=STANDALONE, name="retro",
 			import logging
 		def application(environ, startResponse):
 			# Gevent needs a wrapper
-			if "retro.app" not in environ: environ["retro.app"] = stack.app()
+			if "retro.app" not in environ: environ["retro.app"] = stack.app
 			return environ["retro.app"](environ, startResponse)
 		def logged_application(environ, startResponse):
 			logging.info("{0} {1}".format(environ["REQUEST_METHOD"], environ["PATH_INFO"]))
-			if "retro.app" not in environ: environ["retro.app"] = stack.app()
+			if "retro.app" not in environ: environ["retro.app"] = stack.app
 			return environ["retro.app"](environ, startResponse)
 		if method == "GEVENT":
 			try:
@@ -289,7 +292,8 @@ def run( app=None, components=(), method=STANDALONE, name="retro",
 			int(port or app.config("port") or DEFAULT_PORT)
 		)
 		stack.fromRetro = True
-		stack.app       = lambda: app
+		# NOTE: That's an acceptable tight coupling
+		stack._app      = app
 		if method == STANDALONE and not asynchronous:
 			import retro.wsgi
 			try:

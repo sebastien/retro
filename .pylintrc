@@ -1,0 +1,10 @@
+[FORMAT]
+indent-string=\t
+
+[MESSAGES CONTROL]
+disable=bad-whitespace,line-too-long,bad-continuation,invalid-name,no-self-use,no-else-return
+
+
+[MASTER]
+init-hook='import sys; sys.path.append("src")
+

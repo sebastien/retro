@@ -507,7 +507,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 		protocol, host, path, parameters, query, fragment = urlparse.urlparse('http://localhost%s' % self.path)
 		if not hasattr(application, "fromRetro"):
 			raise Exception("Retro embedded Web server can only work with Retro applications.")
-		script = application.app().config("root")
+		script = application.app.config("root")
 		env = {
 			'wsgi.version':(1,0)
 			,'wsgi.url_scheme': 'http'
@@ -516,7 +516,7 @@ Use request methods to create a response(request.respond, request.returns, ...)
 			,'wsgi.multithread': 1
 			,'wsgi.multiprocess': 0
 			,'wsgi.run_once': 0
-			,'retro.app':application.app()
+			,'retro.app':application.app
 			,'extra.request': self.raw_requestline
 			,'extra.headers': self.headers.headers if hasattr(self.headers, "headers") else self.headers
 			,'REQUEST_METHOD': self.command

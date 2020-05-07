@@ -452,6 +452,7 @@ class Request:
 	def createRequestBodyLoader( self, request, complete=False ):
 		return RequestBodyLoader(request, complete)
 
+	@property
 	def headers( self ):
 		if self._headers is None:
 			e = self._environ
@@ -478,43 +479,58 @@ class Request:
 
 	def header( self, name ):
 		name = "-".join(map(string.capwords, name.split("-")))
-		return self.headers().get(name)
+		return self.headers.get(name)
 
+	@property
 	def method( self ):
 		"""Returns the method (GET, POST, etc) for this request."""
 		return self._environ.get(self.REQUEST_METHOD)
 
+	@property
 	def path( self ):
 		"""Alias for `self.uri`"""
-		return self.uri()
+		return self._environ.get(self.PATH_INFO)
 
+	@property
+	def path( self ):
+		"""Alias for `self.uri`"""
+		return self._environ.get(self.QUERY_STRING)
+
+	@property
 	def url( self ):
 		return self.protocol + "://" + self.host() + self.uri()
 
+	@property
 	def userAgent( self ):
 		return self._environ.get(self.HTTP_USER_AGENT)
 
+	@property
 	def isFromCrawler( self ):
 		return self.userAgent().split("/")[0].lower() in CRAWLERS
 
+	@property
 	def host( self ):
 		"""Returns the hostname for this request"""
 		return self._environ.get(self.HTTP_HOST)
 
+	@property
 	def uri( self ):
 		"""Returns the URI for this method."""
 		uri = self._environ.get(self.REQUEST_URI) or self._environ.get(self.PATH_INFO)
 		if self._environ.get(self.QUERY_STRING): uri += "?" + self._environ.get(self.QUERY_STRING)
 		return uri
 
+	@property
 	def contentType( self ):
 		"""Returns the request content type"""
 		return self._environ.get(self.CONTENT_TYPE)
 
+	@property
 	def hasContentLength( self ):
 		"""Returns the request content length (if any)"""
 		return self._environ.get(self.CONTENT_LENGTH)
 
+	@property
 	def contentLength( self ):
 		"""Returns the request content length (if any)"""
 		return int(self._environ.get(self.CONTENT_LENGTH) or 0)

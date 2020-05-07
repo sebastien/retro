@@ -152,7 +152,7 @@ class PageServer(Component):
 					self.DEFAULTS[key] = value
 
 	def start( self ):
-		self.mergeDefaults(self.app())
+		self.mergeDefaults(self.app)
 
 	# -------------------------------------------------------------------------
 	# MAIN PAGES
@@ -161,8 +161,8 @@ class PageServer(Component):
 	def getUser( self, request ):
 		"""Returns the user associated with the given request. Must be
 		implemented by subclasses."""
-		if hasattr(self.app(), "getUser"):
-			return self.app().getUser(request)
+		if hasattr(self.app, "getUser"):
+			return self.app.getUser(request)
 		else:
 			return None
 
@@ -171,7 +171,7 @@ class PageServer(Component):
 		if not wwwclient:
 			raise Exception("wwwclient is required")
 		else:
-			path  =  os.path.join(self.app().config("library.path"))
+			path  =  os.path.join(self.app.config("library.path"))
 			links = []
 			for ext in ("paml", "html"):
 				for tmpl_path in glob.glob(path + "/*/*." + ext):
@@ -208,7 +208,7 @@ class PageServer(Component):
 	@on(GET=("/favicon.ico"), priority=2)
 	def favicon(self, request):
 		"""The default favicon handler"""
-		return request.respondFile(self.app().config("library.path") + "/images/favicon.ico")
+		return request.respondFile(self.app.config("library.path") + "/images/favicon.ico")
 
 	# -------------------------------------------------------------------------
 	# UTILITIES
@@ -218,7 +218,7 @@ class PageServer(Component):
 		"""Merges the given dictionaries with the `DEFAULTS` dictionary."""
 		res = self.DEFAULTS.copy()
 		for d in dicts:
-			res.setdefault("base", self.app().config("base") or "")
+			res.setdefault("base", self.app.config("base") or "")
 			res.update(d)
 		return res
 
@@ -250,7 +250,7 @@ class PageServer(Component):
 			currentUrl  = request.path()
 		)
 		context  = self.merge(context, properties)
-		if self.app().config("devmode") or template not in self._templates:
+		if self.app.config("devmode") or template not in self._templates:
 			tmpl = self.loadTemplate(template, type=templateType)
 			self._templates[template] = tmpl
 		else:
@@ -260,8 +260,8 @@ class PageServer(Component):
 		return response
 
 	def hasTemplate( self, name, type="paml", ext=None ):
-		if type=="paml" and not self.app().config("devmode"): type = "html"
-		path = os.path.join(self.app().config("library.path"), type, name + (ext if ext else "." + type))
+		if type=="paml" and not self.app.config("devmode"): type = "html"
+		path = os.path.join(self.app.config("library.path"), type, name + (ext if ext else "." + type))
 		key  = type + ":" + name
 		return key in self._templates or os.path.exists(path)
 
@@ -280,8 +280,8 @@ class PageServer(Component):
 
 	def loadPlainTemplate( self, name, raw=False, type="html", ext=None  ):
 		ext = ext or ("." + type)
-		if self.app().config("devmode"):
-			path   = os.path.join(self.app().config("library.path"), type, name + ext)
+		if self.app.config("devmode"):
+			path   = os.path.join(self.app.config("library.path"), type, name + ext)
 			text   = None
 			with open(path, "r") as f: text = f.read()
 			# NOTE: We do not cache templates in dev mode
@@ -292,7 +292,7 @@ class PageServer(Component):
 		else:
 			key = type + ":" + name + ":raw"
 			if key not in self._templates:
-				path   = os.path.join(self.app().config("library.path"), type, name + ext)
+				path   = os.path.join(self.app.config("library.path"), type, name + ext)
 				text   = None
 				with open(path, "r") as f: text   = f.read()
 				self._templates[key] = text
@@ -312,11 +312,11 @@ class PageServer(Component):
 	def loadPAMLTemplate( self, name, raw=False ):
 		"""Paml templates are converted to HTML templates in production,
 		so we only do the PAML conversion in dev mode"""
-		if self.app().config("devmode"):
+		if self.app.config("devmode"):
 			# We assume that PAML is only used in devlopment.
 			assert paml_engine, "retro.contrib.webapp.loadPAMLTemplate requires the paml.engine module"
 			parser = paml_engine.Parser()
-			path   = os.path.join(self.app().config("library.path"), "paml", name + ".paml")
+			path   = os.path.join(self.app.config("library.path"), "paml", name + ".paml")
 			# We load the template plain and parse it with PAML, so that we
 			# get a consistent result with the non-devmode HTML step. I
 			# tried adding the PAML expansion as a post-processing step
@@ -471,7 +471,7 @@ def start( app=None, port=None, runCondition=True, method=None, debug=False, col
 	method = method or app.config("method") or STANDALONE
 	info("Starting Web application {0} on {2}:{3} [{1}] ".format(name, method, app.config("host") or "0.0.0.0", app.config("port")))
 	if method == STANDALONE:
-		info(app.config())
+		info(app.config)
 		info(app.info())
 		Dispatcher.EnableLog()
 	if not lib_python_path in sys.path:
@@ -506,7 +506,7 @@ def application(environ, startReponse):
 		APPLICATION = start(method=WSGI)
 		for _ in ON_INIT: _(APPLICATION)
 	# We make sure the app is set
-	if "retro.app" not in environ: environ["retro.app"] = APPLICATION.stack.app()
+	if "retro.app" not in environ: environ["retro.app"] = APPLICATION.stack.app
 	return APPLICATION(environ, startReponse)
 
 if __name__ == "__main__":
