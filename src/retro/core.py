@@ -6,13 +6,13 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 16-Feb-2018
+# Last mod  : 07-May-2020
 # -----------------------------------------------------------------------------
 
 # TODO: Decouple WSGI-specific code and allow binding to Thor
 # TODO: Automatic suport for HEAD and cache requests
 
-import os, sys, cgi, re, email, time, types, mimetypes, hashlib, tempfile, string
+import os, sys, html, re, email, time, types, mimetypes, hashlib, tempfile, string
 import gzip, io, threading, locale, collections, unicodedata, logging
 from   .compat import *
 from urllib.parse import parse_qs
@@ -221,7 +221,7 @@ def cut(text, separator="|"):
 # -----------------------------------------------------------------------------
 
 def escapeHTML(text, quote=True):
-	return cgi.escape(text or "", quote)
+	return html.escape(text or "", quote)
 
 RE_SLUGIFY_STRIP     = re.compile(r'[^\w\s-]')
 RE_SLUGIFY_HYPHENATE = re.compile(r'[-\s]+')
@@ -492,7 +492,7 @@ class Request:
 		return self._environ.get(self.PATH_INFO)
 
 	@property
-	def path( self ):
+	def query( self ):
 		"""Alias for `self.uri`"""
 		return self._environ.get(self.QUERY_STRING)
 
@@ -818,7 +818,7 @@ class Request:
 		return None
 
 	def referer( self ):
-		"""Rerturns the HTTP referer for this request."""
+		"""Returns the HTTP referer for this request."""
 		return self.environ("HTTP_REFERER")
 
 	def clientIP( self ):
@@ -850,8 +850,7 @@ class Request:
 		BOUNDARY  = "RETRO-Multiple-content-response"
 		bodies    = iter(bodies)
 		if not headers: headers = []
-		headers.append(("Content-Type", "multipart/x-mixed-replace; "
-				  + 'boundary=' + BOUNDARY + ''))
+		headers.append(("Content-Type", "multipart/x-mixed-replace; " + 'boundary=' + BOUNDARY + ''))
 		def bodygenerator():
 			for body in bodies:
 				if body:
@@ -944,7 +943,7 @@ class Request:
 				#headers.append(("Keep-Alive",    "timeout=5, max=100"))
 				headers.append(("Content-Range", "bytes %d-%d/%d" % (range_start, range_end, full_length)))
 			# This is the generator that will stream the file's content
-			def pipe_content(path=path, start=range_start, remaining=content_length):
+			def pipe_content(start=range_start, remaining=content_length):
 				stream.open(start or 0)
 				while remaining:
 					# FIXME: For some reason, we have to read the whole thing in Firefox
@@ -1336,8 +1335,7 @@ class Response:
 	DEFAULT_CONTENT = "text/html"
 	REASONS         = BaseHTTPRequestHandler.responses
 
-	def __init__( self, content=None, headers=None, status=200, reason=None,
-			  produceWhen=None, compression=None):
+	def __init__( self, content=None, headers=None, status=200, reason=None, produceWhen=None, compression=None):
 		if headers == None: headers = []
 		self.status  = status
 		self.reason  = reason

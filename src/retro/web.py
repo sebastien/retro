@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 12-Apr-2006
-# Last mod  : 16-Feb-2018
+# Last mod  : 07-May-2020
 # -----------------------------------------------------------------------------
 
 import os, re, sys, time, functools, traceback, io, datetime, urllib
@@ -839,7 +839,7 @@ class Application(Component):
 		return self._dispatcher
 
 	def log( self, *args):
-		self.config.log(*args)
+		self.config().log(*args)
 
 	def config( self, name=re, value=re ):
 		"""Returns the configuration value for the given name. Please note that
