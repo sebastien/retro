@@ -15,11 +15,13 @@ __doc__ = """
 This script starts a Retro/Py web server that acts as a local proxy to the
 current filesystem or given directory ."""
 
-import os, sys, StringIO
+import os
+import sys
+import StringIO
 from retro import *
 from retro.contrib.localfiles import LocalFiles
 
-PORT               = 8080
+PORT = 8080
 
 # ------------------------------------------------------------------------------
 #
@@ -27,8 +29,9 @@ PORT               = 8080
 #
 # ------------------------------------------------------------------------------
 
+
 class Main(LocalFiles):
-	pass
+    pass
 
 # ------------------------------------------------------------------------------
 #
@@ -36,14 +39,15 @@ class Main(LocalFiles):
 #
 # ------------------------------------------------------------------------------
 
+
 if __name__ == "__main__":
-	main = Main()
-	run(
-		app        = Application(main),
-		name       = os.path.splitext(os.path.basename(__file__))[1],
-		method     = STANDALONE,
-		sessions   = False,
-		port       = PORT
-	)
+    main = Main()
+    run(
+        app=Application(main),
+        name=os.path.splitext(os.path.basename(__file__))[1],
+        method=STANDALONE,
+        sessions=False,
+        port=PORT
+    )
 
 # EOF

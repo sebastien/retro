@@ -13,7 +13,8 @@ __doc__ = """
 This script starts a Retro/Py web server that acts as a local proxy to the
 current filesystem or given directory ."""
 
-import os, sys
+import os
+import sys
 import retro
 
 # ------------------------------------------------------------------------------
@@ -25,13 +26,13 @@ import retro
 
 class Main(retro.Component):
 
-	@retro.on(GET_POST_UPDATE_DELETE="{path:any}")
-	async def echo( self, request, path ):
-		body = await request.body()
-		sys.stdout.write(retro.ensureString(body))
-		sys.stdout.write("\n\n")
-		sys.stdout.flush()
-		return request.respond(body)
+    @retro.on(GET_POST_UPDATE_DELETE="{path:any}")
+    async def echo(self, request, path):
+        body = await request.body()
+        sys.stdout.write(retro.ensureString(body))
+        sys.stdout.write("\n\n")
+        sys.stdout.flush()
+        return request.respond(body)
 
 # ------------------------------------------------------------------------------
 #
@@ -39,14 +40,15 @@ class Main(retro.Component):
 #
 # ------------------------------------------------------------------------------
 
+
 if __name__ == "__main__":
-	main = Main()
-	retro.run(
-		app        = retro.Application(main),
-		name       = os.path.splitext(os.path.basename(__file__))[1],
-		method     = retro.STANDALONE,
-		port       = 9030,
-		async      = True
-	)
+    main = Main()
+    retro.run(
+        app=retro.Application(main),
+        name=os.path.splitext(os.path.basename(__file__))[1],
+        method=retro.STANDALONE,
+        port=9030,
+        async=True
+    )
 
 # EOF - vim: tw=80 ts=4 sw=4 noet

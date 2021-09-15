@@ -13,13 +13,15 @@
 
 from retro import *
 
+
 class Main(Component):
-	"""To use this, go to <http://localhost:8080/say/hello>"""
+    """To use this, go to <http://localhost:8080/say/hello>"""
 
-	@on(GET="{any:rest}")
-	def saySomething( self, request, any ):
-		return request.respond("Hello, World!")
+    @on(GET="{any:rest}")
+    def saySomething(self, request, any):
+        return request.respond("Hello, World!")
 
-run( components=[Main()] )
+
+run(components=[Main()])
 
 # EOF
