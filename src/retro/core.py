@@ -285,7 +285,7 @@ class FormData:
         will yield the following couples:
 
         - `("b", boundary)` when a boundary is found
-        - `("h", headers)`  with an map of `header:value` when headers are encountered (header is stripper lowercased)
+        - `("h", headers)`  with an map of `header:value` when headers are encountered (header is stripped lowercased)
         - `("d", data)`     with a bytes array of at maximum `bufferSize` bytes.
 
         """
