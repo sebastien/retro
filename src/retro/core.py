@@ -13,10 +13,8 @@
 # TODO: Automatic suport for HEAD and cache requests
 
 import os
-import sys
 import html
 import re
-import email
 import time
 import types
 import mimetypes
@@ -25,23 +23,14 @@ import tempfile
 import string
 import gzip
 import io
-import threading
-import locale
 import collections
 import unicodedata
 import logging
 from .compat import *
 from urllib.parse import parse_qs
-
-try:
-    import urllib.request
-    import urllib.parse as urllib_parse
-    from http.server import BaseHTTPRequestHandler
-    from http.cookies import SimpleCookie
-except ImportError:
-    import urllib as urllib_parse
-    from BaseHTTPServer import BaseHTTPRequestHandler
-    from Cookie import SimpleCookie
+import urllib.parse as urllib_parse
+from http.server import BaseHTTPRequestHandler
+from http.cookies import SimpleCookie
 
 NOTHING = re
 MIME_TYPES = dict(
@@ -136,6 +125,8 @@ def asJSON(value, **options):
         res = asJSON(tuple(value), **options)
     elif hasattr(value, "asJSON") and isinstance(value.asJSON, collections.Callable):
         res = value.asJSON(asJSON, **options)
+    elif hasattr(value, "asDict") and isinstance(value.asDict, collections.Callable):
+        res = json(value.asDict())
     elif hasattr(value, "export") and isinstance(value.export, collections.Callable):
         try:
             value = value.export(**options)
@@ -877,6 +868,7 @@ class Request:
         there is no range."""
         content_range = self.header("range")
         if content_range:
+            range_end = range_start = 0
             content_range = content_range.split("=")
             if len(content_range) > 1:
                 content_range = content_range[1].split("-")
@@ -1021,8 +1013,8 @@ class Request:
                 headers.append(("Content-Length", str(content_length)))
             if has_range:
                 headers.append(("Accept-Ranges", "bytes"))
-                #headers.append(("Connection",    "Keep-Alive"))
-                #headers.append(("Keep-Alive",    "timeout=5, max=100"))
+                # headers.append(("Connection",    "Keep-Alive"))
+                # headers.append(("Keep-Alive",    "timeout=5, max=100"))
                 headers.append(("Content-Range", "bytes %d-%d/%d" %
                                 (range_start, range_end, full_length)))
             # This is the generator that will stream the file's content
@@ -1150,8 +1142,8 @@ class Request:
                 headers.append(("Content-Length", str(content_length)))
             if has_range:
                 headers.append(("Accept-Ranges", "bytes"))
-                #headers.append(("Connection",    "Keep-Alive"))
-                #headers.append(("Keep-Alive",    "timeout=5, max=100"))
+                # headers.append(("Connection",    "Keep-Alive"))
+                # headers.append(("Keep-Alive",    "timeout=5, max=100"))
                 headers.append(("Content-Range", "bytes %d-%d/%d" %
                                 (range_start, range_end, full_length)))
             # This is the generator that will stream the file's content
@@ -1516,14 +1508,13 @@ class Response:
         i = 0
         for header in self.headers:
             if header[0] == Request.HEADER_SET_COOKIE:
-                self.headers[i] = (header[0], "%s=%s; path=%s" %
-                                   (name, value, path))
+                self.headers[i] = (header[0], f"{name}={value}; path={path}")
                 found = True
             i += 1
             break
         if not found:
             self.headers.append(
-                (Request.HEADER_SET_COOKIE, "%s=%s; path=%s" % (name, value, path)))
+                (Request.HEADER_SET_COOKIE, f"{name}={value}; path={path}"))
         return self
 
     def setContentType(self, mimeType):
@@ -1608,4 +1599,4 @@ class Response:
 CRAWLERS = {'plumtreewebaccessor': True, 'suke': True, 'javabee': True, 'infoseek sidewinder': True, 'checkbot': True, 'patric': True, 'iajabot': True, 'moget': True, 'gcreep': True, 'yes': True, 'w3mir': True, 'jbot (but can be changed by the user)': True, 'borg-bot': True, 'rixbot (http:': True, 'anthillv1.1': True, "'iagent": True, 'webcatcher': True, 'scooter': True, 'openfind data gatherer, openbot': True, 'fish-search-robot': True, "hazel's ferret web hopper,": True, 'grabber': True, 'explorersearch': True, 'combine': True, 'kdd-explorer': True, 'aitcsrobot': True, 'tarspider': True, 'wget': True, 'fido': True, 'weblayers': True, 'esther': True, 'orbsearch': True, 'site valet': True, 'rules': True, 'esculapio': True, 'kit-fireball': True, 'nhsewalker': True, 'lycos': True, 'tlspider': True, 'gestalticonoclast': True, 'road runner: imagescape robot (lim@cs.leidenuniv.nl)': True, 'techbot': True, 'bbot': True, 'spiderbot': True, 'emacs-w3': True, 'w3index': True, 'sitetech-rover': True, 'bspider': True, 'robbie': True, 'portaljuice.com': True, 'poppi': True, 'valkyrie': True, 'cmc': True, 'esismartspider': True, 'diibot': True, 'computingsite robi': True, 'jcrawler': True, "shai'hulud": True, 'appie': True, 'ingrid': True, 'robozilla': True, 'arks': True, 'netcarta cyberpilot pro': True, 'katipo': True, 'infospiders': True, 'i robot 0.4 (irobot@chaos.dk)': True, 'larbin (+mail)': True, 'dienstspider': True, 'solbot': True, 'portalbspider': True, 'evliya celebi v0.151 - http:': True, 'titin': True, 'wwwwanderer v3.0': True, 'ontospider': True, 'linkwalker': True, 'informant': True, 'webreaper [webreaper@otway.com]': True, 'ucsd-crawler': True, 'linkidator': True, 'golem': True, 'pageboy': True, 'atomz': True, 'emc spider': True, 'ebiness': True, 'uptimebot': True, 'spiderman 1.0': True, 'pioneer': True, 'gulper web bot 0.2.4 (www.ecsl.cs.sunysb.edu': True, 'peregrinator-mathematics': True, 'ndspider': True, 'digimarc cgireader': True, 'calif': True, 'geturl.rexx v1.05': True, 'wlm-1.1': True, 'udmsearch': True, 'cienciaficcion.net spider (http:': True, 'fastcrawler 3.0.x (crawler@1klik.dk) - http:': True, 'atn_worldwide': True, 'raven-v2': True, 'marvin': True, 'gammaspider xxxxxxx ()': True, 'webcopy': True, 'coolbot': True, 'freecrawl': True, 'not available': True, 'arachnophilia': True, 'infoseek robot 1.0': True, 'alkalinebot': True, 'aspider': True, 'speedy spider ( http:': True, 'image.kapsi.net': True, 'awapclient': True, 'jubiirobot': True, 'webwalk': True, 'hku www robot,': True, 'momspider': True, 'cusco': True, 'htmlgobble v2.2': True, 'lockon': True, 'vision-search': True, 'cactvs chemistry spider': True, 'tarantula': True, 'perlcrawler': True, 'lwp::': True, 'ssearcher100': True, 'nec-meshexplorer': True, 'googlebot': True, 'boxseabot': True, 'webvac': True,
             'dnabot': True, 'ibm_planetwide,': True, 'backrub': True, 'piltdownman': True, 'slurp': True, 'muscatferret': True, 'safetynet robot 0.1,': True, 'motor': True, 'netscoop': True, 'ko_yappo_robot': True, 'northstar': True, 'objectssearch': True, 'digimarc webreader': True, 'webbandit': True, 'spiderline': True, 'jobo (can be modified by the user)': True, 'phpdig': True, 'cyberspyder': True, 'w@pspider': True, 'lwp': True, 'msnbot': True, 'gazz': True, 'esirover v1.0': True, 'sg-scout': True, 'incywincy': True, 'araybot': True, 'jumpstation': True, 'weblinker': True, 'labelgrab': True, 'straight flash!! getterroboplus 1.5': True, 'titan': True, 'packrat': True, 'robofox v2.0': True, 'urlck': True, 'crawlpaper': True, 'wolp': True, "due to a deficiency in java it's not currently possible to set the user-agent.": True, 'resume robot': True, 'webmoose': True, 'dragonbot': True, 'gromit': True, 'nomad-v2.x': True, 'logo.gif crawler': True, "'ahoy! the homepage finder'": True, 'merzscope': True, 'digger': True, 'h\xe4m\xe4h\xe4kki': True, 'libwww-perl-5.41': True, 'none': True, 'legs': True, 'newscan-online': True, 'occam': True, 'linkscan server': True, 'architextspider': True, 'felixide': True, 'robocrawl (http:': True, 'webs@recruit.co.jp': True, 'monster': True, 'elfinbot': True, 'searchprocess': True, 'mwdsearch': True, 'cosmos': True, 'w3m2': True, 'root': True, 'bayspider': True, 'http:': True, 'auresys': True, 'gulliver': True, 'templeton': True, 'israelisearch': True, 'm': True, 'die blinde kuh': True, 'simbot': True, 'snooper': True, 'shagseeker at http:': True, 'duppies': True, 'havindex': True, 'htdig': True, 'pgp-ka': True, 'psbot': True, 'desertrealm.com; 0.2; [j];': True, 'webfetcher': True, 'abcdatos botlink': True, 'no': True, 'wired-digital-newsbot': True, 'bjaaland': True, 'eit-link-verifier-robot': True, 'dlw3robot': True, 'inspectorwww': True, 'nederland.zoek': True, 'magpie': True, 'vwbot_k': True, 'mouse.house': True, 'griffon': True, 'cydralspider': True, 'web robot pegasus': True, 'rhcs': True, 'big brother': True, 'voyager': True, "due to a deficiency in java it's not currently possible": True, 'mindcrawler': True, 'deweb': True, 'webwatch': True, 'netmechanic': True, 'funnelweb-1.0': True, 'void-bot': True, 'victoria': True, 'webquest': True, 'hometown spider pro': True, 'mozilla 3.01 pbwf (win95)': True, 'wwwc': True, 'iron33': True, 'url spider pro': True, 'suntek': True, 'joebot': True, 'dwcp': True, 'verticrawlbot': True, 'whatuseek_winona': True, 'jobot': True, 'webwalker': True, 'xget': True, 'mediafox': True, 'internet cruiser robot': True, 'araneo': True, 'muninn': True, 'roverbot': True, 'robot du crim 1.0a': True, 'senrigan': True, 'blackwidow': True, 'confuzzledbot': True, '???': True, 'parasite': True, 'slcrawler': True}
 
-# EOF - vim: tw=80 ts=4 sw=4 noet
+# EOF - vim: tw=80 ts=4 sw=4 et
