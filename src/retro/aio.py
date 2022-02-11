@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 15-Feb-2018
-# Last mod  : 16-Feb-2018
+# Last mod  : 12-Feb-2022
 # -----------------------------------------------------------------------------
 
 import asyncio
@@ -16,8 +16,10 @@ import types
 import time
 import retro.core
 from retro.contrib.localfiles import LocalFiles
+
 try:
     import reporter
+
     logging = reporter.bind("retro-aio")
 except ImportError as e:
     import logging
@@ -40,9 +42,23 @@ relatively simple.
 
 RESET = "\033[0m"
 GRADIENT = (
-    59,  66, 108, 151, 194,
-    231, 230, 229, 228, 227, 226,
-    220, 214, 208, 202, 160, 196
+    59,
+    66,
+    108,
+    151,
+    194,
+    231,
+    230,
+    229,
+    228,
+    227,
+    226,
+    220,
+    214,
+    208,
+    202,
+    160,
+    196,
 )
 
 
@@ -56,6 +72,7 @@ def normal(color):
 
 def bold(color):
     return "\033[1;38;5;%sm" % (color)
+
 
 # -----------------------------------------------------------------------------
 #
@@ -72,7 +89,7 @@ class AsyncRequest(retro.core.Request):
         return AsyncRequestBodyLoader(request, complete)
 
     def init(self):
-        self._aioInput = self._environ['wsgi.input']
+        self._aioInput = self._environ["wsgi.input"]
         # NOTE: It's OK to merge the HTTP context's headers with
         # the request as the context is not recycled.
         self._headers = self._aioInput.headers
@@ -110,6 +127,7 @@ class AsyncRequest(retro.core.Request):
         if data is retro.core.NOTHING and not partial:
             while not self.isLoaded():
                 await self.load()
+
 
 # -----------------------------------------------------------------------------
 #
@@ -149,10 +167,11 @@ class AsyncRequestBodyLoader(retro.core.RequestBodyLoader):
 
     async def _load_load(self, to_read):
         assert to_read != 0
-        read_data = await self.request._environ['wsgi.input'].read(to_read)
+        read_data = await self.request._environ["wsgi.input"].read(to_read)
         read_count = len(read_data)
         self.contentRead += read_count
         return read_data
+
 
 # -----------------------------------------------------------------------------
 #
@@ -203,7 +222,7 @@ class HTTPContext(object):
                 # We skip the 4 bytes of \r\n\r\n
                 j = i + 4
                 o = self._parseChunk(t, 0, j)
-                assert (o <= j)
+                assert o <= j
                 self.rest = t[j:] if j < len(t) else None
             return True
 
@@ -224,7 +243,7 @@ class HTTPContext(object):
             # find at least one.
             i = data.find(b"\r\n", o)
             # The chunk must have \r\n at the end
-            assert (i >= 0)
+            assert i >= 0
             # Now we have a line, so we parse it
             step = self._parseLine(step, data[o:i])
             # And we increase the offset
@@ -242,8 +261,8 @@ class HTTPContext(object):
             j = line.index(b" ")
             k = line.index(b" ", j + 1)
             self.method = line[:j].decode()
-            self.uri = line[j+1:k].decode()
-            self.protocol = line[k+1:].decode()
+            self.uri = line[j + 1 : k].decode()
+            self.protocol = line[k + 1 :].decode()
             step = 1
         elif not line:
             # That's an EMPTY line, probably the one separating the body
@@ -316,7 +335,7 @@ class HTTPContext(object):
         if i == -1:
             query = ""
         else:
-            query = path[i+1:]
+            query = path[i + 1 :]
             path = path[:i]
         res = {
             "wsgi.version": (1, 0),
@@ -348,6 +367,7 @@ class HTTPContext(object):
         for k, v in self.headers.items():
             res[k.upper().replace("-", "_")] = v
         return res
+
 
 # -----------------------------------------------------------------------------
 #
@@ -394,7 +414,9 @@ class WSGIConnection(object):
         # We create a WSGI environment
         env = context.toWSGI()
         # We get a WSGI-enabled requet handler
-        def wrt(s, h): return self._startResponse(writer, context, s, h)
+        def wrt(s, h):
+            return self._startResponse(writer, context, s, h)
+
         res = application(env, wrt)
         # Here we don't write bodies of HEAD requests, as some browsers
         # simply won't read the body.
@@ -451,7 +473,9 @@ class WSGIConnection(object):
                 pass
         writer.close()
 
-    def _startResponse(self, writer, context, response_status, response_headers, exc_info=None):
+    def _startResponse(
+        self, writer, context, response_status, response_headers, exc_info=None
+    ):
         writer.write(b"HTTP/1.1 ")
         writer.write(self._ensureBytes(response_status))
         writer.write(b"\r\n")
@@ -489,24 +513,28 @@ class WSGIConnection(object):
             status_color = 196  # Red
         elif status >= 400:
             status_color = 202  # Orange
-        logging.info("{reset}{method_start}{method:7s}{method_end} {uri_start}{uri:70s}{reset} {status_start}[{status:3d}]{status_end} {elapsed_start}in {elapsed:2.3f}s{elapsed_end}{reset}".format(
-            method=method,
-            method_start=(bold if method in (
-                "GET", "POST", "DELETE") else normal)(status_color),
-            method_end=RESET,
-            status=status,
-            status_start=normal(GRADIENT[si]),
-            status_end=RESET,
-            uri=uri[:69] + "…" if uri and len(uri) > 70 else uri,
-            uri_start=uri_color,
-            elapsed=elapsed,
-            elapsed_start=normal(GRADIENT[ti]),
-            elapsed_end=RESET,
-            reset=RESET,
-        ))
+        logging.info(
+            "{reset}{method_start}{method:7s}{method_end} {uri_start}{uri:70s}{reset} {status_start}[{status:3d}]{status_end} {elapsed_start}in {elapsed:2.3f}s{elapsed_end}{reset}".format(
+                method=method,
+                method_start=(bold if method in ("GET", "POST", "DELETE") else normal)(
+                    status_color
+                ),
+                method_end=RESET,
+                status=status,
+                status_start=normal(GRADIENT[si]),
+                status_end=RESET,
+                uri=uri[:69] + "…" if uri and len(uri) > 70 else uri,
+                uri_start=uri_color,
+                elapsed=elapsed,
+                elapsed_start=normal(GRADIENT[ti]),
+                elapsed_end=RESET,
+                reset=RESET,
+            )
+        )
 
     def _ensureBytes(self, value):
         return value.encode("utf-8") if not isinstance(value, bytes) else value
+
 
 # -----------------------------------------------------------------------------
 #
@@ -533,8 +561,15 @@ class Server(object):
         try:
             await conn.process(reader, writer, self.application, self)
         except ConnectionResetError:
-            logging.info("{0:7s} {1} connection closed after {2:0.3f}s".format(
-                conn.context.method or "?", conn.context.uri, time.time() - conn.context.started, color=reporter.COLOR_YELLOW))
+            logging.info(
+                "{0:7s} {1} connection closed after {2:0.3f}s".format(
+                    conn.context.method or "?",
+                    conn.context.uri,
+                    time.time() - conn.context.started,
+                    color=reporter.COLOR_YELLOW,
+                )
+            )
+
 
 # -----------------------------------------------------------------------------
 #
@@ -546,15 +581,18 @@ class Server(object):
 def run(application, address, port):
     loop = asyncio.get_event_loop()
     server = Server(application, address, port)
-    coro = asyncio.start_server(server.request, address, port, loop=loop)
+    coro = asyncio.start_server(server.request, address, port)
     server = loop.run_until_complete(coro)
     socket = server.sockets[0].getsockname()
-    logging.info("Retro {font_server}asyncio{reset} server listening on {font_url}http://{host}:{port}{reset}".format(
-        host=socket[0], port=socket[1],
-        font_server=bold(255),
-        font_url=normal(51),
-        reset=RESET,
-    ))
+    logging.info(
+        "Retro {font_server}asyncio{reset} server listening on {font_url}http://{host}:{port}{reset}".format(
+            host=socket[0],
+            port=socket[1],
+            font_server=bold(255),
+            font_url=normal(51),
+            reset=RESET,
+        )
+    )
     try:
         loop.run_forever()
     except KeyboardInterrupt:
@@ -563,7 +601,8 @@ def run(application, address, port):
     server.close()
     loop.run_until_complete(server.wait_closed())
     loop.close()
-    logging.trace("done")
+    # logging.trace("done")
+
 
 # -----------------------------------------------------------------------------
 #
