@@ -62,4 +62,4 @@ def setCORSHeaders(r, origin=None, allowAll=True):
                 "GET, POST, OPTIONS, PUT, DELETE, UPDATE")
     return r
 
-# EOF - vim: ts=4 sw=4 noet
+# EOF

@@ -16,7 +16,9 @@ file and type:
 
 """
 
-import os, sys, StringIO
+import os
+import sys
+import StringIO
 from retro import *
 from retro.contrib.localfiles import LocalFiles
 
@@ -28,20 +30,22 @@ from retro.contrib.localfiles import LocalFiles
 
 PING = Event()
 PONG = RendezVous(expect=0)
+
+
 class Main(LocalFiles):
 
-	@on(GET="/ping")
-	def servePing( self, request ):
-		PING.trigger()
-		return request.respond("ping")
+    @on(GET="/ping")
+    def servePing(self, request):
+        PING.trigger()
+        return request.respond("ping")
 
-	@on(GET="/pong")
-	def servePong( self, request ):
-		def stream():
-			while True:
-				yield RendezVous(expect=1).joinEvent(PING)
-				yield "pong"
-		return request.respond(stream())
+    @on(GET="/pong")
+    def servePong(self, request):
+        def stream():
+            while True:
+                yield RendezVous(expect=1).joinEvent(PING)
+                yield "pong"
+        return request.respond(stream())
 
 # ------------------------------------------------------------------------------
 #
@@ -49,11 +53,12 @@ class Main(LocalFiles):
 #
 # ------------------------------------------------------------------------------
 
+
 # Gunicorn expects an 'application' symbol to be available
 application = run(
-	app        = Application(Main()),
-	name       = os.path.splitext(os.path.basename(__file__))[1],
-	method     = WSGI,
+    app=Application(Main()),
+    name=os.path.splitext(os.path.basename(__file__))[1],
+    method=WSGI,
 )
 
-# EOF - vim: tw=80 ts=4 sw=4 noet
+# EOF

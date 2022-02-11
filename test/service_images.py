@@ -13,9 +13,9 @@
 import os
 from retro import *
 
-PORT        = 8100
-ROOT        = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES   = os.path.abspath(os.path.join(ROOT, "data"))
+PORT = 8100
+ROOT = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES = os.path.abspath(os.path.join(ROOT, "data"))
 
 INDEX = """
 <html>
@@ -41,15 +41,16 @@ INDEX = """
 #
 # ------------------------------------------------------------------------------
 
+
 class Main(Component):
 
-	@on(GET="/images/{f:file}")
-	def getimage( self, request, f ):
-		return request.localFile( "data/" + f)
+    @on(GET="/images/{f:file}")
+    def getimage(self, request, f):
+        return request.localFile("data/" + f)
 
-	@on(GET="/")
-	def main( self, request ):
-		return request.respond(INDEX)
+    @on(GET="/")
+    def main(self, request):
+        return request.respond(INDEX)
 
 # ------------------------------------------------------------------------------
 #
@@ -57,9 +58,10 @@ class Main(Component):
 #
 # ------------------------------------------------------------------------------
 
+
 if __name__ == "__main__":
-	# We update the settings module
-	app = Application(components=[Main()]).configure(templates=TEMPLATES)
-	run(app,name="Retro test",method=STANDALONE, port=PORT, root=ROOT)
+    # We update the settings module
+    app = Application(components=[Main()]).configure(templates=TEMPLATES)
+    run(app, name="Retro test", method=STANDALONE, port=PORT, root=ROOT)
 
 # EOF

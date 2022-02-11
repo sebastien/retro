@@ -13,10 +13,12 @@ __doc__ = """
 This script starts a Retro/Py web server that acts as a local proxy to the
 current filesystem or given directory ."""
 
-import os, sys, StringIO
+import os
+import sys
+import StringIO
 from retro import *
 
-PORT               = 9030
+PORT = 9030
 
 # ------------------------------------------------------------------------------
 #
@@ -24,14 +26,15 @@ PORT               = 9030
 #
 # ------------------------------------------------------------------------------
 
+
 class Main(Component):
 
-	@on(GET_POST_UPDATE_DELETE="{path:any}")
-	def echo( self, request, path ):
-		sys.stdout.write(request.body())
-		sys.stdout.write("\n\n")
-		sys.stdout.flush()
-		return request.respond(request.body())
+    @on(GET_POST_UPDATE_DELETE="{path:any}")
+    def echo(self, request, path):
+        sys.stdout.write(request.body())
+        sys.stdout.write("\n\n")
+        sys.stdout.flush()
+        return request.respond(request.body())
 
 # ------------------------------------------------------------------------------
 #
@@ -39,13 +42,14 @@ class Main(Component):
 #
 # ------------------------------------------------------------------------------
 
-if __name__ == "__main__":
-	main = Main()
-	run(
-		app        = Application(main),
-		name       = os.path.splitext(os.path.basename(__file__))[1],
-		method     = STANDALONE,
-		port       = PORT
-	)
 
-# EOF - vim: tw=80 ts=4 sw=4 noet
+if __name__ == "__main__":
+    main = Main()
+    run(
+        app=Application(main),
+        name=os.path.splitext(os.path.basename(__file__))[1],
+        method=STANDALONE,
+        port=PORT
+    )
+
+# EOF

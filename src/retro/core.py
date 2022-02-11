@@ -42,6 +42,7 @@ MIME_TYPES = dict(
 
 try:
     import json as simplejson
+
     HAS_JSON = True
 except:
     HAS_JSON = False
@@ -71,6 +72,7 @@ ensureSafeUnicode = ensure_unicode_safe
 
 def normalizeHeader(h):
     return "-".join(_.capitalize() for _ in h.split("-"))
+
 
 # -----------------------------------------------------------------------------
 #
@@ -106,7 +108,15 @@ def asJSON(value, **options):
     else:
         options["currentDepth"] = 0
     # NOTE: There might be a better way to test if it's a primitive type
-    if value in (True, False, None) or type(value) in (bool, float, int, long, bytes, str, unicode):
+    if value in (True, False, None) or type(value) in (
+        bool,
+        float,
+        int,
+        long,
+        bytes,
+        str,
+        unicode,
+    ):
         res = json(value)
     elif isinstance(value, str) or isinstance(value, unicode):
         return json(value)
@@ -115,7 +125,7 @@ def asJSON(value, **options):
     elif isinstance(value, dict) or isinstance(value, collections.OrderedDict):
         r = []
         for k in list(value.keys()):
-            r.append('%s:%s' % (json(str(k)), asJSON(value[k], **options)))
+            r.append("%s:%s" % (json(str(k)), asJSON(value[k], **options)))
         res = "{%s}" % (",".join(r))
     elif hasattr(value, "__class__") and value.__class__.__name__ == "datetime":
         res = asJSON(tuple(value.timetuple()), **options)
@@ -164,11 +174,15 @@ def asPrimitive(value, **options):
         res = {}
         for k in value:
             res[k] = asPrimitive(value[k], **options)
-    elif hasattr(value, "__class__") and (value.__class__.__name__ == "datetime" or value.__class__.__name__ == "date"):
+    elif hasattr(value, "__class__") and (
+        value.__class__.__name__ == "datetime" or value.__class__.__name__ == "date"
+    ):
         res = tuple(value.timetuple())
     elif hasattr(value, "__class__") and value.__class__.__name__ == "struct_time":
         res = tuple(value)
-    elif hasattr(value, "asPrimitive") and isinstance(value.asPrimitive, collections.Callable):
+    elif hasattr(value, "asPrimitive") and isinstance(
+        value.asPrimitive, collections.Callable
+    ):
         res = value.asPrimitive(processor=asPrimitive, **options)
     elif hasattr(value, "export") and isinstance(value.export, collections.Callable):
         try:
@@ -184,6 +198,7 @@ def asPrimitive(value, **options):
         res = asPrimitive(value.__dict__, **options)
     return res
 
+
 # -----------------------------------------------------------------------------
 #
 # CACHE TIMESTAMP
@@ -192,14 +207,35 @@ def asPrimitive(value, **options):
 
 
 DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-          "July", "Aug", "Sep", "Oct", "Nov", "Dec")
+MONTHS = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "July",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
 
 
 def cache_timestamp(t):
     # NOTE: We  have to do it here as we don't want to force the locale
     # FORMAT: If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT
-    return "%s, %02d %s %d %d:%d:%d GMT" % (DAYS[t.tm_wday], t.tm_mday, MONTHS[t.tm_mon - 1], t.tm_year, t.tm_hour, t.tm_min, t.tm_sec)
+    return "%s, %02d %s %d %d:%d:%d GMT" % (
+        DAYS[t.tm_wday],
+        t.tm_mday,
+        MONTHS[t.tm_mon - 1],
+        t.tm_year,
+        t.tm_hour,
+        t.tm_min,
+        t.tm_sec,
+    )
+
 
 # -----------------------------------------------------------------------------
 #
@@ -210,10 +246,11 @@ def cache_timestamp(t):
 
 def compress_gzip(data):
     out = io.BytesIO()
-    f = gzip.GzipFile(fileobj=out, mode='w')
+    f = gzip.GzipFile(fileobj=out, mode="w")
     f.write(data)
     f.close()
     return out.getvalue()
+
 
 # -----------------------------------------------------------------------------
 #
@@ -232,10 +269,11 @@ def cut(text, separator="|"):
             continue
         m = RE_CUT.match(line)
         if m:
-            res.append(line[m.end() + 1:])
+            res.append(line[m.end() + 1 :])
         else:
             res.append(line)
     return res
+
 
 # -----------------------------------------------------------------------------
 #
@@ -248,8 +286,8 @@ def escapeHTML(text, quote=True):
     return html.escape(text or "", quote)
 
 
-RE_SLUGIFY_STRIP = re.compile(r'[^\w\s-]')
-RE_SLUGIFY_HYPHENATE = re.compile(r'[-\s]+')
+RE_SLUGIFY_STRIP = re.compile(r"[^\w\s-]")
+RE_SLUGIFY_HYPHENATE = re.compile(r"[-\s]+")
 
 
 def slugify(value):
@@ -261,9 +299,10 @@ def slugify(value):
     """
     if not isinstance(value, unicode):
         value = unicode(value)
-    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore')
-    value = unicode(RE_SLUGIFY_STRIP.sub('', value).strip().lower())
-    return RE_SLUGIFY_HYPHENATE.sub('-', value)
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore")
+    value = unicode(RE_SLUGIFY_STRIP.sub("", value).strip().lower())
+    return RE_SLUGIFY_HYPHENATE.sub("-", value)
+
 
 # -----------------------------------------------------------------------------
 #
@@ -286,17 +325,18 @@ class FormData:
         will yield the following couples:
 
         - `("b", boundary)` when a boundary is found
-        - `("h", headers)`  with an map of `header:value` when headers are encountered (header is stripper lowercased)
+        - `("h", headers)`  with an map of `header:value` when headers are encountered (header is stripped lowercased)
         - `("d", data)`     with a bytes array of at maximum `bufferSize` bytes.
 
         """
         # multipart/form-data
         # The contentType is epxected to be
         # >   Content-Type: multipart/form-data; boundary=<BOUNDARY>\r\n
-        assert "multipart/form-data" in contentType or "multipart/mixed" in contentType, "Expected multipart/form-data or multipart/mixed in content type"
+        assert (
+            "multipart/form-data" in contentType or "multipart/mixed" in contentType
+        ), "Expected multipart/form-data or multipart/mixed in content type"
         boundary = b"--" + ensureBytes(contentType).split(b"boundary=", 1)[1]
-        assert boundary, "No boundary found in content-type {0}".format(
-            contentType)
+        assert boundary, "No boundary found in content-type {0}".format(contentType)
         boundary_length = len(boundary)
         has_more = True
         rest = b""
@@ -328,10 +368,9 @@ class FormData:
                             # TODO: We might want to specify an alternate encoding
                             name = normalizeHeader(header[0].decode()).strip()
                             value = header[1].strip()
-                            parsed_headers[ensureString(
-                                name)] = ensureString(value)
+                            parsed_headers[ensureString(name)] = ensureString(value)
                     yield ("h", parsed_headers)
-                    chunk = chunk[i+4:]
+                    chunk = chunk[i + 4 :]
                 else:
                     yield ("h", None)
             # Now we look for the next boundary
@@ -343,8 +382,8 @@ class FormData:
             else:
                 # The body will end with \r\n + boundary
                 if i > 2:
-                    yield ("d", chunk[0:i - 2])
-                rest = chunk[i+boundary_length:]
+                    yield ("d", chunk[0 : i - 2])
+                rest = chunk[i + boundary_length :]
                 yield ("b", boundary)
                 state = "b"
             has_more = len(chunk) > 0 or len(chunk) == read_size
@@ -416,21 +455,22 @@ class FormData:
                 assert is_new
                 is_new = False
                 if data:
-                    meta = dict((h, cls.ParseHeaderValue(v))
-                                for h, v in data.items())
+                    meta = dict((h, cls.ParseHeaderValue(v)) for h, v in data.items())
                 else:
                     meta = None
             elif state == "d":
                 assert not is_new
                 if not data_file:
                     data_file = tempfile.SpooledTemporaryFile(
-                        max_size=cls.DATA_SPOOL_SIZE)
+                        max_size=cls.DATA_SPOOL_SIZE
+                    )
                 data_file.write(data)
             else:
                 raise Exception("State not recognized: {0}".format(state))
         if data_file:
             data_file.seek(0)
             yield (meta, data_file)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -471,8 +511,7 @@ class Request:
         self._headers = None
         self._charset = charset
         # FIXME: Not sure while we create one directly
-        self._data = tempfile.SpooledTemporaryFile(
-            max_size=self.DATA_SPOOL_SIZE)
+        self._data = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
         self._component = None
         self._cookies = None
         self._files = None
@@ -498,8 +537,7 @@ class Request:
             for key in e:
                 if not key.startswith("HTTP_"):
                     continue
-                header = "-".join(map(string.capwords,
-                                      key[len("HTTP_"):].split("_")))
+                header = "-".join(map(string.capwords, key[len("HTTP_") :].split("_")))
                 headers[header] = e[key]
             i = 0
             c = True
@@ -555,8 +593,7 @@ class Request:
     @property
     def uri(self):
         """Returns the URI for this method."""
-        uri = self._environ.get(
-            self.REQUEST_URI) or self._environ.get(self.PATH_INFO)
+        uri = self._environ.get(self.REQUEST_URI) or self._environ.get(self.PATH_INFO)
         if self._environ.get(self.QUERY_STRING):
             uri += "?" + self._environ.get(self.QUERY_STRING)
         return uri
@@ -598,9 +635,9 @@ class Request:
                 query_params = parse_qs(query)
                 # FIXME: What about unquote?
                 # for key, value in params.items():
-                #	if name == key:
-                #		if len(value) == 1: return urllib.unquote(value[0])
-                #		return urllib.unquote(value)
+                # 	if name == key:
+                # 		if len(value) == 1: return urllib.unquote(value[0])
+                # 		return urllib.unquote(value)
                 # TODO: Decode support
                 # if not self._charset is None:
                 # for key, value in d.iteritems():
@@ -609,7 +646,7 @@ class Request:
                 # it as a key
                 if not query_params:
                     query = urllib_parse.unquote(query)
-                    query_params = {query: '', '': query}
+                    query_params = {query: "", "": query}
                 for k, v in list(query_params.items()):
                     self._addParam(k, v)
             else:
@@ -630,7 +667,8 @@ class Request:
                     res[name] = processor(params[name])
                 except Exception as e:
                     logging.error(
-                        f"Request: Could not parse param '{name}' in {params} with {processors}")
+                        f"Request: Could not parse param '{name}' in {params} with {processors}"
+                    )
         return res
 
     def hashParams(self, path=None):
@@ -678,7 +716,7 @@ class Request:
         if self._cookies != None:
             return self._cookies
         cookies = SimpleCookie()
-        cookies.load(self.environ(self.HTTP_COOKIE) or '')
+        cookies.load(self.environ(self.HTTP_COOKIE) or "")
         self._cookies = cookies
         return self._cookies
 
@@ -704,20 +742,29 @@ class Request:
             cookies[name]["path"] = path
             # And now we update the response headers
             cookie_name = urllib_parse.quote(name) + "="
-            cookie_path = ("; path=" + urllib_parse.quote(path)
-                           ) if path else ""
+            cookie_path = ("; path=" + urllib_parse.quote(path)) if path else ""
             cookie_value = urllib_parse.quote(unicode(value))
             # We'll only replace the cookies with the same name and path
             for header in self._responseHeaders:
-                if header[0] == self.HEADER_SET_COOKIE and header[1].startswith(cookie_name) and cookie_path in header[1]:
-                    self._responseHeaders[i] = (header[0], "%s%s%s" % (
-                        cookie_name, cookie_value, cookie_path))
+                if (
+                    header[0] == self.HEADER_SET_COOKIE
+                    and header[1].startswith(cookie_name)
+                    and cookie_path in header[1]
+                ):
+                    self._responseHeaders[i] = (
+                        header[0],
+                        "%s%s%s" % (cookie_name, cookie_value, cookie_path),
+                    )
                     found = True
                 i += 1
                 break
             if not found:
                 self._responseHeaders.append(
-                    (self.HEADER_SET_COOKIE, "%s%s%s" % (cookie_name, cookie_value, cookie_path)))
+                    (
+                        self.HEADER_SET_COOKIE,
+                        "%s%s%s" % (cookie_name, cookie_value, cookie_path),
+                    )
+                )
 
     def has(self, name, load=False):
         """Tells if the request has the given parameter."""
@@ -780,8 +827,7 @@ class Request:
             while not self.isLoaded():
                 load = self.load()
                 if asyncio_iscoroutine(load):
-                    raise Exception(
-                        "Synchronous request used with async server")
+                    raise Exception("Synchronous request used with async server")
 
     def _data_process(self, data, asFile, partial):
         if data == NOTHING:
@@ -801,11 +847,9 @@ class Request:
             self._environ[self.CONTENT_LENGTH] = len(data)
             if self._data:
                 self._data.close()
-            self._data = tempfile.SpooledTemporaryFile(
-                max_size=self.DATA_SPOOL_SIZE)
+            self._data = tempfile.SpooledTemporaryFile(max_size=self.DATA_SPOOL_SIZE)
             self._data.write(data)
-            self._bodyLoader = self.createRequestBodyLoader(
-                self, complete=True)
+            self._bodyLoader = self.createRequestBodyLoader(self, complete=True)
             return self._bodyLoader
 
     def body(self, body=re):
@@ -907,9 +951,13 @@ class Request:
             headers = []
         if content and contentType:
             headers.append(["Content-Type", str(contentType)])
-        return Response(content, self._mergeHeaders(headers), status, compression=self.compression())
+        return Response(
+            content, self._mergeHeaders(headers), status, compression=self.compression()
+        )
 
-    def respondMultiple(self, bodies='', contentType="text/html", headers=None, status=200):
+    def respondMultiple(
+        self, bodies="", contentType="text/html", headers=None, status=200
+    ):
         """Response with multiple bodies returned by the given sequence or
         iterator. This allows to implement 'server push' very easily."""
         BOUNDARY = "RETRO-Multiple-content-response"
@@ -917,7 +965,11 @@ class Request:
         if not headers:
             headers = []
         headers.append(
-            ("Content-Type", "multipart/x-mixed-replace; " + 'boundary=' + BOUNDARY + ''))
+            (
+                "Content-Type",
+                "multipart/x-mixed-replace; " + "boundary=" + BOUNDARY + "",
+            )
+        )
 
         def bodygenerator():
             for body in bodies:
@@ -931,37 +983,75 @@ class Request:
                     yield res
                 else:
                     yield ""
-        return Response(bodygenerator(), self._mergeHeaders(headers), 200, compression=self.compression())
+
+        return Response(
+            bodygenerator(),
+            self._mergeHeaders(headers),
+            200,
+            compression=self.compression(),
+        )
 
     def redirect(self, url, content="", temporary=False, **kwargs):
         """Responds to this request by a redirection to the following URL, with
         the given keyword arguments as parameter."""
         if kwargs:
             url += "?" + urllib_parse.urlencode(kwargs)
-        return Response(content, self._mergeHeaders([("Location", url)]), 302 if temporary else 301, compression=self.compression())
+        return Response(
+            content,
+            self._mergeHeaders([("Location", url)]),
+            302 if temporary else 301,
+            compression=self.compression(),
+        )
 
     def bounce(self, temporary=False, **kwargs):
         url = self._environ.get("HTTP_REFERER")
         if url:
             if kwargs:
                 url += "?" + urllib_parse.urlencode(kwargs)
-            return Response("", self._mergeHeaders([("Location", url)]), 302 if temporary else 301, compression=self.compression())
+            return Response(
+                "",
+                self._mergeHeaders([("Location", url)]),
+                302 if temporary else 301,
+                compression=self.compression(),
+            )
         else:
             assert not kwargs
             return Response("", [], 200, compression=self.compression())
 
-    def returns(self, value=None, raw=False, contentType=None, status=200, headers=None, options=None):
+    def returns(
+        self,
+        value=None,
+        raw=False,
+        contentType=None,
+        status=200,
+        headers=None,
+        options=None,
+    ):
         if not raw:
             value = asJSON(value, **(options or {}))
         h = [("Content-Type", contentType or "application/json")]
         if headers:
             h.extend(headers)
-        return Response(value, headers=self._mergeHeaders(h), status=status, compression=self.compression())
+        return Response(
+            value,
+            headers=self._mergeHeaders(h),
+            status=status,
+            compression=self.compression(),
+        )
 
     # FIXME: This should be split in respondData or respondStream that would allow to have ranged request
     # support for not only files but arbitrary data
 
-    def respondStream(self, stream, contentType="application/x-binary", status=200, contentLength=True, etag=True, lastModified=None, buffer=1024 * 256):
+    def respondStream(
+        self,
+        stream,
+        contentType="application/x-binary",
+        status=200,
+        contentLength=True,
+        etag=True,
+        lastModified=None,
+        buffer=1024 * 256,
+    ):
         # FIXME: Attempt at abstracting that
         content_range = self.header("range")
         range_start, range_end = self.range() or (None, None)
@@ -976,7 +1066,8 @@ class Request:
             modified_since = self.header(self.HEADER_IF_MODIFIED_SINCE)
             try:
                 modified_since = time.strptime(
-                    modified_since, "%a, %d %b %Y %H:%M:%S GMT")
+                    modified_since, "%a, %d %b %Y %H:%M:%S GMT"
+                )
                 if modified_since > lastModified:
                     has_changed = False
             except Exception as e:
@@ -1002,21 +1093,26 @@ class Request:
                     content_length = full_length - range_start
                 else:
                     content_length = min(
-                        range_end - range_start, full_length - range_start)
+                        range_end - range_start, full_length - range_start
+                    )
             if has_range or etag:
                 # We don't use the content-type for ETag as we don't want to
                 # have to read the whole file, that would be too slow.
                 # NOTE: ETag is indepdent on the range and affect the file as a whole
                 etag_sig = '"' + stream.etag() + '"'
-                headers.append(("ETag",          etag_sig))
+                headers.append(("ETag", etag_sig))
             if contentLength is True:
                 headers.append(("Content-Length", str(content_length)))
             if has_range:
                 headers.append(("Accept-Ranges", "bytes"))
                 # headers.append(("Connection",    "Keep-Alive"))
                 # headers.append(("Keep-Alive",    "timeout=5, max=100"))
-                headers.append(("Content-Range", "bytes %d-%d/%d" %
-                                (range_start, range_end, full_length)))
+                headers.append(
+                    (
+                        "Content-Range",
+                        "bytes %d-%d/%d" % (range_start, range_end, full_length),
+                    )
+                )
             # This is the generator that will stream the file's content
 
             def pipe_content(start=range_start, remaining=content_length):
@@ -1030,18 +1126,28 @@ class Request:
                         yield chunk
                     else:
                         break
+
             content = pipe_content()
         # File system modification date takes precendence (but for stream we'll test ETag instead)
         if lastModified and not has_changed and not has_range:
             return self.notModified(contentType=contentType)
         # Otherwise we test ETag
-        elif etag is True and etag_sig and self.header(self.HEADER_IF_NONE_MATCH) == etag_sig:
+        elif (
+            etag is True
+            and etag_sig
+            and self.header(self.HEADER_IF_NONE_MATCH) == etag_sig
+        ):
             return self.notModified(contentType=contentType)
         # and if nothing works, we'll return the response
         else:
             if has_range:
                 status = 206
-            return Response(content=content, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
+            return Response(
+                content=content,
+                headers=self._mergeHeaders(headers),
+                status=status,
+                compression=self.compression(),
+            )
 
     def guessContentType(self, path):
         ext = path.rsplit(".", 1)[-1]
@@ -1051,7 +1157,16 @@ class Request:
             res, _ = mimetypes.guess_type(path)
             return res or "text/plain"
 
-    def respondFile(self, path, contentType=None, status=200, contentLength=True, etag=True, lastModified=True, buffer=1024 * 256):
+    def respondFile(
+        self,
+        path,
+        contentType=None,
+        status=200,
+        contentLength=True,
+        etag=True,
+        lastModified=True,
+        buffer=1024 * 256,
+    ):
         """Responds with a local file. The content type is guessed using
         the 'mimetypes' module. If the file is not found in the local
         filesystem, and exception is raised.
@@ -1102,7 +1217,8 @@ class Request:
             modified_since = self.header(self.HEADER_IF_MODIFIED_SINCE)
             try:
                 modified_since = time.strptime(
-                    modified_since, "%a, %d %b %Y %H:%M:%S GMT")
+                    modified_since, "%a, %d %b %Y %H:%M:%S GMT"
+                )
                 if modified_since > last_modified:
                     has_changed = False
             except Exception as e:
@@ -1119,7 +1235,7 @@ class Request:
         if has_changed or has_range:
             # We open the file to get its size and adjust the read length and range end
             # accordingly
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 f.seek(0, 2)
                 full_length = f.tell()
                 if not has_range:
@@ -1130,26 +1246,31 @@ class Request:
                         content_length = full_length - range_start
                     else:
                         content_length = min(
-                            range_end - range_start, full_length - range_start)
+                            range_end - range_start, full_length - range_start
+                        )
             if has_range or etag:
                 # We don't use the content-type for ETag as we don't want to
                 # have to read the whole file, that would be too slow.
                 # NOTE: ETag is indepdent on the range and affect the file is a whole
                 etag_data = ensureBytes("%s:%s" % (path, last_modified))
                 etag_sig = '"' + hashlib.sha256(etag_data).hexdigest() + '"'
-                headers.append(("ETag",          etag_sig))
+                headers.append(("ETag", etag_sig))
             if contentLength is True:
                 headers.append(("Content-Length", str(content_length)))
             if has_range:
                 headers.append(("Accept-Ranges", "bytes"))
                 # headers.append(("Connection",    "Keep-Alive"))
                 # headers.append(("Keep-Alive",    "timeout=5, max=100"))
-                headers.append(("Content-Range", "bytes %d-%d/%d" %
-                                (range_start, range_end, full_length)))
+                headers.append(
+                    (
+                        "Content-Range",
+                        "bytes %d-%d/%d" % (range_start, range_end, full_length),
+                    )
+                )
             # This is the generator that will stream the file's content
 
             def pipe_content(path=path, start=range_start, remaining=content_length):
-                with open(path, 'rb') as f:
+                with open(path, "rb") as f:
                     f.seek(start or 0)
                     while remaining:
                         # FIXME: For some reason, we have to read the whole thing in Firefox
@@ -1160,18 +1281,28 @@ class Request:
                             yield chunk
                         else:
                             break
+
             content = pipe_content()
         # File system modification date takes precendence (but for stream we'll test ETag instead)
         if lastModified and not has_changed and not has_range:
             return self.notModified(contentType=contentType)
         # Otherwise we test ETag
-        elif etag is True and etag_sig and self.header(self.HEADER_IF_NONE_MATCH) == etag_sig:
+        elif (
+            etag is True
+            and etag_sig
+            and self.header(self.HEADER_IF_NONE_MATCH) == etag_sig
+        ):
             return self.notModified(contentType=contentType)
         # and if nothing works, we'll return the response
         else:
             if has_range:
                 status = 206
-            return Response(content=content, headers=self._mergeHeaders(headers), status=status, compression=self.compression())
+            return Response(
+                content=content,
+                headers=self._mergeHeaders(headers),
+                status=status,
+                compression=self.compression(),
+            )
 
     def notFound(self, content="Resource not found", status=404):
         """Returns an Error 404"""
@@ -1190,7 +1321,12 @@ class Request:
 
     def fail(self, content=None, status=412, headers=None):
         """Returns an Error 412 with the given content"""
-        return Response(content, status=status, headers=self._mergeHeaders(headers), compression=self.compression())
+        return Response(
+            content,
+            status=status,
+            headers=self._mergeHeaders(headers),
+            compression=self.compression(),
+        )
 
     def cacheID(self):
         return "%s:%s" % (self.method(), self.uri())
@@ -1237,6 +1373,7 @@ class Request:
             self._files = []
         self._files.append((name, value))
 
+
 # -----------------------------------------------------------------------------
 #
 # FILE
@@ -1258,10 +1395,11 @@ class File:
 
     # # NOTE: This is to keep compatibility with previous Retro API
     # def __getitem__( self, name ):
-    #	if hasattr(self, name):
-    #		return getattr(self, name)
-    #	else:
-    #		return None
+    # 	if hasattr(self, name):
+    # 		return getattr(self, name)
+    # 	else:
+    # 		return None
+
 
 # -----------------------------------------------------------------------------
 #
@@ -1307,7 +1445,7 @@ class RequestBodyLoader:
         if inBytes:
             return self.contentRead
         elif self.contentLength > 0:
-            return int(100*float(self.contentRead)/float(self.contentLength))
+            return int(100 * float(self.contentRead) / float(self.contentLength))
         else:
             return 0
 
@@ -1327,7 +1465,7 @@ class RequestBodyLoader:
         return min(self.remainingBytes, size)
 
     def _load_load(self, to_read):
-        read_data = self.request._environ['wsgi.input'].read(to_read)
+        read_data = self.request._environ["wsgi.input"].read(to_read)
         if asyncio_iscoroutine(read_data):
             raise Exception("Synchronous request used with async server")
         read_count = len(read_data)
@@ -1335,8 +1473,11 @@ class RequestBodyLoader:
         return read_data
 
     def _load_post(self, to_read, read_data, writeData):
-        assert len(read_data) == to_read, "Request was cut, read {0:d} out of {1:d} bytes".format(
-            len(read_data), to_read)
+        assert (
+            len(read_data) == to_read
+        ), "Request was cut, read {0:d} out of {1:d} bytes".format(
+            len(read_data), to_read
+        )
         # NOTE: This  read bytes
         if writeData:
             self.request._data.write(read_data)
@@ -1364,7 +1505,7 @@ class RequestBodyLoader:
         if not content_type:
             # We have no content type specified, so we assume a binary payload
             pass
-        elif content_type.startswith('multipart'):
+        elif content_type.startswith("multipart"):
             # We handle the case of a multi-part body
             dataFile.seek(0)
             # We're using the FormData
@@ -1377,8 +1518,11 @@ class RequestBodyLoader:
                     continue
                 disposition = meta["Content-Disposition"]
                 # We expect to have a least one of these
-                name = disposition.get("name") or disposition.get(
-                    "filename") or meta["Content-Description"]
+                name = (
+                    disposition.get("name")
+                    or disposition.get("filename")
+                    or meta["Content-Description"]
+                )
                 if name[0] == name[-1] and name[0] in "\"'":
                     name = name[1:-1]
                 if "filename" in disposition:
@@ -1389,8 +1533,8 @@ class RequestBodyLoader:
                         data=data.read(),
                         contentType=meta["Content-Type"][""],
                         name=name,
-                        filename=disposition.get(
-                            "filename") or meta["Content-Description"]
+                        filename=disposition.get("filename")
+                        or meta["Content-Description"],
                     )
                     self.request._addFile(name, new_file)
                     self.request._addParam(name, new_file)
@@ -1426,6 +1570,7 @@ class RequestBodyLoader:
         self.request = None
         self._decoded = True
 
+
 # -----------------------------------------------------------------------------
 #
 # RESPONSE
@@ -1441,29 +1586,58 @@ class Response:
     DEFAULT_CONTENT = "text/html"
     REASONS = BaseHTTPRequestHandler.responses
 
-    def __init__(self, content=None, headers=None, status=200, reason=None, produceWhen=None, compression=None):
+    def __init__(
+        self,
+        content=None,
+        headers=None,
+        status=200,
+        reason=None,
+        produceWhen=None,
+        compression=None,
+    ):
         if headers == None:
             headers = []
         self.status = status
         self.reason = reason
         if type(headers) == tuple:
             headers = list(headers)
-        self.headers = [(k, v) for k, v in headers] if headers else [
-            ("Accept-Ranges", "bytes")]
+        self.headers = (
+            [(k, v) for k, v in headers] if headers else [("Accept-Ranges", "bytes")]
+        )
         self.content = content
         self.produceEventGuard = None
         self.compression = compression
         self.isCompressed = False
 
-    def cache(self, seconds=0,  minutes=0, hours=0, days=0, weeks=0, months=0, years=0, cacheControl=True, expires=True):
-        duration = seconds + minutes * 60 + hours * 3600 + days * 3600 * 24 + \
-            weeks * 3600 * 24 * 7 + months * 3600 * 24 * 31 + years * 3600 * 24 * 365
+    def cache(
+        self,
+        seconds=0,
+        minutes=0,
+        hours=0,
+        days=0,
+        weeks=0,
+        months=0,
+        years=0,
+        cacheControl=True,
+        expires=True,
+    ):
+        duration = (
+            seconds
+            + minutes * 60
+            + hours * 3600
+            + days * 3600 * 24
+            + weeks * 3600 * 24 * 7
+            + months * 3600 * 24 * 31
+            + years * 3600 * 24 * 365
+        )
         if duration > 0:
             if cacheControl is True:
-                self.headers = [h for h in self.headers if h[0]
-                                != Request.HEADER_CACHE_CONTROL]
+                self.headers = [
+                    h for h in self.headers if h[0] != Request.HEADER_CACHE_CONTROL
+                ]
                 self.headers.append(
-                    (Request.HEADER_CACHE_CONTROL, "max-age=%d, public" % (duration)))
+                    (Request.HEADER_CACHE_CONTROL, "max-age=%d, public" % (duration))
+                )
             if expires is True:
                 expires = cache_timestamp(time.gmtime(time.time() + duration))
                 self.headers.append((Request.HEADER_EXPIRES, expires))
@@ -1514,7 +1688,8 @@ class Response:
             break
         if not found:
             self.headers.append(
-                (Request.HEADER_SET_COOKIE, f"{name}={value}; path={path}"))
+                (Request.HEADER_SET_COOKIE, f"{name}={value}; path={path}")
+            )
         return self
 
     def setContentType(self, mimeType):
@@ -1527,8 +1702,9 @@ class Response:
                 # FIXME: How to support gzip when it's already encoded?
                 if not encoding:
                     self.content = compress_gzip(self.content)
-                    self.setHeader("Content-Length",
-                                   str(len(self.content)), replace=True)
+                    self.setHeader(
+                        "Content-Length", str(len(self.content)), replace=True
+                    )
                     assert not encoding
                     self.setHeader("Content-Encoding", "gzip")
                     self.isCompressed = True
@@ -1580,9 +1756,16 @@ class Response:
         elif asyncio_isgenerator(self.content):
             yield self.content
         # Otherwise we return a single-shot generator
-        elif not isinstance(self.content, str) and not isinstance(self.content, bytes) and not isinstance(self.content, unicode):
+        elif (
+            not isinstance(self.content, str)
+            and not isinstance(self.content, bytes)
+            and not isinstance(self.content, unicode)
+        ):
             raise Exception(
-                "Retro handler expected to return a generator or a string, got: {0}".format(self.content))
+                "Retro handler expected to return a generator or a string, got: {0}".format(
+                    self.content
+                )
+            )
         else:
             yield encode(self.content)
 
@@ -1596,7 +1779,269 @@ class Response:
         return "%s %s\r\n" % (self.status, self.reason or reason)
 
 
-CRAWLERS = {'plumtreewebaccessor': True, 'suke': True, 'javabee': True, 'infoseek sidewinder': True, 'checkbot': True, 'patric': True, 'iajabot': True, 'moget': True, 'gcreep': True, 'yes': True, 'w3mir': True, 'jbot (but can be changed by the user)': True, 'borg-bot': True, 'rixbot (http:': True, 'anthillv1.1': True, "'iagent": True, 'webcatcher': True, 'scooter': True, 'openfind data gatherer, openbot': True, 'fish-search-robot': True, "hazel's ferret web hopper,": True, 'grabber': True, 'explorersearch': True, 'combine': True, 'kdd-explorer': True, 'aitcsrobot': True, 'tarspider': True, 'wget': True, 'fido': True, 'weblayers': True, 'esther': True, 'orbsearch': True, 'site valet': True, 'rules': True, 'esculapio': True, 'kit-fireball': True, 'nhsewalker': True, 'lycos': True, 'tlspider': True, 'gestalticonoclast': True, 'road runner: imagescape robot (lim@cs.leidenuniv.nl)': True, 'techbot': True, 'bbot': True, 'spiderbot': True, 'emacs-w3': True, 'w3index': True, 'sitetech-rover': True, 'bspider': True, 'robbie': True, 'portaljuice.com': True, 'poppi': True, 'valkyrie': True, 'cmc': True, 'esismartspider': True, 'diibot': True, 'computingsite robi': True, 'jcrawler': True, "shai'hulud": True, 'appie': True, 'ingrid': True, 'robozilla': True, 'arks': True, 'netcarta cyberpilot pro': True, 'katipo': True, 'infospiders': True, 'i robot 0.4 (irobot@chaos.dk)': True, 'larbin (+mail)': True, 'dienstspider': True, 'solbot': True, 'portalbspider': True, 'evliya celebi v0.151 - http:': True, 'titin': True, 'wwwwanderer v3.0': True, 'ontospider': True, 'linkwalker': True, 'informant': True, 'webreaper [webreaper@otway.com]': True, 'ucsd-crawler': True, 'linkidator': True, 'golem': True, 'pageboy': True, 'atomz': True, 'emc spider': True, 'ebiness': True, 'uptimebot': True, 'spiderman 1.0': True, 'pioneer': True, 'gulper web bot 0.2.4 (www.ecsl.cs.sunysb.edu': True, 'peregrinator-mathematics': True, 'ndspider': True, 'digimarc cgireader': True, 'calif': True, 'geturl.rexx v1.05': True, 'wlm-1.1': True, 'udmsearch': True, 'cienciaficcion.net spider (http:': True, 'fastcrawler 3.0.x (crawler@1klik.dk) - http:': True, 'atn_worldwide': True, 'raven-v2': True, 'marvin': True, 'gammaspider xxxxxxx ()': True, 'webcopy': True, 'coolbot': True, 'freecrawl': True, 'not available': True, 'arachnophilia': True, 'infoseek robot 1.0': True, 'alkalinebot': True, 'aspider': True, 'speedy spider ( http:': True, 'image.kapsi.net': True, 'awapclient': True, 'jubiirobot': True, 'webwalk': True, 'hku www robot,': True, 'momspider': True, 'cusco': True, 'htmlgobble v2.2': True, 'lockon': True, 'vision-search': True, 'cactvs chemistry spider': True, 'tarantula': True, 'perlcrawler': True, 'lwp::': True, 'ssearcher100': True, 'nec-meshexplorer': True, 'googlebot': True, 'boxseabot': True, 'webvac': True,
-            'dnabot': True, 'ibm_planetwide,': True, 'backrub': True, 'piltdownman': True, 'slurp': True, 'muscatferret': True, 'safetynet robot 0.1,': True, 'motor': True, 'netscoop': True, 'ko_yappo_robot': True, 'northstar': True, 'objectssearch': True, 'digimarc webreader': True, 'webbandit': True, 'spiderline': True, 'jobo (can be modified by the user)': True, 'phpdig': True, 'cyberspyder': True, 'w@pspider': True, 'lwp': True, 'msnbot': True, 'gazz': True, 'esirover v1.0': True, 'sg-scout': True, 'incywincy': True, 'araybot': True, 'jumpstation': True, 'weblinker': True, 'labelgrab': True, 'straight flash!! getterroboplus 1.5': True, 'titan': True, 'packrat': True, 'robofox v2.0': True, 'urlck': True, 'crawlpaper': True, 'wolp': True, "due to a deficiency in java it's not currently possible to set the user-agent.": True, 'resume robot': True, 'webmoose': True, 'dragonbot': True, 'gromit': True, 'nomad-v2.x': True, 'logo.gif crawler': True, "'ahoy! the homepage finder'": True, 'merzscope': True, 'digger': True, 'h\xe4m\xe4h\xe4kki': True, 'libwww-perl-5.41': True, 'none': True, 'legs': True, 'newscan-online': True, 'occam': True, 'linkscan server': True, 'architextspider': True, 'felixide': True, 'robocrawl (http:': True, 'webs@recruit.co.jp': True, 'monster': True, 'elfinbot': True, 'searchprocess': True, 'mwdsearch': True, 'cosmos': True, 'w3m2': True, 'root': True, 'bayspider': True, 'http:': True, 'auresys': True, 'gulliver': True, 'templeton': True, 'israelisearch': True, 'm': True, 'die blinde kuh': True, 'simbot': True, 'snooper': True, 'shagseeker at http:': True, 'duppies': True, 'havindex': True, 'htdig': True, 'pgp-ka': True, 'psbot': True, 'desertrealm.com; 0.2; [j];': True, 'webfetcher': True, 'abcdatos botlink': True, 'no': True, 'wired-digital-newsbot': True, 'bjaaland': True, 'eit-link-verifier-robot': True, 'dlw3robot': True, 'inspectorwww': True, 'nederland.zoek': True, 'magpie': True, 'vwbot_k': True, 'mouse.house': True, 'griffon': True, 'cydralspider': True, 'web robot pegasus': True, 'rhcs': True, 'big brother': True, 'voyager': True, "due to a deficiency in java it's not currently possible": True, 'mindcrawler': True, 'deweb': True, 'webwatch': True, 'netmechanic': True, 'funnelweb-1.0': True, 'void-bot': True, 'victoria': True, 'webquest': True, 'hometown spider pro': True, 'mozilla 3.01 pbwf (win95)': True, 'wwwc': True, 'iron33': True, 'url spider pro': True, 'suntek': True, 'joebot': True, 'dwcp': True, 'verticrawlbot': True, 'whatuseek_winona': True, 'jobot': True, 'webwalker': True, 'xget': True, 'mediafox': True, 'internet cruiser robot': True, 'araneo': True, 'muninn': True, 'roverbot': True, 'robot du crim 1.0a': True, 'senrigan': True, 'blackwidow': True, 'confuzzledbot': True, '???': True, 'parasite': True, 'slcrawler': True}
+CRAWLERS = {
+    "plumtreewebaccessor": True,
+    "suke": True,
+    "javabee": True,
+    "infoseek sidewinder": True,
+    "checkbot": True,
+    "patric": True,
+    "iajabot": True,
+    "moget": True,
+    "gcreep": True,
+    "yes": True,
+    "w3mir": True,
+    "jbot (but can be changed by the user)": True,
+    "borg-bot": True,
+    "rixbot (http:": True,
+    "anthillv1.1": True,
+    "'iagent": True,
+    "webcatcher": True,
+    "scooter": True,
+    "openfind data gatherer, openbot": True,
+    "fish-search-robot": True,
+    "hazel's ferret web hopper,": True,
+    "grabber": True,
+    "explorersearch": True,
+    "combine": True,
+    "kdd-explorer": True,
+    "aitcsrobot": True,
+    "tarspider": True,
+    "wget": True,
+    "fido": True,
+    "weblayers": True,
+    "esther": True,
+    "orbsearch": True,
+    "site valet": True,
+    "rules": True,
+    "esculapio": True,
+    "kit-fireball": True,
+    "nhsewalker": True,
+    "lycos": True,
+    "tlspider": True,
+    "gestalticonoclast": True,
+    "road runner: imagescape robot (lim@cs.leidenuniv.nl)": True,
+    "techbot": True,
+    "bbot": True,
+    "spiderbot": True,
+    "emacs-w3": True,
+    "w3index": True,
+    "sitetech-rover": True,
+    "bspider": True,
+    "robbie": True,
+    "portaljuice.com": True,
+    "poppi": True,
+    "valkyrie": True,
+    "cmc": True,
+    "esismartspider": True,
+    "diibot": True,
+    "computingsite robi": True,
+    "jcrawler": True,
+    "shai'hulud": True,
+    "appie": True,
+    "ingrid": True,
+    "robozilla": True,
+    "arks": True,
+    "netcarta cyberpilot pro": True,
+    "katipo": True,
+    "infospiders": True,
+    "i robot 0.4 (irobot@chaos.dk)": True,
+    "larbin (+mail)": True,
+    "dienstspider": True,
+    "solbot": True,
+    "portalbspider": True,
+    "evliya celebi v0.151 - http:": True,
+    "titin": True,
+    "wwwwanderer v3.0": True,
+    "ontospider": True,
+    "linkwalker": True,
+    "informant": True,
+    "webreaper [webreaper@otway.com]": True,
+    "ucsd-crawler": True,
+    "linkidator": True,
+    "golem": True,
+    "pageboy": True,
+    "atomz": True,
+    "emc spider": True,
+    "ebiness": True,
+    "uptimebot": True,
+    "spiderman 1.0": True,
+    "pioneer": True,
+    "gulper web bot 0.2.4 (www.ecsl.cs.sunysb.edu": True,
+    "peregrinator-mathematics": True,
+    "ndspider": True,
+    "digimarc cgireader": True,
+    "calif": True,
+    "geturl.rexx v1.05": True,
+    "wlm-1.1": True,
+    "udmsearch": True,
+    "cienciaficcion.net spider (http:": True,
+    "fastcrawler 3.0.x (crawler@1klik.dk) - http:": True,
+    "atn_worldwide": True,
+    "raven-v2": True,
+    "marvin": True,
+    "gammaspider xxxxxxx ()": True,
+    "webcopy": True,
+    "coolbot": True,
+    "freecrawl": True,
+    "not available": True,
+    "arachnophilia": True,
+    "infoseek robot 1.0": True,
+    "alkalinebot": True,
+    "aspider": True,
+    "speedy spider ( http:": True,
+    "image.kapsi.net": True,
+    "awapclient": True,
+    "jubiirobot": True,
+    "webwalk": True,
+    "hku www robot,": True,
+    "momspider": True,
+    "cusco": True,
+    "htmlgobble v2.2": True,
+    "lockon": True,
+    "vision-search": True,
+    "cactvs chemistry spider": True,
+    "tarantula": True,
+    "perlcrawler": True,
+    "lwp::": True,
+    "ssearcher100": True,
+    "nec-meshexplorer": True,
+    "googlebot": True,
+    "boxseabot": True,
+    "webvac": True,
+    "dnabot": True,
+    "ibm_planetwide,": True,
+    "backrub": True,
+    "piltdownman": True,
+    "slurp": True,
+    "muscatferret": True,
+    "safetynet robot 0.1,": True,
+    "motor": True,
+    "netscoop": True,
+    "ko_yappo_robot": True,
+    "northstar": True,
+    "objectssearch": True,
+    "digimarc webreader": True,
+    "webbandit": True,
+    "spiderline": True,
+    "jobo (can be modified by the user)": True,
+    "phpdig": True,
+    "cyberspyder": True,
+    "w@pspider": True,
+    "lwp": True,
+    "msnbot": True,
+    "gazz": True,
+    "esirover v1.0": True,
+    "sg-scout": True,
+    "incywincy": True,
+    "araybot": True,
+    "jumpstation": True,
+    "weblinker": True,
+    "labelgrab": True,
+    "straight flash!! getterroboplus 1.5": True,
+    "titan": True,
+    "packrat": True,
+    "robofox v2.0": True,
+    "urlck": True,
+    "crawlpaper": True,
+    "wolp": True,
+    "due to a deficiency in java it's not currently possible to set the user-agent.": True,
+    "resume robot": True,
+    "webmoose": True,
+    "dragonbot": True,
+    "gromit": True,
+    "nomad-v2.x": True,
+    "logo.gif crawler": True,
+    "'ahoy! the homepage finder'": True,
+    "merzscope": True,
+    "digger": True,
+    "h\xe4m\xe4h\xe4kki": True,
+    "libwww-perl-5.41": True,
+    "none": True,
+    "legs": True,
+    "newscan-online": True,
+    "occam": True,
+    "linkscan server": True,
+    "architextspider": True,
+    "felixide": True,
+    "robocrawl (http:": True,
+    "webs@recruit.co.jp": True,
+    "monster": True,
+    "elfinbot": True,
+    "searchprocess": True,
+    "mwdsearch": True,
+    "cosmos": True,
+    "w3m2": True,
+    "root": True,
+    "bayspider": True,
+    "http:": True,
+    "auresys": True,
+    "gulliver": True,
+    "templeton": True,
+    "israelisearch": True,
+    "m": True,
+    "die blinde kuh": True,
+    "simbot": True,
+    "snooper": True,
+    "shagseeker at http:": True,
+    "duppies": True,
+    "havindex": True,
+    "htdig": True,
+    "pgp-ka": True,
+    "psbot": True,
+    "desertrealm.com; 0.2; [j];": True,
+    "webfetcher": True,
+    "abcdatos botlink": True,
+    "no": True,
+    "wired-digital-newsbot": True,
+    "bjaaland": True,
+    "eit-link-verifier-robot": True,
+    "dlw3robot": True,
+    "inspectorwww": True,
+    "nederland.zoek": True,
+    "magpie": True,
+    "vwbot_k": True,
+    "mouse.house": True,
+    "griffon": True,
+    "cydralspider": True,
+    "web robot pegasus": True,
+    "rhcs": True,
+    "big brother": True,
+    "voyager": True,
+    "due to a deficiency in java it's not currently possible": True,
+    "mindcrawler": True,
+    "deweb": True,
+    "webwatch": True,
+    "netmechanic": True,
+    "funnelweb-1.0": True,
+    "void-bot": True,
+    "victoria": True,
+    "webquest": True,
+    "hometown spider pro": True,
+    "mozilla 3.01 pbwf (win95)": True,
+    "wwwc": True,
+    "iron33": True,
+    "url spider pro": True,
+    "suntek": True,
+    "joebot": True,
+    "dwcp": True,
+    "verticrawlbot": True,
+    "whatuseek_winona": True,
+    "jobot": True,
+    "webwalker": True,
+    "xget": True,
+    "mediafox": True,
+    "internet cruiser robot": True,
+    "araneo": True,
+    "muninn": True,
+    "roverbot": True,
+    "robot du crim 1.0a": True,
+    "senrigan": True,
+    "blackwidow": True,
+    "confuzzledbot": True,
+    "???": True,
+    "parasite": True,
+    "slcrawler": True,
+}
 
-# EOF - vim: tw=80 ts=4 sw=4 et
+# EOF

@@ -19,21 +19,22 @@ from retro import predicate
 #
 # ------------------------------------------------------------------------------
 
+
 class Authenticated:
-	"""Defines an 'isAuthenticated' method that can be used as a '@predicate' in
-	Retro components.
-	
-	Authentification works with an integer that qualifies the user rights."""
+    """Defines an 'isAuthenticated' method that can be used as a '@predicate' in
+    Retro components.
 
-	NOT_AUTHENTICATED = 0
-	LOGGED_IN         = 1
-	ADMIN             = 65000
+    Authentification works with an integer that qualifies the user rights."""
 
-	@predicate
-	def isAuthenticated( self, request, level=1 ):
-		return request.session("authenticated") 
+    NOT_AUTHENTICATED = 0
+    LOGGED_IN = 1
+    ADMIN = 65000
 
-	def setAuthentication( self, request, state=1 ):
-		request.session("authenticated", state)
+    @predicate
+    def isAuthenticated(self, request, level=1):
+        return request.session("authenticated")
+
+    def setAuthentication(self, request, state=1):
+        request.session("authenticated", state)
 
 # EOF

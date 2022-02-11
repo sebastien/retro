@@ -11,26 +11,28 @@ HTML = """
 </body></html>
 """
 
+
 class Upload(Component):
 
-	@on(GET="/")
-	def index( self, request ):
-		return request.respond(HTML, "text/html")
+    @on(GET="/")
+    def index(self, request):
+        return request.respond(HTML, "text/html")
 
-	# curl -F "image=@PATH_TO_FILE" http://localhost:8000/upload
-	@on(POST="upload")
-	def upload( self, request ):
-		request.load()
-		file = request.file()
-		if not os.path.exists("data"):
-			os.makedirs("data")
-		path = f"data/{file.filename}"
-		with open(path, "wb") as f:
-			f.write(file.data)
-		print(f"File written to {path}")
-		return request.redirect("/")
+    # curl -F "image=@PATH_TO_FILE" http://localhost:8000/upload
+    @on(POST="upload")
+    def upload(self, request):
+        request.load()
+        file = request.file()
+        if not os.path.exists("data"):
+            os.makedirs("data")
+        path = f"data/{file.filename}"
+        with open(path, "wb") as f:
+            f.write(file.data)
+        print(f"File written to {path}")
+        return request.redirect("/")
+
 
 if __name__ == "__main__":
-	run(components=(Upload()))
+    run(components=(Upload()))
 
-# EOF - vim: ts=4 sw=4 noet
+# EOF
