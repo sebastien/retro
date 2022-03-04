@@ -14,14 +14,34 @@ import time
 import sys
 import datetime
 import glob
-from retro import Dispatcher, Application, Component, on, expose, run, asJSON, asPrimitive, escapeHTML, STANDALONE, WSGI, NOTHING
+from retro import (
+    Dispatcher,
+    Application,
+    Component,
+    on,
+    expose,
+    run,
+    asJSON,
+    asPrimitive,
+    escapeHTML,
+    STANDALONE,
+    WSGI,
+    NOTHING,
+)
 from retro.contrib.localfiles import LibraryServer
-from retro.contrib.i18n import Translations, localize, guessLanguage, DEFAULT_LANGUAGE, setLocales
+from retro.contrib.i18n import (
+    Translations,
+    localize,
+    guessLanguage,
+    DEFAULT_LANGUAGE,
+    setLocales,
+)
 from retro.contrib.hash import crypt_decrypt
 from retro.contrib.cache import FileCache, SignatureCache, NoCache, MemoryCache
 
 try:
     import templating
+
     templating.FORMATTERS["json"] = lambda v, o, t: asJSON(v)
     templating.FORMATTERS["primitive"] = lambda v, o, t: asPrimitive(v)
     templating.FORMATTERS["escapeHTML"] = lambda v, o, t: escapeHTML(v)
@@ -54,14 +74,24 @@ VERSION = "0.0.0"
 PORT = 8080
 LANGUAGE = DEFAULT_LANGUAGE
 LOCALES = []
-def E(v, d, f=(lambda _): return _): f(os.environ.get(APPNAME.upper() + "_" + v) or d)
-def T(v, l=None): return Translations.Get(v, l or LANGUAGE)
+
+
+def E(v, d, f=lambda _: _):
+    return f(os.environ.get(APPNAME.upper() + "_" + v) or d)
+
+
+def T(v, l=None):
+    return Translations.Get(v, l or LANGUAGE)
 
 
 API_CACHE = MemoryCache()
 LIBRARY_CACHE = SignatureCache()
 ON_INIT = []
-def info(_): return sys.stdout.write(str(_) + "\n")
+
+
+def info(_):
+    return sys.stdout.write(str(_) + "\n")
+
 
 # -----------------------------------------------------------------------------
 #
@@ -105,8 +135,7 @@ class Permissions:
         # FIXME: Add userAgent as well is the first part
         address = str(request.clientIP()) + cls.COOKIE_CONNECTION_SALT
         # FIXME: UserId should be encrypted with some part of the request as well
-        user_id = base64.encodestring(
-            crypt_decrypt(str(userid), cls.CRYPT_KEY))[:-1]
+        user_id = base64.encodestring(crypt_decrypt(str(userid), cls.CRYPT_KEY))[:-1]
         return hashlib.sha256(address).hexdigest() + str(user_id)
 
     @classmethod
@@ -119,6 +148,7 @@ class Permissions:
             if user_id != "anonymous":
                 return user_id
         return None
+
 
 # -----------------------------------------------------------------------------
 #
@@ -143,7 +173,7 @@ class PageServer(Component):
             description="TODO",
             keywords="TODO,TODO,TODO",
             updated=datetime.date.today().strftime("%Y-%m-%d"),
-        )
+        ),
     )
 
     def __init__(self, prefix=None):
@@ -185,7 +215,8 @@ class PageServer(Component):
             for ext in ("paml", "html"):
                 for tmpl_path in glob.glob(path + "/*/*." + ext):
                     tmpl = self.loadTemplate(
-                        os.path.basename(tmpl_path).split(".")[0], ext)
+                        os.path.basename(tmpl_path).split(".")[0], ext
+                    )
                     text = self._applyTemplate(tmpl)
                     links.extend((_[1] for _ in wwwclient.HTML.links(text)))
             return links
@@ -197,7 +228,15 @@ class PageServer(Component):
     @on(GET=("{lang:lang}", "/{lang:lang}", "/{lang:lang}/"), priority=-9)
     @on(GET=("/{lang:lang}{path:rest}"), priority=-10)
     @localize
-    def page(self, request, lang=NOTHING, template=None, path="index", templateType=None, properties=None):
+    def page(
+        self,
+        request,
+        lang=NOTHING,
+        template=None,
+        path="index",
+        templateType=None,
+        properties=None,
+    ):
         """Renders the given `template` (by default, will find it based on the path) in the given `lang`. Templates
         are located in `templates.path`"""
         properties = properties.copy() if properties else {}
@@ -206,23 +245,29 @@ class PageServer(Component):
         if path in ("", "/", "/.html") and not template:
             template == "index"
         properties.setdefault("lang", lang)
-        properties.setdefault("page",      path)
-        properties.setdefault("path",      path)
-        properties.setdefault("template",  template)
-        properties.setdefault(
-            "title",     Translations.Get("site_title", lang))
+        properties.setdefault("page", path)
+        properties.setdefault("path", path)
+        properties.setdefault("template", template)
+        properties.setdefault("title", Translations.Get("site_title", lang))
         meta = self.DEFAULTS["meta"].copy()
         meta["description"] = Translations.Get("site_description", lang)
-        meta["keywords"] = Translations.Get("site_keywords",    lang)
-        properties.setdefault("meta",      meta)
-        res = self.render(request, path if not template else template,
-                          lang, properties=properties, templateType=templateType)
+        meta["keywords"] = Translations.Get("site_keywords", lang)
+        properties.setdefault("meta", meta)
+        res = self.render(
+            request,
+            path if not template else template,
+            lang,
+            properties=properties,
+            templateType=templateType,
+        )
         return res
 
     @on(GET=("/favicon.ico"), priority=2)
     def favicon(self, request):
         """The default favicon handler"""
-        return request.respondFile(self.app.config("library.path") + "/images/favicon.ico")
+        return request.respondFile(
+            self.app.config("library.path") + "/images/favicon.ico"
+        )
 
     # -------------------------------------------------------------------------
     # UTILITIES
@@ -236,7 +281,16 @@ class PageServer(Component):
             res.update(d)
         return res
 
-    def render(self, request, template, language=None, properties=None, storable=NOTHING, templateType=None, **options):
+    def render(
+        self,
+        request,
+        template,
+        language=None,
+        properties=None,
+        storable=NOTHING,
+        templateType=None,
+        **options
+    ):
         """Renders a given page `template`, merging the giving `properties`
         in the template environment, and optionally serializing the given
         `storable` so that it becomes available as JSON"""
@@ -251,9 +305,9 @@ class PageServer(Component):
         else:
             storable = None
         path = request.path()
-        path = path[len(self.DEFAULTS["base"]):]
+        path = path[len(self.DEFAULTS["base"]) :]
         if path.startswith(language):
-            path = path[len(language):]
+            path = path[len(language) :]
         context = dict(
             path=path,
             title=template,
@@ -262,7 +316,7 @@ class PageServer(Component):
             user=asPrimitive(user, target="template"),
             object=asPrimitive(storable, **options),
             cachebuster=time.time(),
-            currentUrl=request.path()
+            currentUrl=request.path(),
         )
         context = self.merge(context, properties)
         if self.app.config("devmode") or template not in self._templates:
@@ -277,8 +331,9 @@ class PageServer(Component):
     def hasTemplate(self, name, type="paml", ext=None):
         if type == "paml" and not self.app.config("devmode"):
             type = "html"
-        path = os.path.join(self.app.config("library.path"),
-                            type, name + (ext if ext else "." + type))
+        path = os.path.join(
+            self.app.config("library.path"), type, name + (ext if ext else "." + type)
+        )
         key = type + ":" + name
         return key in self._templates or os.path.exists(path)
 
@@ -298,8 +353,7 @@ class PageServer(Component):
     def loadPlainTemplate(self, name, raw=False, type="html", ext=None):
         ext = ext or ("." + type)
         if self.app.config("devmode"):
-            path = os.path.join(self.app.config(
-                "library.path"), type, name + ext)
+            path = os.path.join(self.app.config("library.path"), type, name + ext)
             text = None
             with open(path, "r") as f:
                 text = f.read()
@@ -311,8 +365,7 @@ class PageServer(Component):
         else:
             key = type + ":" + name + ":raw"
             if key not in self._templates:
-                path = os.path.join(self.app.config(
-                    "library.path"), type, name + ext)
+                path = os.path.join(self.app.config("library.path"), type, name + ext)
                 text = None
                 with open(path, "r") as f:
                     text = f.read()
@@ -323,7 +376,9 @@ class PageServer(Component):
             else:
                 key = type + ":" + name
                 if key not in self._templates:
-                    assert templating, "retro.contrib.webapp.templating must be defined to use templates"
+                    assert (
+                        templating
+                    ), "retro.contrib.webapp.templating must be defined to use templates"
                     result = templating.Template(text)
                     self._templates[key] = result
                     return result
@@ -335,10 +390,11 @@ class PageServer(Component):
         so we only do the PAML conversion in dev mode"""
         if self.app.config("devmode"):
             # We assume that PAML is only used in devlopment.
-            assert paml_engine, "retro.contrib.webapp.loadPAMLTemplate requires the paml.engine module"
+            assert (
+                paml_engine
+            ), "retro.contrib.webapp.loadPAMLTemplate requires the paml.engine module"
             parser = paml_engine.Parser()
-            path = os.path.join(self.app.config(
-                "library.path"), "paml", name + ".paml")
+            path = os.path.join(self.app.config("library.path"), "paml", name + ".paml")
             # We load the template plain and parse it with PAML, so that we
             # get a consistent result with the non-devmode HTML step. I
             # tried adding the PAML expansion as a post-processing step
@@ -347,7 +403,9 @@ class PageServer(Component):
             text = self.loadPlainTemplate(name, True, "paml")
             text = parser.parseString(text, path)
             # NOTE: We do not cache templates in dev mode
-            assert templating, "retro.contrib.webapp.templating must be defined to use templates"
+            assert (
+                templating
+            ), "retro.contrib.webapp.templating must be defined to use templates"
             return templating.Template(text)
         else:
             # We assume that paml files are simply pre-compiled to HTML in
@@ -366,6 +424,7 @@ class PageServer(Component):
         given template. By default, will call `tmpl.apply(context,language)`.
         """
         return tmpl.apply(context or self.DEFAULTS, language or DEFAULT_LANGUAGE)
+
 
 # -----------------------------------------------------------------------------
 #
@@ -387,21 +446,21 @@ class WebApp(Application):
             return cls.DefaultConfig().get(key)
         else:
             return {
-                "devmode": E("DEVMODE",            0,     int),
-                "base": E("BASE",               "/"),
-                "lib": E("LIB",                E("BASE", "/") + "lib"),
-                "host": E("HOST",               "0.0.0.0"),
-                "port": E("PORT",               PORT,  int),
-                "appname": E("APPNAME",            APPNAME),
-                "prefix": E("PREFIX",             ""),
-                "version": E("VERSION",            VERSION),
-                "build": E("BUILD",              "development"),
-                "run.path": E("RUN_PATH",           os.path.abspath(os.getcwd())),
-                "log.path": E("LOG_PATH",           os.path.abspath("logs")),
-                "data.path": E("DATA_PATH",          os.path.abspath("data")),
-                "cache.path": E("CACHE_PATH",         os.path.abspath("cache")),
-                "cache.api.path": E("CACHE_PATH",         os.path.abspath("cache")) + "/api",
-                "library.path": E("LIBRARY_PATH",       os.path.abspath("lib")),
+                "devmode": E("DEVMODE", 0, int),
+                "base": E("BASE", "/"),
+                "lib": E("LIB", E("BASE", "/") + "lib"),
+                "host": E("HOST", "0.0.0.0"),
+                "port": E("PORT", PORT, int),
+                "appname": E("APPNAME", APPNAME),
+                "prefix": E("PREFIX", ""),
+                "version": E("VERSION", VERSION),
+                "build": E("BUILD", "development"),
+                "run.path": E("RUN_PATH", os.path.abspath(os.getcwd())),
+                "log.path": E("LOG_PATH", os.path.abspath("logs")),
+                "data.path": E("DATA_PATH", os.path.abspath("data")),
+                "cache.path": E("CACHE_PATH", os.path.abspath("cache")),
+                "cache.api.path": E("CACHE_PATH", os.path.abspath("cache")) + "/api",
+                "library.path": E("LIBRARY_PATH", os.path.abspath("lib")),
                 "library.python.path": E("LIBRARY_PYTHON_PATH", os.path.abspath(".")),
             }
 
@@ -412,11 +471,12 @@ class WebApp(Application):
         module `PageServer` and `LibraryServer` will be instanciated."""
         global APPLICATION
         APPLICATION = self
-        Application.__init__(self,
-                             defaults=self.DefaultConfig(),
-                             config=config or APPNAME.lower() + self.CONFIG_EXT
-                             )
-        is_production = self.isProduction = (self.config("devmode") != 1)
+        Application.__init__(
+            self,
+            defaults=self.DefaultConfig(),
+            config=config or APPNAME.lower() + self.CONFIG_EXT,
+        )
+        is_production = self.isProduction = self.config("devmode") != 1
         if not is_production:
             # On development, we try to import ipdb. If this doesn't work, it's OK
             # as it is merely a nice to have
@@ -431,11 +491,12 @@ class WebApp(Application):
         if isinstance(API_CACHE, FileCache):
             API_CACHE.setPath(self.config("cache.api.path"))
         if components is not NOTHING and components is not None:
-            components = ([
+            components = [
                 (pageServer or PageServer()) if pageServer is not NOTHING else None,
-                (libraryServer or self.createDefaultLibraryServer()
-                 ) if libraryServer is not NOTHING else None,
-            ] + components)
+                (libraryServer or self.createDefaultLibraryServer())
+                if libraryServer is not NOTHING
+                else None,
+            ] + components
             self.register(*components)
 
     def createDefaultLibraryServer(self):
@@ -447,8 +508,9 @@ class WebApp(Application):
             # NOTE: We don't use minification by default now
             minify=False,
             compress=self.isProduction,
-            cacheDuration=self.isProduction and 60 * 60 or 0
+            cacheDuration=self.isProduction and 60 * 60 or 0,
         )
+
 
 # -----------------------------------------------------------------------------
 #
@@ -473,6 +535,7 @@ class Catchall(Component):
         else:
             return request.redirect(self.redirect)
 
+
 # -----------------------------------------------------------------------------
 #
 # MAIN
@@ -482,10 +545,24 @@ class Catchall(Component):
 
 def createApp(config=None, components=None, pageServer=None, libraryServer=None):
     """Creates the application with given path as config file."""
-    return WebApp(config or (APPNAME.lower() + ".json"), components or (), pageServer, libraryServer)
+    return WebApp(
+        config or (APPNAME.lower() + ".json"),
+        components or (),
+        pageServer,
+        libraryServer,
+    )
 
 
-def start(app=None, port=None, runCondition=True, method=None, debug=False, color=False, log=False, config=None):
+def start(
+    app=None,
+    port=None,
+    runCondition=True,
+    method=None,
+    debug=False,
+    color=False,
+    log=False,
+    config=None,
+):
     """Runs the given application (by default created by 'createApp()' as
     standalone."""
     setLocales(LOCALES)
@@ -499,8 +576,11 @@ def start(app=None, port=None, runCondition=True, method=None, debug=False, colo
     port = port or app.config("port") or PORT
     lib_python_path = app.config("library.python.path")
     method = method or app.config("method") or STANDALONE
-    info("Starting Web application {0} on {2}:{3} [{1}] ".format(
-        name, method, app.config("host") or "0.0.0.0", app.config("port")))
+    info(
+        "Starting Web application {0} on {2}:{3} [{1}] ".format(
+            name, method, app.config("host") or "0.0.0.0", app.config("port")
+        )
+    )
     if method == STANDALONE:
         info(app.config)
         info(app.info())
@@ -521,21 +601,58 @@ def start(app=None, port=None, runCondition=True, method=None, debug=False, colo
 def command():
     """Commmand-line handler for webapp"""
     import argparse
+
     parser = argparse.ArgumentParser(
-        description="Web application command-line arguments")
-    parser.add_argument("-p", "--port", dest="port", type=int,  default=0,
-                        help="Port to run the webapp (default is {0})".format(PORT))
-    parser.add_argument("-d", "--debug", dest="debug",
-                        type=bool, default=False, help="Enables debugging")
-    parser.add_argument("-C", "--color", dest="color",
-                        type=bool, default=True, help="Enables color output")
-    parser.add_argument("-l", "--logging", dest="logging",
-                        type=bool, default=True, help="Enables logging")
-    parser.add_argument("-c", "--config", dest="config", type=str,
-                        default=None, help="Path to JSON configuration file")
+        description="Web application command-line arguments"
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        dest="port",
+        type=int,
+        default=0,
+        help="Port to run the webapp (default is {0})".format(PORT),
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        dest="debug",
+        type=bool,
+        default=False,
+        help="Enables debugging",
+    )
+    parser.add_argument(
+        "-C",
+        "--color",
+        dest="color",
+        type=bool,
+        default=True,
+        help="Enables color output",
+    )
+    parser.add_argument(
+        "-l",
+        "--logging",
+        dest="logging",
+        type=bool,
+        default=True,
+        help="Enables logging",
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        dest="config",
+        type=str,
+        default=None,
+        help="Path to JSON configuration file",
+    )
     args = parser.parse_args()
-    start(port=args.port, debug=args.debug, color=args.color,
-          log=args.logging, config=args.config)
+    start(
+        port=args.port,
+        debug=args.debug,
+        color=args.color,
+        log=args.logging,
+        config=args.config,
+    )
 
 
 # This is wrapper to make the module WSGI-compatible (like GUnicorn)
