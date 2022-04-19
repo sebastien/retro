@@ -14,8 +14,11 @@ import sys
 import os
 from distutils.core import setup
 
-VERSION = os.popen(
-    """grep __version__ src/retro/__init__.py | head -n1 | cut -d'"' -f2""").read().split("\n")[0]
+VERSION = (
+    os.popen("""grep __version__ src/py/retro/__init__.py | head -n1 | cut -d'"' -f2""")
+    .read()
+    .split("\n")[0]
+)
 SUMMARY = "Lightweight Declarative Web Toolkit"
 DESCRIPTION = """\
 Retro is a lightweight declarative web toolkit designed to make it easier to
@@ -33,16 +36,18 @@ into a web application or to write new ones.
 setup(
     name="Retro",
     version=VERSION,
-    author="Sebastien Pierre", author_email="sebastien.pierre@gmail.com",
-    description=SUMMARY, long_description=DESCRIPTION,
+    author="Sebastien Pierre",
+    author_email="sebastien.pierre@gmail.com",
+    description=SUMMARY,
+    long_description=DESCRIPTION,
     license="Revised BSD License",
     keywords="web lightweight framework http declarative".split(),
     url="http://www.github.com/sebastien/retro",
     download_url="http://github.com/sebastien/retro/tarball/%s" % (VERSION),
-    package_dir={"": "src"},
+    package_dir={"": "src/py"},
     packages=["retro", "retro.contrib"],
     classifiers=[
-            "Development Status :: 4 - Beta",
+        "Development Status :: 4 - Beta",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
@@ -52,6 +57,6 @@ setup(
         "Operating System :: POSIX",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python",
-    ]
+    ],
 )
 # EOF
