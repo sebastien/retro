@@ -6,7 +6,7 @@
 # License   : Revised BSD License
 # -----------------------------------------------------------------------------
 # Creation  : 07-Nov-2007
-# Last mod  : 14-Feb-2019
+# Last mod  : 20-Apr-2021
 # -----------------------------------------------------------------------------
 
 import re
@@ -19,12 +19,9 @@ import time
 import functools
 import types
 from retro.web import cache_id, cache_signature
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
+from urllib.parse import urlencode
 
-RE_FILE_ESCAPE = re.compile("[\:\<\>/\(\)\[\]\{\}\$\~]|\.\.")
+RE_FILE_ESCAPE = re.compile(r"[\:\<\>/\(\)\[\]\{\}\$\~]|\.\.")
 
 
 class CacheError(Exception):
@@ -37,12 +34,17 @@ class CacheMiss(Exception):
 
 def cached(store, prefix=None):
     """A generic decorator that can be used to cache any function."""
+
     def decorator(f):
         def wrapper(*args, **kwargs):
             key = f.__name__
             base_key = ",".join(map(cache_id, args))
-            rest_key = ",".join([kv[0] + "=" + kv[1]
-                                for kv in list(map(cache_id, list(kwargs.items())))])
+            rest_key = ",".join(
+                [
+                    kv[0] + "=" + kv[1]
+                    for kv in list(map(cache_id, list(kwargs.items())))
+                ]
+            )
             key += "(" + (",".join((base_key, rest_key))) + ")"
             if prefix:
                 key = prefix + ":" + key
@@ -55,9 +57,12 @@ def cached(store, prefix=None):
                     return result
             else:
                 return f(*args, **kwargs)
+
         functools.update_wrapper(wrapper, f)
         return wrapper
+
     return decorator
+
 
 # -----------------------------------------------------------------------------
 #
@@ -95,7 +100,7 @@ class Cache:
         raise NotImplementedError
 
     def invalidate(self, key):
-        if type(key) in (str, unicode):
+        if isinstance(key, str):
             if self.has(key):
                 self.remove(key)
         elif isinstance(key, types.FunctionType) or isinstance(key, types.MethodType):
@@ -104,8 +109,7 @@ class Cache:
             for k in to_remove:
                 self.remove(k)
         else:
-            raise Exception(
-                "Unsupported key type {0}: {1}".format(type(key), key))
+            raise Exception("Unsupported key type {0}: {1}".format(type(key), key))
         return self
 
     def wrap(self, keyExtractor):
@@ -118,7 +122,9 @@ class Cache:
                     res = function(*args, **kwargs)
                     self.set(key, res)
                     return res
+
             return operation
+
         return wrap_wrapper
 
     def __setitem__(self, key, value):
@@ -131,6 +137,7 @@ class Cache:
         for k in list(self.keys()):
             yield k
 
+
 # -----------------------------------------------------------------------------
 #
 # NO CACHE
@@ -139,7 +146,6 @@ class Cache:
 
 
 class NoCache(Cache):
-
     def __init__(self):
         Cache.__init__(self)
 
@@ -163,6 +169,7 @@ class NoCache(Cache):
 
     def keys(self):
         return ()
+
 
 # -----------------------------------------------------------------------------
 #
@@ -220,6 +227,7 @@ class MemoryCache(Cache):
             for k in keys:
                 del self.data[k]
 
+
 # -----------------------------------------------------------------------------
 #
 # LRU CACHE
@@ -229,7 +237,7 @@ class MemoryCache(Cache):
 
 class LRUCache(Cache):
     """A simple in-memory cache using a weighted LRU style dictionary,
-     with an optional timeout for kept values (in seconds)."""
+    with an optional timeout for kept values (in seconds)."""
 
     WEIGHT = 0
     HITS = 1
@@ -328,6 +336,7 @@ class LRUCache(Cache):
             i += 1
         self.lock.release()
 
+
 # -----------------------------------------------------------------------------
 #
 # TIMEOUT CACHE
@@ -389,6 +398,7 @@ class TimeoutCache(Cache):
                 self.cache.remove(key)
         return self
 
+
 # -----------------------------------------------------------------------------
 #
 # FILE CACHE
@@ -412,22 +422,31 @@ class FileCache(Cache):
         return hashlib.md5(bytes(_, "UTF8")).hexdigest()
 
     @classmethod
-    def NAME_KEY(self, key):
-        max_length = self.MAX_KEY_LENGTH - len(self.EXTENSION)
+    def NAME_KEY(cls, key):
+        max_length = cls.MAX_KEY_LENGTH - len(cls.EXTENSION)
         name = urlencode(dict(_=key))[2:]
         name_len = len(name)
         if name_len >= max_length:
             suffix = hashlib.md5(bytes(key, "UTF8")).hexdigest()
-            name = name[:max_length - (len(suffix) + 1)]
+            name = name[: max_length - (len(suffix) + 1)]
             name += "-" + suffix
-        if not (len(name) <= max_length):
-            import ipdb
-            ipdb.set_trace()
         assert len(name) <= max_length, "Key is too long %d > %d, key=%s" % (
-            len(name), max_length, repr(key))
+            len(name),
+            max_length,
+            repr(key),
+        )
         return name
 
-    def __init__(self, path=".cache", serializer=lambda fd, data: pickle.dump(data, fd), deserializer=pickle.load, keys=None, expires=None, createPath=True, extension=None):
+    def __init__(
+        self,
+        path=".cache",
+        serializer=lambda fd, data: pickle.dump(data, fd),
+        deserializer=pickle.load,
+        keys=None,
+        expires=None,
+        createPath=True,
+        extension=None,
+    ):
         Cache.__init__(self)
         self.serializer = serializer
         self.deserializer = deserializer
@@ -465,10 +484,8 @@ class FileCache(Cache):
             path = path[:-1]
         if createPath and not os.path.exists(path):
             os.makedirs(path)
-        assert os.path.exists(
-            path), "Cache path does not exist: {0}".format(path)
-        assert os.path.isdir(
-            path),  "Cache path is not a directory: {0}".format(path)
+        assert os.path.exists(path), "Cache path does not exist: {0}".format(path)
+        assert os.path.isdir(path), "Cache path is not a directory: {0}".format(path)
         self.path = path
 
     def mtime(self, key):
@@ -492,7 +509,7 @@ class FileCache(Cache):
     def get(self, key):
         if self.has(key):
             path = self.path + "/" + self._normKey(key) + self.extension
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 res = self._load(f)
                 return res
         else:
@@ -500,7 +517,7 @@ class FileCache(Cache):
 
     def set(self, key, data):
         path = self.path + "/" + self._normKey(key) + self.extension
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             success = self._save(f, data)
         if not success:
             os.unlink(path)
@@ -529,6 +546,7 @@ class FileCache(Cache):
         except Exception as e:
             return None
 
+
 # -----------------------------------------------------------------------------
 #
 # SIGNATURE CACHE
@@ -548,7 +566,7 @@ class SignatureCache(Cache):
 
     def clear(self):
         self._cachedSig = {}
-        self.backend.clear()
+        self._backend.clear()
 
     def has(self, key, sig=0):
         """Tells if this cache has the value for the given key and signature."""
@@ -575,7 +593,7 @@ class SignatureCache(Cache):
 
     @staticmethod
     def sha1(path):
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             t = f.read()
         return hashlib.sha1(t).hexdigest()
 

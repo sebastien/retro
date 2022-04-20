@@ -19,27 +19,35 @@ from retro.web import updateWrapper
 def cors(allowAll=True):
     """A decorator for a request handler that will ensure
     response."""
+
     def decorator(f):
         def wrapper(*args, **kwargs):
             response = f(*args, **kwargs)
             assert not isinstance(
-                response, types.CoroutineType), "Handler is async, use '@acors' instead"
+                response, types.CoroutineType
+            ), "Handler is async, use '@acors' instead"
             return setCORSHeaders(response, args[1].header("Origin"), allowAll=allowAll)
+
         return updateWrapper(wrapper, f)
+
     return decorator
 
 
 def acors(allowAll=True):
     """A decorator for a request handler that will ensure
     response."""
+
     def decorator(f):
         async def wrapper(*args, **kwargs):
             coro = f(*args, **kwargs)
             assert isinstance(
-                coro, types.CoroutineType), "Handler is async, use '@acors' instead"
+                coro, types.CoroutineType
+            ), "Handler is async, use '@acors' instead"
             response = await coro
             return setCORSHeaders(response, args[1].header("Origin"), allowAll=allowAll)
+
         return updateWrapper(wrapper, f)
+
     return decorator
 
 
@@ -55,11 +63,27 @@ def setCORSHeaders(r, origin=None, allowAll=True):
         r = r.respond()
     # SEE: https://remysharp.com/2011/04/21/getting-cors-working
     # If the request returns a 0 status code, it's likely because of CORS
-    r.setHeader("Access-Control-Allow-Origin",
-                origin if origin and not allowAll else "*")
+    r.setHeader(
+        "Access-Control-Allow-Origin", origin if origin and not allowAll else "*"
+    )
     r.setHeader("Access-Control-Allow-Headers", "*")
-    r.setHeader("Access-Control-Allow-Methods",
-                "GET, POST, OPTIONS, PUT, DELETE, UPDATE")
+    r.setHeader(
+        "Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE, UPDATE"
+    )
     return r
+
+
+# TODO: Accepts up to N concurrent connections, and th
+# TODO: The counter structure should be something that autocleaning, which is
+# the main challenge.
+# --
+# class Throttler:
+#
+#     def __init__( self ):
+#         self.counter:dict[str,dict[str,tuple[float,int]]] = None
+#
+#     def accepts( self, request:retro.core.Request ) -> bool:
+#         return True
+
 
 # EOF
