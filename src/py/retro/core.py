@@ -994,8 +994,9 @@ class Request:
     def redirect(self, url, content="", temporary=False, **kwargs):
         """Responds to this request by a redirection to the following URL, with
         the given keyword arguments as parameter."""
-        if kwargs:
-            url += "?" + urllib_parse.urlencode(kwargs)
+        args: dict[str, str] = {k: str(v) for k, v in kwargs.items() if v != None}
+        if args:
+            url += "?" + urllib_parse.urlencode(args)
         return Response(
             content,
             self._mergeHeaders([("Location", url)]),

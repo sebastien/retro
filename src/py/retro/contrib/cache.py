@@ -127,6 +127,20 @@ class Cache:
 
         return wrap_wrapper
 
+    def memoized(self, functor):
+        key = functor.__name__
+
+        def wrapper(*args, **kwargs):
+            if self.has(key):
+                return self.get(key)
+            else:
+                res = functor(*args, **kwargs)
+                self.set(key, res)
+                return res
+
+        functools.update_wrapper(wrapper, functor)
+        return wrapper
+
     def __setitem__(self, key, value):
         return self.set(key, value)
 
