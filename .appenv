@@ -1,3 +1,5 @@
 appenv_declare retro
 appenv_name    retro
-appenv_prepend PYTHONPATH "$APPENV_DIR/src"
+appenv_prepend PATH "$APPENV_DIR/bin"
+appenv_prepend PYTHONPATH "$APPENV_DIR/src/py"
+appenv_prepend MYPYPATH "$APPENV_DIR/src/py"

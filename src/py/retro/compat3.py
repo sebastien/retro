@@ -7,7 +7,7 @@ ENCODING = "UTF-8"
 async def asyncio_await(value):
     return await value
 
-asyncio_coroutine = asyncio.coroutine
+
 asyncio_iscoroutine = asyncio.iscoroutine
 
 
@@ -41,5 +41,6 @@ def ensure_bytes(t, encoding=ENCODING):
 
 def is_string(t):
     return isinstance(t, str)
+
 
 # EOF

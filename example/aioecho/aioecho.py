@@ -25,7 +25,6 @@ import retro
 
 
 class Main(retro.Component):
-
     @retro.on(GET_POST_UPDATE_DELETE="{path:any}")
     async def echo(self, request, path):
         body = await request.body()
@@ -33,6 +32,7 @@ class Main(retro.Component):
         sys.stdout.write("\n\n")
         sys.stdout.flush()
         return request.respond(body)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -47,8 +47,8 @@ if __name__ == "__main__":
         app=retro.Application(main),
         name=os.path.splitext(os.path.basename(__file__))[1],
         method=retro.STANDALONE,
-        port=9030,
-        async=True
+        port=8000,
+        asynchronous=True,
     )
 
 # EOF - vim: tw=80 ts=4 sw=4 noet
